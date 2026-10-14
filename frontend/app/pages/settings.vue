@@ -548,6 +548,71 @@
             <input v-model="cfgForm.temperature" class="input" type="number" step="0.1" min="0" max="2" :placeholder="t('settings.cfg.tempPlaceholder')" />
             <span class="field-hint">{{ t('settings.cfg.tempNote') }}</span>
           </label>
+          <div class="custom-block">
+            <button type="button" class="custom-toggle" @click="customOpen = !customOpen">
+              <ChevronDown :size="13" :style="{ transform: customOpen ? 'rotate(180deg)' : '', transition: '0.2s' }" />
+              {{ t('settings.cfg.custom.title') }}
+              <span v-if="hasCustom" class="tag tag-accent">ON</span>
+            </button>
+            <div v-if="customOpen" class="custom-body">
+              <p class="field-hint">{{ t('settings.cfg.custom.desc') }}</p>
+              <label class="field">
+                <span class="field-label">{{ t('settings.cfg.custom.generateUrl') }}</span>
+                <input v-model="cfgForm.custom.generate_url" class="input mono" placeholder="https://..." />
+                <span class="field-hint">{{ t('settings.cfg.custom.generateUrlHint') }}</span>
+              </label>
+              <label v-if="cfgForm.service_type !== 'text'" class="field">
+                <span class="field-label">{{ t('settings.cfg.custom.pollUrl') }}</span>
+                <input v-model="cfgForm.custom.poll_url" class="input mono" placeholder="https://.../{task_id}" />
+                <span class="field-hint">{{ t('settings.cfg.custom.pollUrlHint') }} <code v-pre class="mono">{task_id}</code></span>
+              </label>
+              <label class="field">
+                <span class="field-label">{{ t('settings.cfg.custom.authScheme') }}</span>
+                <select v-model="cfgForm.custom.auth_scheme" class="input">
+                  <option value="">{{ t('settings.cfg.custom.authDefault') }}</option>
+                  <option value="bearer">{{ t('settings.cfg.custom.authBearer') }}</option>
+                  <option value="raw">{{ t('settings.cfg.custom.authRaw') }}</option>
+                  <option value="x-api-key">{{ t('settings.cfg.custom.authXApiKey') }}</option>
+                  <option value="none">{{ t('settings.cfg.custom.authNone') }}</option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="field-label">{{ t('settings.cfg.custom.headers') }}</span>
+                <textarea v-model="cfgForm.custom.headers" class="textarea mono" rows="3" placeholder='{"X-Custom": "value"}'></textarea>
+              </label>
+              <label v-if="cfgForm.service_type !== 'text'" class="field">
+                <span class="field-label">{{ t('settings.cfg.custom.extraBody') }}</span>
+                <textarea v-model="cfgForm.custom.extra_body" class="textarea mono" rows="3" placeholder='{"camera_fixed": true}'></textarea>
+                <span class="field-hint">{{ t('settings.cfg.custom.extraBodyHint') }}</span>
+              </label>
+              <template v-if="cfgForm.service_type === 'video'">
+                <div class="field">
+                  <span class="field-label custom-label-row">
+                    {{ t('settings.cfg.custom.bodyTemplate') }}
+                    <button type="button" class="btn btn-ghost btn-sm ml-auto" @click="fillGptRouterExample">{{ t('settings.cfg.custom.example') }}</button>
+                  </span>
+                  <textarea v-model="cfgForm.custom.body_template" class="textarea mono" rows="10"></textarea>
+                  <span class="field-hint">
+                    {{ t('settings.cfg.custom.bodyTemplateHint') }}
+                    <code v-pre class="mono">{{model}} {{prompt}} {{duration}} {{ratio}} {{resolution}} {{generate_audio}} {{watermark}} {{seed}} {{first_frame}} {{last_frame}} {{reference_images}} {{reference_videos}} {{reference_audios}}</code>
+                    <code v-pre class="mono">{{duration|5}}</code>
+                  </span>
+                </div>
+                <div class="field">
+                  <span class="field-label">{{ t('settings.cfg.custom.responseTitle') }}</span>
+                  <div class="custom-grid">
+                    <input v-model="cfgForm.custom.task_id_path" class="input mono" :placeholder="t('settings.cfg.custom.taskIdPath') + ' (task_id)'" />
+                    <input v-model="cfgForm.custom.status_path" class="input mono" :placeholder="t('settings.cfg.custom.statusPath') + ' (status)'" />
+                    <input v-model="cfgForm.custom.video_url_path" class="input mono" :placeholder="t('settings.cfg.custom.videoUrlPath') + ' (url)'" />
+                    <input v-model="cfgForm.custom.error_path" class="input mono" :placeholder="t('settings.cfg.custom.errorPath') + ' (error.message)'" />
+                    <input v-model="cfgForm.custom.done_values" class="input mono" :placeholder="t('settings.cfg.custom.doneValues')" />
+                    <input v-model="cfgForm.custom.failed_values" class="input mono" :placeholder="t('settings.cfg.custom.failedValues')" />
+                  </div>
+                  <span class="field-hint">{{ t('settings.cfg.custom.pathHint') }}</span>
+                </div>
+              </template>
+            </div>
+          </div>
           <div v-if="cfgTestResult" class="test-result" :class="{ ok: cfgTestResult.reachable, bad: !cfgTestResult.reachable }">
             <div class="test-result-head">
               <span class="tag" :class="cfgTestResult.reachable ? 'tag-success' : 'tag-error'">{{ cfgTestResult.status || 'ERROR' }}</span>
@@ -724,10 +789,73 @@ const cfgTesting = ref(false)
 const cfgTestResult = ref(null)
 const huobaoApiKey = ref('')
 const huobaoSaving = ref(false)
+// 自定义配置（中转站）表单：JSON 类字段以文本编辑，提交时解析
+function emptyCustomForm() {
+  return {
+    generate_url: '', poll_url: '', auth_scheme: '', headers: '', extra_body: '', body_template: '',
+    task_id_path: '', status_path: '', video_url_path: '', error_path: '', done_values: '', failed_values: '',
+  }
+}
+function customToForm(c) {
+  const r = c?.response || {}
+  const json = v => (v && Object.keys(v).length ? JSON.stringify(v, null, 2) : '')
+  return {
+    generate_url: c?.generate_url || '', poll_url: c?.poll_url || '', auth_scheme: c?.auth_scheme || '',
+    headers: json(c?.headers), extra_body: json(c?.extra_body), body_template: json(c?.body_template),
+    task_id_path: r.task_id_path || '', status_path: r.status_path || '',
+    video_url_path: r.video_url_path || '', error_path: r.error_path || '',
+    done_values: (r.done_values || []).join(', '), failed_values: (r.failed_values || []).join(', '),
+  }
+}
+function parseJsonField(text, field) {
+  const s = text.trim()
+  if (!s) return undefined
+  let v = null
+  try { v = JSON.parse(s) } catch { /* 下方统一报错 */ }
+  if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error(t('settings.cfg.custom.invalidJson', { field }))
+  return v
+}
+// 表单 -> 接口 custom；全空返回 null（更新时表示清除），JSON 非法抛错
+function customPayload() {
+  const f = cfgForm.custom
+  const list = s => s.split(/[,，]/).map(x => x.trim()).filter(Boolean)
+  const out = {}
+  if (f.generate_url.trim()) out.generate_url = f.generate_url.trim()
+  if (f.poll_url.trim()) out.poll_url = f.poll_url.trim()
+  if (f.auth_scheme) out.auth_scheme = f.auth_scheme
+  const headers = parseJsonField(f.headers, t('settings.cfg.custom.headers'))
+  if (headers) out.headers = headers
+  const extra = parseJsonField(f.extra_body, t('settings.cfg.custom.extraBody'))
+  if (extra) out.extra_body = extra
+  const tpl = parseJsonField(f.body_template, t('settings.cfg.custom.bodyTemplate'))
+  if (tpl) out.body_template = tpl
+  const response = {}
+  for (const k of ['task_id_path', 'status_path', 'video_url_path', 'error_path']) if (f[k].trim()) response[k] = f[k].trim()
+  if (list(f.done_values).length) response.done_values = list(f.done_values)
+  if (list(f.failed_values).length) response.failed_values = list(f.failed_values)
+  if (Object.keys(response).length) out.response = response
+  return Object.keys(out).length ? out : null
+}
+function fillGptRouterExample() {
+  const f = cfgForm.custom
+  if (!f.generate_url.trim()) f.generate_url = 'https://gptrouter.cn/v1/video/generations'
+  f.auth_scheme = 'raw'
+  f.body_template = JSON.stringify({
+    model: '{{model}}',
+    prompt: '{{prompt}}',
+    generate_audio: '{{generate_audio|true}}',
+    resolution: '{{resolution|720p}}',
+    ratio: '{{ratio|16:9}}',
+    duration: '{{duration|5}}',
+    watermark: false,
+  }, null, 2)
+}
 // 火宝节点选择：默认跟随界面语言（中文→国内 .cn，其他→国外 .com），一键配置与取 Key 链接共用
 const huobaoRegion = ref(locale.value?.startsWith('zh') ? 'cn' : 'com')
 const huobaoSiteUrl = computed(() => `https://api.firemux.${huobaoRegion.value}`)
-const cfgForm = reactive({ name: '', provider: '', api_key: '', base_url: '', models: [], service_type: 'text', priority: 0, temperature: '' })
+const cfgForm = reactive({ name: '', provider: '', api_key: '', base_url: '', models: [], service_type: 'text', priority: 0, temperature: '', custom: emptyCustomForm() })
+const customOpen = ref(false)
+const hasCustom = computed(() => Object.values(cfgForm.custom).some(v => String(v).trim()))
 // 模型标签编辑器：首位即默认模型；输入框支持回车添加、逗号/换行批量粘贴
 const modelInput = ref('')
 function addModel() {
@@ -866,7 +994,8 @@ async function applyHuobaoQuickConfig() {
 function startAddCfg(t) {
   cfgEditId.value = null
   cfgTestResult.value = null
-  Object.assign(cfgForm, { name: '', provider: '', api_key: '', base_url: '', models: [], service_type: t, priority: 0, temperature: '' })
+  Object.assign(cfgForm, { name: '', provider: '', api_key: '', base_url: '', models: [], service_type: t, priority: 0, temperature: '', custom: emptyCustomForm() })
+  customOpen.value = false
   const firstPreset = presetsByType(t)[0]
   if (firstPreset) applyProviderPreset(t, firstPreset.provider)
   cfgDialog.value = true
@@ -883,7 +1012,9 @@ function startEditCfg(c) {
     service_type: c.service_type,
     priority: c.priority ?? 0,
     temperature: c.temperature ?? '',
+    custom: customToForm(c.custom),
   })
+  customOpen.value = !!c.custom
   cfgDialog.value = true
 }
 async function testCfgPayload(payload) {
@@ -899,12 +1030,15 @@ async function testCfgPayload(payload) {
   }
 }
 async function testDraftCfg() {
+  let custom
+  try { custom = customPayload() } catch (e) { toast.warning(e.message); return }
   await testCfgPayload({
     service_type: cfgForm.service_type,
     provider: cfgForm.provider,
     api_key: cfgForm.api_key,
-    base_url: cfgForm.base_url,
+    base_url: cfgForm.base_url || custom?.generate_url || '',
     model: [...cfgForm.models],
+    custom,
   })
 }
 async function testExistingCfg(c) {
@@ -913,8 +1047,9 @@ async function testExistingCfg(c) {
     service_type: c.service_type,
     provider: c.provider,
     api_key: c.api_key || '',
-    base_url: c.base_url || '',
+    base_url: c.base_url || c.custom?.generate_url || '',
     model: Array.isArray(c.model) ? c.model : [],
+    custom: c.custom || null,
   })
 }
 async function saveCfg() {
@@ -925,8 +1060,9 @@ async function saveCfg() {
     toast.warning(t('settings.cfg.tempInvalid')); return
   }
   try {
-    if (cfgEditId.value) await aiConfigAPI.update(cfgEditId.value, { name: cfgForm.name, provider: cfgForm.provider, api_key: cfgForm.api_key, base_url: cfgForm.base_url, model: models, priority: cfgForm.priority, temperature })
-    else await aiConfigAPI.create({ service_type: cfgForm.service_type, provider: cfgForm.provider, name: cfgForm.name || `${cfgForm.provider}-${cfgForm.service_type}`, api_key: cfgForm.api_key, base_url: cfgForm.base_url, model: models, priority: cfgForm.priority, temperature })
+    const custom = customPayload()
+    if (cfgEditId.value) await aiConfigAPI.update(cfgEditId.value, { name: cfgForm.name, provider: cfgForm.provider, api_key: cfgForm.api_key, base_url: cfgForm.base_url, model: models, priority: cfgForm.priority, temperature, custom })
+    else await aiConfigAPI.create({ service_type: cfgForm.service_type, provider: cfgForm.provider, name: cfgForm.name || `${cfgForm.provider}-${cfgForm.service_type}`, api_key: cfgForm.api_key, base_url: cfgForm.base_url, model: models, priority: cfgForm.priority, temperature, custom })
     cfgDialog.value = false; toast.success(t('common.saved')); loadCfgs()
   } catch (e) { toastError(e) }
 }
@@ -1772,7 +1908,8 @@ onBeforeUnmount(stopUsagePoll)
 
 /* Dialogs */
 .config-dialog { width: min(720px, calc(100vw - 40px)); }
-.config-dialog-body { display: flex; flex-direction: column; gap: 14px; }
+.config-dialog-body { display: flex; flex-direction: column; gap: 14px; flex: 1; min-height: 0; }
+.config-dialog-body > * { flex-shrink: 0; }
 .skill-dialog { width: 440px; }
 .skill-dialog-body { display: flex; flex-direction: column; gap: 12px; }
 .dialog-sub { margin-top: 4px; font-size: 12px; color: var(--text-2); }
@@ -1817,6 +1954,18 @@ onBeforeUnmount(stopUsagePoll)
   color: var(--text-2);
   word-break: break-all;
 }
+
+/* 自定义配置（配置弹窗） */
+.custom-block { border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.custom-toggle {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 10px 14px; border: none; background: var(--bg-2);
+  color: var(--text-1); font-size: 12.5px; font-weight: 600; cursor: pointer; text-align: left;
+}
+.custom-toggle:hover { color: var(--text-0); }
+.custom-body { display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+.custom-label-row { display: flex; align-items: center; }
+.custom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
 /* 存储位置 */
 .storage-breakdown {

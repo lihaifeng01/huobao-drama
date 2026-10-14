@@ -9,6 +9,7 @@ import type { RequestContext } from '@mastra/core/request-context'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import { getTextConfig, getTextProviderBaseUrl, getConfigById } from '../services/ai.js'
+import { withCustomHeadersFetch } from '../services/adapters/custom.js'
 import { logTaskProgress } from '../utils/task-logger.js'
 import { scriptTools } from './tools/script-tools.js'
 import { extractTools } from './tools/extract-tools.js'
@@ -314,9 +315,13 @@ async function getModel(fileModel: string | undefined, modelOverride?: string, t
   const tempFetch = temperature !== null
     ? createTemperatureFetch(providerName, temperature, thinkingOffFetch)
     : thinkingOffFetch
-  const fetchImpl = isOfficialOpenAIHost(resolvedBaseURL)
+  const patchedFetch = isOfficialOpenAIHost(resolvedBaseURL)
     ? tempFetch
     : createMaxTokensFetch(providerName, tempFetch)
+  const custom = textConfig.custom
+  const fetchImpl = custom && (custom.auth_scheme || custom.headers)
+    ? withCustomHeadersFetch(custom, textConfig.apiKey, patchedFetch)
+    : patchedFetch
 
   if (providerName === 'gemini') {
     const googleProvider = createGoogleGenerativeAI({
