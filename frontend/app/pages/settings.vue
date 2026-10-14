@@ -484,7 +484,7 @@
     </div>
 
     <!-- AI Config Dialog -->
-    <div v-if="cfgDialog" class="overlay" @click.self="cfgDialog = false">
+    <div v-if="cfgDialog" class="overlay">
       <form class="dialog config-dialog" @submit.prevent="saveCfg">
         <div class="dialog-head">
           <div>
@@ -492,6 +492,7 @@
             <div class="dialog-sub">{{ t('settings.cfg.sub') }}</div>
           </div>
           <span class="tag tag-accent ml-auto">{{ serviceMeta[cfgForm.service_type].label }}</span>
+          <button type="button" class="btn btn-ghost btn-icon btn-sm" @click="cfgDialog = false"><X :size="14" /></button>
         </div>
         <div class="dialog-body config-dialog-body">
           <div class="preset-picker">
@@ -568,10 +569,11 @@
     </div>
 
     <!-- Add Skill Dialog -->
-    <div v-if="addSkillDialog" class="overlay" @click.self="addSkillDialog = false">
+    <div v-if="addSkillDialog" class="overlay">
       <form class="dialog skill-dialog" @submit.prevent="confirmAddSkill">
         <div class="dialog-head">
           <div class="dialog-title">{{ t('settings.skills.addTitle', { agent: selectedAgentLabel }) }}</div>
+          <button type="button" class="btn btn-ghost btn-icon btn-sm ml-auto" @click="addSkillDialog = false"><X :size="14" /></button>
         </div>
         <div class="dialog-body skill-dialog-body">
           <label class="field">
@@ -595,7 +597,7 @@
     </div>
 
     <!-- Style Preset Dialog -->
-    <div v-if="styleDialog" class="overlay" @click.self="styleDialog = false">
+    <div v-if="styleDialog" class="overlay">
       <form class="dialog config-dialog" @submit.prevent="saveStyle">
         <div class="dialog-head">
           <div>
@@ -603,6 +605,7 @@
             <div class="dialog-sub">{{ t('settings.styleDialog.sub') }}</div>
           </div>
           <span class="tag tag-accent ml-auto"><Palette :size="12" /> {{ t('settings.styleDialog.tag') }}</span>
+          <button type="button" class="btn btn-ghost btn-icon btn-sm" @click="styleDialog = false"><X :size="14" /></button>
         </div>
         <div class="dialog-body config-dialog-body">
           <label class="field">
@@ -634,9 +637,12 @@
       </form>
     </div>
     <!-- 迁移确认（自建 dialog：ConfirmDialog 的删除语义/Enter 快捷键不合此处） -->
-    <div v-if="migrateDialog" class="overlay" @click.self="!migrating && (migrateDialog = false)">
+    <div v-if="migrateDialog" class="overlay">
       <form class="dialog" @submit.prevent="startMigrate">
-        <div class="dialog-head"><span class="dialog-title">{{ t('settings.migrate.title') }}</span></div>
+        <div class="dialog-head">
+          <span class="dialog-title">{{ t('settings.migrate.title') }}</span>
+          <button type="button" class="btn btn-ghost btn-icon btn-sm ml-auto" :disabled="migrating" @click="migrateDialog = false"><X :size="14" /></button>
+        </div>
         <div class="dialog-body">
           <div class="field">
             <span class="field-label">{{ t('settings.migrate.newDir') }}</span>
