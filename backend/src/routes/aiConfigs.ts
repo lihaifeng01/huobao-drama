@@ -5,7 +5,7 @@ import { success, notFound, created, badRequest, now } from '../utils/response.j
 import { toSnakeCase } from '../utils/transform.js'
 import { joinProviderUrl } from '../services/adapters/url.js'
 import { isOfficialProvider, parseConfigTemperature } from '../services/ai.js'
-import { applyCustomHeaders, normalizeCustomOptions, parseCustomOptions } from '../services/adapters/custom.js'
+import { applyCustomHeaders, normalizeCustomOptions, normalizeUrlMode, parseCustomOptions, parseUrlMode, withUrlMode } from '../services/adapters/custom.js'
 import type { CustomOptions } from '../services/adapters/types.js'
 import { redactUrl, logTaskError, logTaskProgress, logTaskSuccess } from '../utils/task-logger.js'
 
@@ -19,15 +19,18 @@ function normalizeTemperature(v: any): number | null {
   return n
 }
 
-/** 把 settings JSON 中的 temperature/custom 透出为顶层字段，便于前端直接读写 */
+/** 把 settings JSON 中的 temperature/custom/url_mode 透出为顶层字段，便于前端直接读写 */
 function withParsedFields(r: any) {
   return {
     ...toSnakeCase(r),
     model: r.model ? JSON.parse(r.model) : [],
     temperature: parseConfigTemperature(r.settings),
     custom: parseCustomOptions(r.settings),
+    url_mode: parseUrlMode(r.settings),
   }
 }
+
+const BASE_URL_MODE_ERROR = 'Base URL 原样使用模式需要以 http:// 或 https:// 开头的 Base URL'
 
 function bearerHeaders(apiKey?: string, withJson = false) {
   const headers: Record<string, string> = {}
@@ -187,6 +190,17 @@ app.post('/', async (c) => {
   if (temperature !== null) settings.temperature = temperature
   if (custom) settings.custom = custom
 
+  let urlMode: 'auto' | 'base'
+  try {
+    urlMode = normalizeUrlMode(body.url_mode)
+  } catch (e: any) {
+    return badRequest(c, e.message)
+  }
+  if (urlMode === 'base') {
+    if (!/^https?:\/\//i.test(String(body.base_url || '').trim())) return badRequest(c, BASE_URL_MODE_ERROR)
+    settings.url_mode = urlMode
+  }
+
   const res = await db.insert(schema.aiServiceConfigs).values({
     serviceType: body.service_type,
     provider: body.provider,
@@ -219,11 +233,14 @@ app.post('/test', async (c) => {
 
   const model = Array.isArray(body.model) ? body.model[0] : body.model
   let custom: CustomOptions | null = null
+  let urlMode: 'auto' | 'base'
   try {
     custom = normalizeCustomOptions(body.custom)
+    urlMode = normalizeUrlMode(body.url_mode)
   } catch (e: any) {
     return badRequest(c, e.message)
   }
+  custom = withUrlMode(custom, urlMode, body.base_url)
   const probe = buildCustomProbe(body.service_type, body.provider, custom, model, body.api_key)
     ?? buildProbe(body.service_type, body.provider, body.base_url, model, body.api_key)
   if (custom) applyCustomHeaders(probe.headers, body.api_key || '', custom)
@@ -318,7 +335,7 @@ app.put('/:id', async (c) => {
   if ('model' in body) updates.model = JSON.stringify(body.model)
   if ('priority' in body) updates.priority = body.priority
   if ('is_active' in body) updates.isActive = body.is_active
-  if ('temperature' in body || 'custom' in body) {
+  if ('temperature' in body || 'custom' in body || 'url_mode' in body) {
     // 与已有 settings 合并，清空的字段从 JSON 中移除
     let settings: Record<string, any> = {}
     try { settings = existing.settings ? JSON.parse(existing.settings) : {} } catch { settings = {} }
@@ -343,6 +360,21 @@ app.put('/:id', async (c) => {
       }
       if (custom) settings.custom = custom
       else delete settings.custom
+    }
+
+    if ('url_mode' in body) {
+      let urlMode: 'auto' | 'base'
+      try {
+        urlMode = normalizeUrlMode(body.url_mode)
+      } catch (e: any) {
+        return badRequest(c, e.message)
+      }
+      if (urlMode === 'base') settings.url_mode = urlMode
+      else delete settings.url_mode
+    }
+    if (settings.url_mode === 'base') {
+      const baseUrl = 'base_url' in body ? body.base_url : existing.baseUrl
+      if (!/^https?:\/\//i.test(String(baseUrl || '').trim())) return badRequest(c, BASE_URL_MODE_ERROR)
     }
     updates.settings = Object.keys(settings).length ? JSON.stringify(settings) : null
   }

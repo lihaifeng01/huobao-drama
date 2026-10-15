@@ -1,5 +1,24 @@
 # 更新记录
 
+## 2026-10-15 — 新增「URL 模式」：原样使用 Base URL + 官方请求参数
+
+### 背景
+部分中转站使用固定 URL，但请求参数沿用服务商官方格式。此前只能通过「自定义配置」手动填写提交 URL，且无法区分这种场景。
+
+### 新增
+- 服务配置新增 **URL 模式** 字段（Base URL 下方切换），默认「自动补全」：
+  - **自动补全**：按服务商官方规则在 Base URL 后追加路径（如 `/v1`、`/api/v3`），与此前行为一致。
+  - **原样使用 Base URL**：Base URL 即完整请求地址，不追加任何路径；轮询地址为 `Base URL + / + 任务 ID`；请求体与响应解析仍沿用该服务商官方格式。
+- 文本、图片、视频三类服务均支持；「测试配置」同样按所选模式探测。
+- 「自定义配置」中显式填写的提交 URL / 轮询 URL 优先于 URL 模式。
+- 四种界面语言同步新增文案。
+
+### 实现要点
+- 存于 `ai_service_configs.settings.url_mode`（仅 `base` 时写入，缺省即自动补全），无需改表结构。
+- [backend/src/services/adapters/custom.ts](backend/src/services/adapters/custom.ts) 新增 `normalizeUrlMode` / `parseUrlMode` / `withUrlMode`：`base` 模式下把 Base URL 折算为提交 URL 并复用已有自定义配置通路；`ai.ts` 解析配置时应用。
+- `/ai-configs` 创建、更新、测试接口支持 `url_mode`，`base` 模式要求 Base URL 以 `http(s)://` 开头；读取接口透出 `url_mode`。
+- 测试：[backend/tests/custom-video-options.test.ts](backend/tests/custom-video-options.test.ts) 增加 URL 模式用例。
+
 ## 2026-10-14 — AI 服务「自定义配置」（中转站适配）
 
 ### 背景

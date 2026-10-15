@@ -521,6 +521,14 @@
           <label class="field"><span class="field-label">API Key</span><input v-model="cfgForm.api_key" class="input" type="password" placeholder="sk-..." /></label>
           <label class="field"><span class="field-label">Base URL</span><input v-model="cfgForm.base_url" class="input" placeholder="https://..." /></label>
           <div class="field">
+            <span class="field-label">{{ t('settings.cfg.urlMode') }}</span>
+            <div class="lang-picker url-mode-picker">
+              <button type="button" :class="['lang-option', { on: cfgForm.url_mode === 'auto' }]" @click="cfgForm.url_mode = 'auto'">{{ t('settings.cfg.urlModeAuto') }}</button>
+              <button type="button" :class="['lang-option', { on: cfgForm.url_mode === 'base' }]" @click="cfgForm.url_mode = 'base'">{{ t('settings.cfg.urlModeBase') }}</button>
+            </div>
+            <span class="field-hint">{{ t('settings.cfg.urlModeHint') }}</span>
+          </div>
+          <div class="field">
             <span class="field-label">{{ t('settings.cfg.models') }}</span>
             <div v-if="cfgForm.models.length" class="model-chips">
               <span
@@ -853,7 +861,7 @@ function fillGptRouterExample() {
 // 火宝节点选择：默认跟随界面语言（中文→国内 .cn，其他→国外 .com），一键配置与取 Key 链接共用
 const huobaoRegion = ref(locale.value?.startsWith('zh') ? 'cn' : 'com')
 const huobaoSiteUrl = computed(() => `https://api.firemux.${huobaoRegion.value}`)
-const cfgForm = reactive({ name: '', provider: '', api_key: '', base_url: '', models: [], service_type: 'text', priority: 0, temperature: '', custom: emptyCustomForm() })
+const cfgForm = reactive({ name: '', provider: '', api_key: '', base_url: '', url_mode: 'auto', models: [], service_type: 'text', priority: 0, temperature: '', custom: emptyCustomForm() })
 const customOpen = ref(false)
 const hasCustom = computed(() => Object.values(cfgForm.custom).some(v => String(v).trim()))
 // 模型标签编辑器：首位即默认模型；输入框支持回车添加、逗号/换行批量粘贴
@@ -994,7 +1002,7 @@ async function applyHuobaoQuickConfig() {
 function startAddCfg(t) {
   cfgEditId.value = null
   cfgTestResult.value = null
-  Object.assign(cfgForm, { name: '', provider: '', api_key: '', base_url: '', models: [], service_type: t, priority: 0, temperature: '', custom: emptyCustomForm() })
+  Object.assign(cfgForm, { name: '', provider: '', api_key: '', base_url: '', url_mode: 'auto', models: [], service_type: t, priority: 0, temperature: '', custom: emptyCustomForm() })
   customOpen.value = false
   const firstPreset = presetsByType(t)[0]
   if (firstPreset) applyProviderPreset(t, firstPreset.provider)
@@ -1008,6 +1016,7 @@ function startEditCfg(c) {
     provider: c.provider,
     api_key: c.api_key || '',
     base_url: c.base_url || '',
+    url_mode: c.url_mode === 'base' ? 'base' : 'auto',
     models: Array.isArray(c.model) ? [...c.model] : String(c.model || '').split(',').map(s => s.trim()).filter(Boolean),
     service_type: c.service_type,
     priority: c.priority ?? 0,
@@ -1037,6 +1046,7 @@ async function testDraftCfg() {
     provider: cfgForm.provider,
     api_key: cfgForm.api_key,
     base_url: cfgForm.base_url || custom?.generate_url || '',
+    url_mode: cfgForm.url_mode,
     model: [...cfgForm.models],
     custom,
   })
@@ -1048,6 +1058,7 @@ async function testExistingCfg(c) {
     provider: c.provider,
     api_key: c.api_key || '',
     base_url: c.base_url || c.custom?.generate_url || '',
+    url_mode: c.url_mode === 'base' ? 'base' : 'auto',
     model: Array.isArray(c.model) ? c.model : [],
     custom: c.custom || null,
   })
@@ -1061,8 +1072,8 @@ async function saveCfg() {
   }
   try {
     const custom = customPayload()
-    if (cfgEditId.value) await aiConfigAPI.update(cfgEditId.value, { name: cfgForm.name, provider: cfgForm.provider, api_key: cfgForm.api_key, base_url: cfgForm.base_url, model: models, priority: cfgForm.priority, temperature, custom })
-    else await aiConfigAPI.create({ service_type: cfgForm.service_type, provider: cfgForm.provider, name: cfgForm.name || `${cfgForm.provider}-${cfgForm.service_type}`, api_key: cfgForm.api_key, base_url: cfgForm.base_url, model: models, priority: cfgForm.priority, temperature, custom })
+    if (cfgEditId.value) await aiConfigAPI.update(cfgEditId.value, { name: cfgForm.name, provider: cfgForm.provider, api_key: cfgForm.api_key, base_url: cfgForm.base_url, url_mode: cfgForm.url_mode, model: models, priority: cfgForm.priority, temperature, custom })
+    else await aiConfigAPI.create({ service_type: cfgForm.service_type, provider: cfgForm.provider, name: cfgForm.name || `${cfgForm.provider}-${cfgForm.service_type}`, api_key: cfgForm.api_key, base_url: cfgForm.base_url, url_mode: cfgForm.url_mode, model: models, priority: cfgForm.priority, temperature, custom })
     cfgDialog.value = false; toast.success(t('common.saved')); loadCfgs()
   } catch (e) { toastError(e) }
 }
@@ -1956,6 +1967,7 @@ onBeforeUnmount(stopUsagePoll)
 }
 
 /* 自定义配置（配置弹窗） */
+.url-mode-picker { align-self: flex-start; }
 .custom-block { border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
 .custom-toggle {
   display: flex; align-items: center; gap: 8px; width: 100%;

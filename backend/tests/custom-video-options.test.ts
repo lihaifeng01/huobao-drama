@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { getVideoAdapter } from '../src/services/adapters/registry'
-import { normalizeCustomOptions } from '../src/services/adapters/custom'
+import { normalizeCustomOptions, withUrlMode } from '../src/services/adapters/custom'
 
 const custom = normalizeCustomOptions({
   generate_url: 'https://gptrouter.cn/v1/video/generations',
@@ -75,4 +75,18 @@ test('extra_body merges and null removes fields; invalid input is rejected', () 
   assert.throws(() => normalizeCustomOptions({ generate_url: 'ftp://x' }))
   assert.throws(() => normalizeCustomOptions({ body_template: { a: 1 } }))
   assert.throws(() => normalizeCustomOptions({ headers: { 'bad name': 'x' } }))
+})
+
+test('url_mode=base uses Base URL verbatim while keeping the official request body', () => {
+  const base = 'https://relay.example.com/video/submit'
+  const c = withUrlMode(null, 'base', base)
+  const cfg = { provider: 'volcengine', baseUrl: base, apiKey: 'sk', model: 'doubao-seedance-2-0-260128', custom: c }
+  const adapter = getVideoAdapter('volcengine', cfg)
+  const req = adapter.buildGenerateRequest(cfg, { id: 1, prompt: 'x' })
+  assert.equal(req.url, base)
+  assert.equal(req.headers.Authorization, 'Bearer sk')
+  assert.equal((req.body as any).model, 'doubao-seedance-2-0-260128')
+  assert.equal(adapter.buildPollRequest(cfg, 't1').url, `${base}/t1`)
+  assert.equal(withUrlMode(null, 'auto', base), null)
+  assert.equal(withUrlMode({ generate_url: 'https://explicit.example.com/a' }, 'base', base)!.generate_url, 'https://explicit.example.com/a')
 })

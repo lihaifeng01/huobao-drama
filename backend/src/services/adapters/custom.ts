@@ -112,6 +112,32 @@ export function parseCustomOptions(settingsRaw: string | null | undefined): Cust
   }
 }
 
+// ============ URL 模式 ============
+
+export type UrlMode = 'auto' | 'base'
+
+export function normalizeUrlMode(value: unknown): UrlMode {
+  if (value === undefined || value === null || value === '') return 'auto'
+  if (value === 'auto' || value === 'base') return value
+  throw new Error("url_mode 仅支持 'auto' 或 'base'")
+}
+
+export function parseUrlMode(settingsRaw: string | null | undefined): UrlMode {
+  if (!settingsRaw) return 'auto'
+  try {
+    return JSON.parse(settingsRaw)?.url_mode === 'base' ? 'base' : 'auto'
+  } catch {
+    return 'auto'
+  }
+}
+
+/** url_mode=base 时把 Base URL 作为提交 URL 原样使用（已显式配置提交 URL 则以其为准），请求参数仍沿用官方格式 */
+export function withUrlMode(custom: CustomOptions | null, urlMode: UrlMode, baseUrl?: string | null): CustomOptions | null {
+  const url = (baseUrl || '').trim()
+  if (urlMode !== 'base' || custom?.generate_url || !/^https?:\/\//i.test(url)) return custom
+  return { ...custom, generate_url: url }
+}
+
 // ============ 请求改写 ============
 
 function setHeader(headers: Record<string, string>, name: string, value: string) {

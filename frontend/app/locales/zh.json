@@ -434,7 +434,11 @@
         "pathHint": "点号路径，如 data.video.url；多个候选用逗号分隔",
         "example": "填入 GPT Router 示例",
         "invalidJson": "{field} 不是合法的 JSON 对象"
-      }
+      },
+      "urlMode": "URL 模式",
+      "urlModeAuto": "自动补全",
+      "urlModeBase": "原样使用 Base URL",
+      "urlModeHint": "自动补全：按服务商官方规则在 Base URL 后追加路径（如 /v1、/api/v3）。原样使用：Base URL 即完整请求地址，不追加任何路径，轮询地址为 Base URL 加 / 加任务 ID，请求参数仍沿用服务商官方格式。"
     },
     "styleDialog": {
       "editTitle": "编辑风格预设",

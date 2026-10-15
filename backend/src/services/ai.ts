@@ -5,7 +5,7 @@ import { db, schema } from '../db/index.js'
 import { eq } from 'drizzle-orm'
 import { logTaskProgress, logTaskWarn } from '../utils/task-logger.js'
 import { joinProviderUrl } from './adapters/url.js'
-import { parseCustomOptions } from './adapters/custom.js'
+import { parseCustomOptions, parseUrlMode, withUrlMode } from './adapters/custom.js'
 import type { CustomOptions } from './adapters/types.js'
 
 export type ServiceType = 'text' | 'image' | 'video'
@@ -99,7 +99,7 @@ export async function getActiveConfig(serviceType: ServiceType): Promise<AIConfi
     apiKey: active.apiKey,
     model: models[0] || '',
     temperature: parseConfigTemperature(active.settings),
-    custom: parseCustomOptions(active.settings),
+    custom: withUrlMode(parseCustomOptions(active.settings), parseUrlMode(active.settings), active.baseUrl),
   }
 }
 
@@ -153,6 +153,6 @@ export async function getConfigById(id: number): Promise<AIConfig | null> {
     apiKey: row.apiKey,
     model: models[0] || '',
     temperature: parseConfigTemperature(row.settings),
-    custom: parseCustomOptions(row.settings),
+    custom: withUrlMode(parseCustomOptions(row.settings), parseUrlMode(row.settings), row.baseUrl),
   }
 }

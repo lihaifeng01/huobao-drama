@@ -434,7 +434,11 @@
         "pathHint": "data.video.url のようなドットパス。候補はカンマ区切り",
         "example": "GPT Router の例を入力",
         "invalidJson": "{field} は有効な JSON オブジェクトではありません"
-      }
+      },
+      "urlMode": "URL モード",
+      "urlModeAuto": "自動補完",
+      "urlModeBase": "Base URL をそのまま使用",
+      "urlModeHint": "自動補完：プロバイダー公式のルールで Base URL にパスを追加します（例：/v1、/api/v3）。そのまま使用：Base URL を完全なリクエスト URL として扱い、パスは追加しません。ポーリング URL は Base URL に / とタスク ID を付けたもので、リクエストパラメーターは公式形式のままです。"
     },
     "styleDialog": {
       "editTitle": "スタイルプリセットを編集",

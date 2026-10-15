@@ -434,7 +434,11 @@
         "pathHint": "Dot path such as data.video.url; separate alternatives with commas",
         "example": "Fill GPT Router example",
         "invalidJson": "{field} is not a valid JSON object"
-      }
+      },
+      "urlMode": "URL mode",
+      "urlModeAuto": "Auto-complete",
+      "urlModeBase": "Use Base URL as-is",
+      "urlModeHint": "Auto-complete: append the provider's official path to the Base URL (e.g. /v1, /api/v3). As-is: the Base URL is the full request URL and nothing is appended; the poll URL is Base URL plus / plus task ID; request parameters still follow the provider's official format."
     },
     "styleDialog": {
       "editTitle": "Edit Style Preset",
