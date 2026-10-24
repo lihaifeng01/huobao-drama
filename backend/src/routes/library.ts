@@ -9,7 +9,7 @@ import { saveUploadedFile, generateImageThumb, getAbsolutePath } from '../utils/
 /**
  * 全局素材库 — 项目之外聚合查看角色/场景素材
  * - 项目文件夹：每个未删除项目自动对应一个，内容实时取自该项目的 characters / scenes（只读）
- * - 我的文件夹：用户自建（单层），存放用户上传的素材文件
+ * - 我的文件夹：用户自建，可多级嵌套（parent_id），存放用户上传的素材文件
  * - 根目录文件：folder_id 为空的上传文件
  */
 const app = new Hono()
@@ -20,6 +20,9 @@ type Category = typeof CATEGORIES[number]
 const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif'])
 const IMAGE_MAX = 20 * 1024 * 1024 // 20MB
 const NAME_MAX = 100
+
+type FolderRow = typeof schema.libraryFolders.$inferSelect
+type FileRow = typeof schema.libraryFiles.$inferSelect
 
 function parseCategory(raw: string | undefined): Category | null {
   return CATEGORIES.includes(raw as Category) ? raw as Category : null
@@ -41,13 +44,64 @@ async function findFolder(id: number, category?: Category) {
   return folder
 }
 
-async function folderNameTaken(category: Category, name: string, exceptId?: number) {
+/** 同一父目录下文件夹不重名 */
+async function folderNameTaken(category: Category, parentId: number | null, name: string, exceptId?: number) {
   const rows = await db.select().from(schema.libraryFolders)
     .where(and(eq(schema.libraryFolders.category, category), eq(schema.libraryFolders.name, name), isNull(schema.libraryFolders.deletedAt)))
-  return rows.some(r => r.id !== exceptId)
+  return rows.some(r => (r.parentId ?? null) === parentId && r.id !== exceptId)
 }
 
-function serializeFile(row: typeof schema.libraryFiles.$inferSelect) {
+async function loadCategory(category: Category) {
+  const folders = await db.select().from(schema.libraryFolders)
+    .where(and(eq(schema.libraryFolders.category, category), isNull(schema.libraryFolders.deletedAt)))
+    .orderBy(desc(schema.libraryFolders.updatedAt))
+  const files = await db.select().from(schema.libraryFiles)
+    .where(and(eq(schema.libraryFiles.category, category), isNull(schema.libraryFiles.deletedAt)))
+    .orderBy(desc(schema.libraryFiles.createdAt))
+  return { folders, files }
+}
+
+/** 文件夹自身 + 全部后代 id */
+function subtreeIds(folders: FolderRow[], rootId: number): Set<number> {
+  const ids = new Set([rootId])
+  let grew = true
+  while (grew) {
+    grew = false
+    for (const f of folders) {
+      if (f.parentId && ids.has(f.parentId) && !ids.has(f.id)) { ids.add(f.id); grew = true }
+    }
+  }
+  return ids
+}
+
+/** 根 → 当前 的路径（防御环：最多走 folders.length 步） */
+function folderPath(folders: FolderRow[], id: number) {
+  const byId = new Map(folders.map(f => [f.id, f]))
+  const path: { id: number; name: string }[] = []
+  let cur = byId.get(id)
+  for (let i = 0; cur && i <= folders.length; i++) {
+    path.unshift({ id: cur.id, name: cur.name })
+    cur = cur.parentId ? byId.get(cur.parentId) : undefined
+  }
+  return path
+}
+
+/** 文件夹卡片：count 为子树内文件总数，folder_count 为直接子文件夹数，cover 取子树内最新文件 */
+function folderCard(folders: FolderRow[], files: FileRow[], f: FolderRow) {
+  const ids = subtreeIds(folders, f.id)
+  const inside = files.filter(x => x.folderId && ids.has(x.folderId))
+  return {
+    id: f.id,
+    parent_id: f.parentId ?? null,
+    name: f.name,
+    count: inside.length,
+    folder_count: folders.filter(x => x.parentId === f.id).length,
+    cover: inside[0]?.imageUrl || '',
+    updated_at: f.updatedAt,
+  }
+}
+
+function serializeFile(row: FileRow) {
   return toSnakeCase(row)
 }
 
@@ -80,7 +134,7 @@ async function projectRows(category: Category, dramaIds: number[]) {
     .where(and(inArray(table.dramaId, dramaIds), isNull(table.deletedAt)))
 }
 
-// GET /library/:category — 根目录：项目文件夹 + 我的文件夹 + 根目录文件
+// GET /library/:category — 根目录：项目文件夹 + 顶层我的文件夹 + 根目录文件
 app.get('/:category', async (c) => {
   const category = parseCategory(c.req.param('category'))
   if (!category) return badRequest(c, '素材分类无效')
@@ -100,40 +154,35 @@ app.get('/:category', async (c) => {
     }
   })
 
-  const folders = await db.select().from(schema.libraryFolders)
-    .where(and(eq(schema.libraryFolders.category, category), isNull(schema.libraryFolders.deletedAt)))
-    .orderBy(desc(schema.libraryFolders.updatedAt))
-  const files = await db.select().from(schema.libraryFiles)
-    .where(and(eq(schema.libraryFiles.category, category), isNull(schema.libraryFiles.deletedAt)))
-    .orderBy(desc(schema.libraryFiles.createdAt))
-  const userFolders = folders.map((f) => {
-    const inside = files.filter(x => x.folderId === f.id)
-    return {
-      id: f.id,
-      name: f.name,
-      count: inside.length,
-      cover: inside[0]?.imageUrl || '',
-      updated_at: f.updatedAt,
-    }
-  })
-
+  const { folders, files } = await loadCategory(category)
   return success(c, {
     project_folders: projectFolders,
-    folders: userFolders,
+    folders: folders.filter(f => !f.parentId).map(f => folderCard(folders, files, f)),
     files: files.filter(x => !x.folderId).map(serializeFile),
   })
 })
 
-// GET /library/:category/folders/:id — 我的文件夹内文件
+// GET /library/:category/folders — 全部文件夹（扁平，含 parent_id），供移动/选择弹窗构建树
+app.get('/:category/folders', async (c) => {
+  const category = parseCategory(c.req.param('category'))
+  if (!category) return badRequest(c, '素材分类无效')
+  const { folders } = await loadCategory(category)
+  return success(c, folders.map(f => ({ id: f.id, parent_id: f.parentId ?? null, name: f.name })))
+})
+
+// GET /library/:category/folders/:id — 文件夹内：路径 + 子文件夹 + 文件
 app.get('/:category/folders/:id', async (c) => {
   const category = parseCategory(c.req.param('category'))
   if (!category) return badRequest(c, '素材分类无效')
   const folder = await findFolder(Number(c.req.param('id')), category)
   if (!folder) return notFound(c, '文件夹不存在')
-  const files = await db.select().from(schema.libraryFiles)
-    .where(and(eq(schema.libraryFiles.folderId, folder.id), isNull(schema.libraryFiles.deletedAt)))
-    .orderBy(desc(schema.libraryFiles.createdAt))
-  return success(c, { folder: toSnakeCase(folder), files: files.map(serializeFile) })
+  const { folders, files } = await loadCategory(category)
+  return success(c, {
+    folder: toSnakeCase(folder),
+    path: folderPath(folders, folder.id),
+    folders: folders.filter(f => f.parentId === folder.id).map(f => folderCard(folders, files, f)),
+    files: files.filter(x => x.folderId === folder.id).map(serializeFile),
+  })
 })
 
 // GET /library/:category/projects/:dramaId — 项目文件夹内素材（只读）
@@ -151,40 +200,67 @@ app.get('/:category/projects/:dramaId', async (c) => {
   })
 })
 
-// POST /library/:category/folders — 新建文件夹
+// POST /library/:category/folders — 新建文件夹（parent_id 为空即顶层）
 app.post('/:category/folders', async (c) => {
   const category = parseCategory(c.req.param('category'))
   if (!category) return badRequest(c, '素材分类无效')
   const body = await c.req.json()
   const name = cleanName(body.name)
   if (!name) return badRequest(c, '文件夹名称必填')
-  if (await folderNameTaken(category, name)) return badRequest(c, '文件夹名称已存在')
+  let parentId: number | null = null
+  if (body.parent_id) {
+    const parent = await findFolder(Number(body.parent_id), category)
+    if (!parent) return badRequest(c, '上级文件夹不存在')
+    parentId = parent.id
+  }
+  if (await folderNameTaken(category, parentId, name)) return badRequest(c, '文件夹名称已存在')
   const ts = now()
-  const res = await db.insert(schema.libraryFolders).values({ category, name, createdAt: ts, updatedAt: ts })
+  const res = await db.insert(schema.libraryFolders).values({ category, parentId, name, createdAt: ts, updatedAt: ts })
   const folder = await findFolder(getInsertId(res))
   return created(c, toSnakeCase(folder!))
 })
 
-// PUT /library/folders/:id — 重命名文件夹
+// PUT /library/folders/:id — 重命名 / 移动（parent_id 为 null 移到顶层；不能移入自身或其子文件夹）
 app.put('/folders/:id', async (c) => {
   const folder = await findFolder(Number(c.req.param('id')))
   if (!folder) return notFound(c, '文件夹不存在')
+  const category = folder.category as Category
   const body = await c.req.json()
-  const name = cleanName(body.name)
-  if (!name) return badRequest(c, '文件夹名称必填')
-  if (await folderNameTaken(folder.category as Category, name, folder.id)) return badRequest(c, '文件夹名称已存在')
-  await db.update(schema.libraryFolders).set({ name, updatedAt: now() }).where(eq(schema.libraryFolders.id, folder.id))
+  const updates: Record<string, any> = { updatedAt: now() }
+  let name = folder.name
+  let parentId = folder.parentId ?? null
+  if (body.name !== undefined) {
+    name = cleanName(body.name)
+    if (!name) return badRequest(c, '文件夹名称必填')
+    updates.name = name
+  }
+  if (body.parent_id !== undefined) {
+    if (body.parent_id === null || body.parent_id === '') {
+      parentId = null
+    } else {
+      const parent = await findFolder(Number(body.parent_id), category)
+      if (!parent) return badRequest(c, '上级文件夹不存在')
+      const { folders } = await loadCategory(category)
+      if (subtreeIds(folders, folder.id).has(parent.id)) return badRequest(c, '不能移动到自身或其子文件夹')
+      parentId = parent.id
+    }
+    updates.parentId = parentId
+  }
+  if (await folderNameTaken(category, parentId, name, folder.id)) return badRequest(c, '文件夹名称已存在')
+  await db.update(schema.libraryFolders).set(updates).where(eq(schema.libraryFolders.id, folder.id))
   return success(c)
 })
 
-// DELETE /library/folders/:id — 软删除文件夹及其中文件
+// DELETE /library/folders/:id — 软删除文件夹及其全部子文件夹、文件
 app.delete('/folders/:id', async (c) => {
   const folder = await findFolder(Number(c.req.param('id')))
   if (!folder) return notFound(c, '文件夹不存在')
+  const { folders } = await loadCategory(folder.category as Category)
+  const ids = [...subtreeIds(folders, folder.id)]
   const ts = now()
   await db.update(schema.libraryFiles).set({ deletedAt: ts, updatedAt: ts })
-    .where(and(eq(schema.libraryFiles.folderId, folder.id), isNull(schema.libraryFiles.deletedAt)))
-  await db.update(schema.libraryFolders).set({ deletedAt: ts, updatedAt: ts }).where(eq(schema.libraryFolders.id, folder.id))
+    .where(and(inArray(schema.libraryFiles.folderId, ids), isNull(schema.libraryFiles.deletedAt)))
+  await db.update(schema.libraryFolders).set({ deletedAt: ts, updatedAt: ts }).where(inArray(schema.libraryFolders.id, ids))
   return success(c)
 })
 

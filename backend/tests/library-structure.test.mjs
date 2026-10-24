@@ -24,7 +24,7 @@ test('library route aggregates project folders, user folders and uploaded files'
   assert.match(route, /const CATEGORIES = \['character', 'scene'\] as const/)
   // 根目录：项目文件夹（由 dramas 实时聚合）+ 我的文件夹 + 根目录文件
   assert.match(route, /project_folders: projectFolders/)
-  assert.match(route, /folders: userFolders/)
+  assert.match(route, /folders: folders\.filter\(f => !f\.parentId\)/)
   assert.match(route, /files: files\.filter\(x => !x\.folderId\)/)
   // 项目文件夹只读：只有 GET
   assert.match(route, /app\.get\('\/:category\/projects\/:dramaId'/)
@@ -34,4 +34,22 @@ test('library route aggregates project folders, user folders and uploaded files'
   assert.match(route, /generateImageThumb\(path\)/)
   // 软删除
   assert.doesNotMatch(route, /db\.delete\(/)
+})
+
+test('library folders nest via parent_id with an idempotent column migration', () => {
+  const ddl = read('src/db/sqlite-schema.ts')
+  const schema = read('src/db/schema.ts')
+  const route = read('src/routes/library.ts')
+
+  assert.match(schema, /parentId: integer\('parent_id'\)/)
+  // 老库补列：PRAGMA table_info 缺失才 ALTER
+  assert.match(ddl, /ALTER TABLE library_folders ADD COLUMN parent_id INTEGER/)
+  assert.match(ddl, /PRAGMA table_info/)
+  // 同父目录不重名、禁止移入自身子树、删除整棵子树
+  assert.match(route, /async function folderNameTaken\(category: Category, parentId: number \| null/)
+  assert.match(route, /subtreeIds\(folders, folder\.id\)\.has\(parent\.id\)/)
+  assert.match(route, /inArray\(schema\.libraryFolders\.id, ids\)/)
+  // 面包屑路径 + 扁平树
+  assert.match(route, /path: folderPath\(folders, folder\.id\)/)
+  assert.match(route, /app\.get\('\/:category\/folders', /)
 })

@@ -169,11 +169,13 @@
     "sections": {
       "myFolders": "My folders",
       "projectFolders": "Project folders",
-      "files": "Files"
+      "files": "Files",
+      "subFolders": "Folders"
     },
     "projectTag": "Project",
     "projectHint": "Created automatically for each project and kept in sync",
     "fileCount": "{n} files",
+    "folderStats": "{folders} folders · {files} files",
     "itemCount": "{n} items",
     "openProject": "Open project",
     "readonlyHint": "Project assets are read-only here — edit them inside the project",
@@ -205,7 +207,9 @@
       "deleteFolderTitle": "Delete folder",
       "deleteFolderMessage": "Delete folder \"{name}\"? Its {n} files will be deleted too.",
       "deleteFileTitle": "Delete file",
-      "deleteFileMessage": "Delete \"{name}\"?"
+      "deleteFileMessage": "Delete \"{name}\"?",
+      "moveFolderTitle": "Move folder",
+      "deleteFolderNestedMessage": "Delete folder \"{name}\"? All of its subfolders and {n} files will be deleted too."
     },
     "toast": {
       "folderCreated": "Folder created",
@@ -215,7 +219,16 @@
       "uploaded": "Uploaded {n} files",
       "uploadSkipped": "Skipped {n} non-image files"
     },
-    "dropHint": "Drop to upload to \"{target}\""
+    "dropHint": "Drop to upload to \"{target}\"",
+    "picker": {
+      "button": "Choose from asset library",
+      "short": "Library",
+      "title": "Choose a {category} image from the library",
+      "hint": "Pick from your folders or other projects — click an image to apply it",
+      "use": "Use",
+      "empty": "Nothing here yet",
+      "applied": "Library image applied"
+    }
   },
   "detail": {
     "head": {

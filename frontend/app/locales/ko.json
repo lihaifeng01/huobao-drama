@@ -169,11 +169,13 @@
     "sections": {
       "myFolders": "내 폴더",
       "projectFolders": "프로젝트 폴더",
-      "files": "파일"
+      "files": "파일",
+      "subFolders": "하위 폴더"
     },
     "projectTag": "프로젝트",
     "projectHint": "프로젝트마다 자동 생성되며 내용이 동기화됩니다",
     "fileCount": "파일 {n}개",
+    "folderStats": "폴더 {folders}개 · 파일 {files}개",
     "itemCount": "{n}개",
     "openProject": "프로젝트 열기",
     "readonlyHint": "프로젝트 소재는 읽기 전용입니다. 프로젝트에서 편집하세요",
@@ -205,7 +207,9 @@
       "deleteFolderTitle": "폴더 삭제",
       "deleteFolderMessage": "\"{name}\" 폴더를 삭제하시겠습니까? 안의 파일 {n}개도 함께 삭제됩니다.",
       "deleteFileTitle": "파일 삭제",
-      "deleteFileMessage": "\"{name}\"을(를) 삭제하시겠습니까?"
+      "deleteFileMessage": "\"{name}\"을(를) 삭제하시겠습니까?",
+      "moveFolderTitle": "폴더 이동",
+      "deleteFolderNestedMessage": "\"{name}\" 폴더를 삭제하시겠습니까? 모든 하위 폴더와 파일 {n}개도 함께 삭제됩니다."
     },
     "toast": {
       "folderCreated": "폴더를 만들었습니다",
@@ -215,7 +219,16 @@
       "uploaded": "파일 {n}개를 업로드했습니다",
       "uploadSkipped": "이미지가 아닌 파일 {n}개를 건너뛰었습니다"
     },
-    "dropHint": "놓으면 \"{target}\"에 업로드됩니다"
+    "dropHint": "놓으면 \"{target}\"에 업로드됩니다",
+    "picker": {
+      "button": "소재 라이브러리에서 선택",
+      "short": "소재",
+      "title": "소재 라이브러리에서 {category} 이미지 선택",
+      "hint": "내 폴더나 다른 프로젝트에서 선택할 수 있습니다. 이미지를 클릭하면 적용됩니다",
+      "use": "사용",
+      "empty": "아직 소재가 없습니다",
+      "applied": "소재 라이브러리 이미지를 적용했습니다"
+    }
   },
   "detail": {
     "head": {

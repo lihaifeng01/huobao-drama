@@ -169,11 +169,13 @@
     "sections": {
       "myFolders": "我的文件夹",
       "projectFolders": "项目文件夹",
-      "files": "文件"
+      "files": "文件",
+      "subFolders": "子文件夹"
     },
     "projectTag": "项目",
     "projectHint": "随项目自动创建，内容与项目同步",
     "fileCount": "{n} 个文件",
+    "folderStats": "{folders} 个文件夹 · {files} 个文件",
     "itemCount": "{n} 项",
     "openProject": "打开项目",
     "readonlyHint": "项目素材为只读，请进入项目编辑",
@@ -205,7 +207,9 @@
       "deleteFolderTitle": "删除文件夹",
       "deleteFolderMessage": "确定删除文件夹「{name}」吗？其中的 {n} 个文件也会一并删除。",
       "deleteFileTitle": "删除文件",
-      "deleteFileMessage": "确定删除「{name}」吗？"
+      "deleteFileMessage": "确定删除「{name}」吗？",
+      "moveFolderTitle": "移动文件夹",
+      "deleteFolderNestedMessage": "确定删除文件夹「{name}」吗？其中的全部子文件夹和 {n} 个文件也会一并删除。"
     },
     "toast": {
       "folderCreated": "文件夹已创建",
@@ -215,7 +219,16 @@
       "uploaded": "已上传 {n} 个文件",
       "uploadSkipped": "{n} 个文件不是图片，已跳过"
     },
-    "dropHint": "松开即可上传到「{target}」"
+    "dropHint": "松开即可上传到「{target}」",
+    "picker": {
+      "button": "从素材库选择图片",
+      "short": "素材库",
+      "title": "从素材库选择{category}图片",
+      "hint": "可从我的文件夹或其他项目中选择，点击图片即可应用",
+      "use": "使用",
+      "empty": "这里还没有素材",
+      "applied": "已应用素材库图片"
+    }
   },
   "detail": {
     "head": {

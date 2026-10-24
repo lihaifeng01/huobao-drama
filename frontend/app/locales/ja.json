@@ -169,11 +169,13 @@
     "sections": {
       "myFolders": "マイフォルダ",
       "projectFolders": "プロジェクトフォルダ",
-      "files": "ファイル"
+      "files": "ファイル",
+      "subFolders": "サブフォルダ"
     },
     "projectTag": "プロジェクト",
     "projectHint": "プロジェクトごとに自動作成され、内容は同期されます",
     "fileCount": "{n} ファイル",
+    "folderStats": "{folders} フォルダ · {files} ファイル",
     "itemCount": "{n} 件",
     "openProject": "プロジェクトを開く",
     "readonlyHint": "プロジェクト素材は読み取り専用です。プロジェクト内で編集してください",
@@ -205,7 +207,9 @@
       "deleteFolderTitle": "フォルダを削除",
       "deleteFolderMessage": "フォルダ「{name}」を削除しますか？中の {n} 個のファイルも削除されます。",
       "deleteFileTitle": "ファイルを削除",
-      "deleteFileMessage": "「{name}」を削除しますか？"
+      "deleteFileMessage": "「{name}」を削除しますか？",
+      "moveFolderTitle": "フォルダを移動",
+      "deleteFolderNestedMessage": "フォルダ「{name}」を削除しますか？すべてのサブフォルダと {n} 個のファイルも削除されます。"
     },
     "toast": {
       "folderCreated": "フォルダを作成しました",
@@ -215,7 +219,16 @@
       "uploaded": "{n} 個のファイルをアップロードしました",
       "uploadSkipped": "画像以外の {n} 個のファイルをスキップしました"
     },
-    "dropHint": "ドロップして「{target}」にアップロード"
+    "dropHint": "ドロップして「{target}」にアップロード",
+    "picker": {
+      "button": "素材ライブラリから選択",
+      "short": "素材",
+      "title": "素材ライブラリから{category}画像を選択",
+      "hint": "マイフォルダや他のプロジェクトから選べます。画像をクリックすると適用されます",
+      "use": "使用",
+      "empty": "まだ素材がありません",
+      "applied": "素材ライブラリの画像を適用しました"
+    }
   },
   "detail": {
     "head": {

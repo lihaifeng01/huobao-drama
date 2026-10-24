@@ -28,7 +28,7 @@
         </button>
       </div>
       <div class="head-actions">
-        <button v-if="location.type === 'root'" type="button" class="btn" @click="openNameDialog('createFolder')">
+        <button v-if="location.type !== 'project'" type="button" class="btn" @click="openNameDialog('createFolder')">
           <FolderPlus :size="14" :stroke-width="1.8" />
           {{ t('library.newFolder') }}
         </button>
@@ -51,11 +51,18 @@
         <button type="button" class="crumb" :class="{ current: location.type === 'root' }" @click="goRoot">
           {{ categoryLabel }}
         </button>
-        <template v-if="location.type !== 'root'">
+        <template v-if="location.type === 'folder'">
+          <template v-for="(p, i) in folderPath" :key="p.id">
+            <ChevronRight :size="13" class="crumb-sep" />
+            <span v-if="i === folderPath.length - 1" class="crumb current"><span class="truncate">{{ p.name }}</span></span>
+            <button v-else type="button" class="crumb" @click="openFolder(p)"><span class="truncate">{{ p.name }}</span></button>
+          </template>
+        </template>
+        <template v-else-if="location.type === 'project'">
           <ChevronRight :size="13" class="crumb-sep" />
           <span class="crumb current">
             <span class="truncate">{{ currentTitle }}</span>
-            <span v-if="location.type === 'project'" class="tag tag-accent">{{ t('library.projectTag') }}</span>
+            <span class="tag tag-accent">{{ t('library.projectTag') }}</span>
           </span>
         </template>
       </nav>
@@ -78,12 +85,12 @@
       </div>
     </div>
 
-    <!-- 根目录：我的文件夹 / 项目文件夹 / 文件 -->
-    <template v-else-if="location.type === 'root'">
+    <!-- 根目录：我的文件夹 / 项目文件夹 / 文件；文件夹内：子文件夹 / 文件 -->
+    <template v-else-if="location.type !== 'project'">
       <section v-if="visibleFolders.length" class="lib-section">
         <div class="section-head">
           <Folder :size="14" :stroke-width="1.9" />
-          <span>{{ t('library.sections.myFolders') }}</span>
+          <span>{{ location.type === 'root' ? t('library.sections.myFolders') : t('library.sections.subFolders') }}</span>
           <span class="section-count">{{ visibleFolders.length }}</span>
         </div>
         <div class="tile-grid">
@@ -110,6 +117,7 @@
                     <button type="button" class="btn btn-icon btn-sm more-btn" :title="t('common.more')"><MoreHorizontal :size="15" /></button>
                   </template>
                   <AppMenuItem @click="menuKey = null; openNameDialog('renameFolder', f)">{{ t('library.actions.rename') }}</AppMenuItem>
+                  <AppMenuItem @click="menuKey = null; openMoveDialog('folder', f)">{{ t('library.actions.move') }}</AppMenuItem>
                   <AppMenuItem danger @click="menuKey = null; folderToDelete = f">{{ t('library.actions.delete') }}</AppMenuItem>
                 </AppMenu>
               </div>
@@ -117,13 +125,13 @@
             <div class="tile-body">
               <FolderOpen :size="14" :stroke-width="1.9" class="tile-icon" />
               <span class="tile-name truncate" :title="f.name">{{ f.name }}</span>
-              <span class="tile-count">{{ t('library.fileCount', { n: f.count }) }}</span>
+              <span class="tile-count">{{ folderStats(f) }}</span>
             </div>
           </article>
         </div>
       </section>
 
-      <section v-if="visibleProjectFolders.length" class="lib-section">
+      <section v-if="location.type === 'root' && visibleProjectFolders.length" class="lib-section">
         <div class="section-head">
           <LayoutGrid :size="14" :stroke-width="1.9" />
           <span>{{ t('library.sections.projectFolders') }}</span>
@@ -157,7 +165,7 @@
 
     <!-- 文件：根目录文件 / 我的文件夹内文件（共用一套卡片） -->
     <section v-if="!loading && location.type !== 'project'" class="lib-section">
-      <div v-if="location.type === 'root'" class="section-head">
+      <div v-if="location.type === 'root' || visibleFolders.length" class="section-head">
         <ImageIcon :size="14" :stroke-width="1.9" />
         <span>{{ t('library.sections.files') }}</span>
         <span class="section-count">{{ visibleFiles.length }}</span>
@@ -186,7 +194,7 @@
                 </template>
                 <AppMenuItem @click="menuKey = null; openViewer(f.name, f.image_url)">{{ t('library.actions.preview') }}</AppMenuItem>
                 <AppMenuItem @click="menuKey = null; openNameDialog('renameFile', f)">{{ t('library.actions.rename') }}</AppMenuItem>
-                <AppMenuItem @click="menuKey = null; openMoveDialog(f)">{{ t('library.actions.move') }}</AppMenuItem>
+                <AppMenuItem @click="menuKey = null; openMoveDialog('file', f)">{{ t('library.actions.move') }}</AppMenuItem>
                 <AppMenuItem danger @click="menuKey = null; fileToDelete = f">{{ t('library.actions.delete') }}</AppMenuItem>
               </AppMenu>
             </div>
@@ -282,7 +290,7 @@
     <div v-if="moveDialog.open" class="overlay" @click.self="moveDialog.open = false">
       <div class="dialog name-dialog">
         <div class="dialog-head">
-          <h2 class="dialog-title">{{ t('library.dialogs.moveTitle') }}</h2>
+          <h2 class="dialog-title">{{ moveDialog.kind === 'folder' ? t('library.dialogs.moveFolderTitle') : t('library.dialogs.moveTitle') }}</h2>
         </div>
         <div class="dialog-body">
           <label class="field">
@@ -314,7 +322,9 @@
     <ConfirmDialog
       :open="!!folderToDelete"
       :title="t('library.dialogs.deleteFolderTitle')"
-      :message="t('library.dialogs.deleteFolderMessage', { name: folderToDelete?.name, n: folderToDelete?.count || 0 })"
+      :message="folderToDelete?.folder_count
+        ? t('library.dialogs.deleteFolderNestedMessage', { name: folderToDelete?.name, n: folderToDelete?.count || 0 })
+        : t('library.dialogs.deleteFolderMessage', { name: folderToDelete?.name, n: folderToDelete?.count || 0 })"
       :loading="deleting"
       @confirm="confirmDeleteFolder"
       @cancel="folderToDelete = null"
@@ -375,10 +385,11 @@ function openProject(p) { router.push({ query: { category: category.value, proje
 // ===== 数据 =====
 const loading = ref(false)
 const overview = ref({ project_folders: [], folders: [], files: [] })
-const folderData = ref({ folder: null, files: [] })
+const folderData = ref({ folder: null, path: [], folders: [], files: [] })
 const projectData = ref({ drama: null, items: [] })
 const keyword = ref('')
 
+const folderPath = computed(() => folderData.value.path || [])
 const currentTitle = computed(() => {
   if (location.value.type === 'folder') return folderData.value.folder?.name || ''
   if (location.value.type === 'project') return projectData.value.drama?.title || ''
@@ -423,7 +434,8 @@ function matches(...texts) {
   const k = keyword.value.toLowerCase()
   return !k || texts.some(s => String(s || '').toLowerCase().includes(k))
 }
-const visibleFolders = computed(() => overview.value.folders.filter(f => matches(f.name)))
+const currentFolders = computed(() => (location.value.type === 'folder' ? folderData.value.folders : overview.value.folders))
+const visibleFolders = computed(() => currentFolders.value.filter(f => matches(f.name)))
 const visibleProjectFolders = computed(() => overview.value.project_folders.filter(p => matches(p.name)))
 const currentFiles = computed(() => (location.value.type === 'folder' ? folderData.value.files : overview.value.files))
 const visibleFiles = computed(() => currentFiles.value.filter(f => matches(f.name, f.description)))
@@ -435,6 +447,12 @@ function src(raw) {
 }
 
 const menuKey = ref(null)
+
+function folderStats(f) {
+  return f.folder_count
+    ? t('library.folderStats', { folders: f.folder_count, files: f.count })
+    : t('library.fileCount', { n: f.count })
+}
 
 // ===== 上传（按钮多选 + 拖拽） =====
 const fileInput = ref(null)
@@ -512,7 +530,7 @@ async function submitNameDialog() {
   d.saving = true
   try {
     if (d.mode === 'createFolder') {
-      await libraryAPI.createFolder(category.value, name)
+      await libraryAPI.createFolder(category.value, name, location.value.type === 'folder' ? location.value.id : null)
       toast.success(t('library.toast.folderCreated'))
     } else if (d.mode === 'renameFolder') {
       await libraryAPI.renameFolder(d.target.id, name)
@@ -530,21 +548,60 @@ async function submitNameDialog() {
   }
 }
 
-// ===== 移动 =====
+// ===== 移动（文件 / 文件夹） =====
 const ROOT_TARGET = 'root'
-const moveDialog = ref({ open: false, file: null, target: ROOT_TARGET, saving: false })
-const moveFolders = ref([])
+const moveDialog = ref({ open: false, kind: 'file', item: null, target: ROOT_TARGET, saving: false })
+const moveTree = ref([])
+
+/** 扁平文件夹列表 → 按层级缩进的先序列表；exclude 为不可选子树（移动文件夹时排除自身及后代） */
+function flattenTree(folders, exclude = new Set()) {
+  const children = new Map()
+  for (const f of folders) {
+    const key = f.parent_id ?? null
+    if (!children.has(key)) children.set(key, [])
+    children.get(key).push(f)
+  }
+  const out = []
+  const walk = (parentId, depth) => {
+    const list = (children.get(parentId) || []).slice().sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+    for (const f of list) {
+      if (exclude.has(f.id)) continue
+      out.push({ ...f, depth })
+      walk(f.id, depth + 1)
+    }
+  }
+  walk(null, 0)
+  return out
+}
+
+function subtreeOf(folders, rootId) {
+  const ids = new Set([rootId])
+  let grew = true
+  while (grew) {
+    grew = false
+    for (const f of folders) {
+      if (f.parent_id && ids.has(f.parent_id) && !ids.has(f.id)) { ids.add(f.id); grew = true }
+    }
+  }
+  return ids
+}
+
 const moveOptions = computed(() => ([
   { label: t('library.dialogs.rootFolder'), value: ROOT_TARGET },
-  ...moveFolders.value.map(f => ({ label: f.name, value: f.id })),
+  ...moveTree.value.map(f => ({ label: `${'\u3000'.repeat(f.depth)}${f.depth ? '└ ' : ''}${f.name}`, value: f.id })),
 ]))
 
-async function openMoveDialog(file) {
-  moveDialog.value = { open: true, file, target: file.folder_id || ROOT_TARGET, saving: false }
-  // 文件夹内视图没有完整文件夹列表，按需拉取
+function currentParentOf(kind, item) {
+  return (kind === 'folder' ? item.parent_id : item.folder_id) || null
+}
+
+async function openMoveDialog(kind, item) {
+  moveTree.value = []
+  moveDialog.value = { open: true, kind, item, target: currentParentOf(kind, item) || ROOT_TARGET, saving: false }
   try {
-    const res = location.value.type === 'root' ? overview.value : await libraryAPI.overview(category.value)
-    moveFolders.value = res.folders || []
+    const folders = await libraryAPI.folderTree(category.value)
+    const exclude = kind === 'folder' ? subtreeOf(folders, item.id) : new Set()
+    moveTree.value = flattenTree(folders, exclude)
   } catch (e) {
     toastError(e)
   }
@@ -553,11 +610,12 @@ async function openMoveDialog(file) {
 async function submitMove() {
   const d = moveDialog.value
   if (d.saving) return
-  const folderId = d.target === ROOT_TARGET ? null : Number(d.target)
-  if ((d.file.folder_id || null) === folderId) { d.open = false; return }
+  const targetId = d.target === ROOT_TARGET ? null : Number(d.target)
+  if (currentParentOf(d.kind, d.item) === targetId) { d.open = false; return }
   d.saving = true
   try {
-    await libraryAPI.updateFile(d.file.id, { folder_id: folderId })
+    if (d.kind === 'folder') await libraryAPI.moveFolder(d.item.id, targetId)
+    else await libraryAPI.updateFile(d.item.id, { folder_id: targetId })
     toast.success(t('library.toast.moved'))
     d.open = false
     load({ silent: true })
