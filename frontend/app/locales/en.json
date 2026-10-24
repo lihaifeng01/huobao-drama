@@ -34,6 +34,7 @@
   "layout": {
     "nav": {
       "projects": "Projects",
+      "library": "Assets",
       "settings": "Settings"
     },
     "banner": {
@@ -152,6 +153,69 @@
       "hoursAgo": "{n} h ago",
       "daysAgo": "{n} d ago"
     }
+  },
+  "library": {
+    "title": "Assets",
+    "sub": "Characters and scenes across all projects",
+    "category": {
+      "character": "Characters",
+      "scene": "Scenes"
+    },
+    "newFolder": "New folder",
+    "upload": "Upload",
+    "uploading": "Uploading {done}/{total}",
+    "searchPlaceholder": "Search folders or files",
+    "root": "All",
+    "sections": {
+      "myFolders": "My folders",
+      "projectFolders": "Project folders",
+      "files": "Files"
+    },
+    "projectTag": "Project",
+    "projectHint": "Created automatically for each project and kept in sync",
+    "fileCount": "{n} files",
+    "itemCount": "{n} items",
+    "openProject": "Open project",
+    "readonlyHint": "Project assets are read-only here — edit them inside the project",
+    "noImage": "No image yet",
+    "empty": {
+      "files": "No {category} uploaded yet",
+      "filesDesc": "Click \"Upload\" or drop images here",
+      "folder": "This folder is empty",
+      "folderDesc": "Click \"Upload\" or drop images here",
+      "project": "This project has no {category} yet",
+      "projectDesc": "They appear here once extracted or added in the project",
+      "search": "No matching assets"
+    },
+    "actions": {
+      "rename": "Rename",
+      "move": "Move to…",
+      "delete": "Delete",
+      "preview": "Preview"
+    },
+    "dialogs": {
+      "newFolderTitle": "New folder",
+      "renameFolderTitle": "Rename folder",
+      "renameFileTitle": "Rename file",
+      "folderNamePlaceholder": "Folder name",
+      "fileNamePlaceholder": "File name",
+      "moveTitle": "Move file",
+      "moveTarget": "Destination",
+      "rootFolder": "Root (no folder)",
+      "deleteFolderTitle": "Delete folder",
+      "deleteFolderMessage": "Delete folder \"{name}\"? Its {n} files will be deleted too.",
+      "deleteFileTitle": "Delete file",
+      "deleteFileMessage": "Delete \"{name}\"?"
+    },
+    "toast": {
+      "folderCreated": "Folder created",
+      "renamed": "Renamed",
+      "moved": "Moved",
+      "deleted": "Deleted",
+      "uploaded": "Uploaded {n} files",
+      "uploadSkipped": "Skipped {n} non-image files"
+    },
+    "dropHint": "Drop to upload to \"{target}\""
   },
   "detail": {
     "head": {

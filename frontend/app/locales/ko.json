@@ -34,6 +34,7 @@
   "layout": {
     "nav": {
       "projects": "프로젝트",
+      "library": "소재",
       "settings": "설정"
     },
     "banner": {
@@ -152,6 +153,69 @@
       "hoursAgo": "{n}시간 전",
       "daysAgo": "{n}일 전"
     }
+  },
+  "library": {
+    "title": "소재",
+    "sub": "모든 프로젝트의 캐릭터와 장면 소재",
+    "category": {
+      "character": "캐릭터",
+      "scene": "장면"
+    },
+    "newFolder": "새 폴더",
+    "upload": "업로드",
+    "uploading": "업로드 중 {done}/{total}",
+    "searchPlaceholder": "폴더 또는 파일 검색",
+    "root": "전체",
+    "sections": {
+      "myFolders": "내 폴더",
+      "projectFolders": "프로젝트 폴더",
+      "files": "파일"
+    },
+    "projectTag": "프로젝트",
+    "projectHint": "프로젝트마다 자동 생성되며 내용이 동기화됩니다",
+    "fileCount": "파일 {n}개",
+    "itemCount": "{n}개",
+    "openProject": "프로젝트 열기",
+    "readonlyHint": "프로젝트 소재는 읽기 전용입니다. 프로젝트에서 편집하세요",
+    "noImage": "이미지 없음",
+    "empty": {
+      "files": "업로드한 {category} 소재가 없습니다",
+      "filesDesc": "\"업로드\"를 클릭하거나 이미지를 여기로 끌어오세요",
+      "folder": "폴더가 비어 있습니다",
+      "folderDesc": "\"업로드\"를 클릭하거나 이미지를 여기로 끌어오세요",
+      "project": "이 프로젝트에 {category}이(가) 없습니다",
+      "projectDesc": "프로젝트에서 추출하거나 추가하면 자동으로 표시됩니다",
+      "search": "일치하는 소재가 없습니다"
+    },
+    "actions": {
+      "rename": "이름 변경",
+      "move": "이동…",
+      "delete": "삭제",
+      "preview": "미리보기"
+    },
+    "dialogs": {
+      "newFolderTitle": "새 폴더",
+      "renameFolderTitle": "폴더 이름 변경",
+      "renameFileTitle": "파일 이름 변경",
+      "folderNamePlaceholder": "폴더 이름 입력",
+      "fileNamePlaceholder": "파일 이름 입력",
+      "moveTitle": "파일 이동",
+      "moveTarget": "대상 위치",
+      "rootFolder": "루트(폴더 없음)",
+      "deleteFolderTitle": "폴더 삭제",
+      "deleteFolderMessage": "\"{name}\" 폴더를 삭제하시겠습니까? 안의 파일 {n}개도 함께 삭제됩니다.",
+      "deleteFileTitle": "파일 삭제",
+      "deleteFileMessage": "\"{name}\"을(를) 삭제하시겠습니까?"
+    },
+    "toast": {
+      "folderCreated": "폴더를 만들었습니다",
+      "renamed": "이름을 변경했습니다",
+      "moved": "이동했습니다",
+      "deleted": "삭제했습니다",
+      "uploaded": "파일 {n}개를 업로드했습니다",
+      "uploadSkipped": "이미지가 아닌 파일 {n}개를 건너뛰었습니다"
+    },
+    "dropHint": "놓으면 \"{target}\"에 업로드됩니다"
   },
   "detail": {
     "head": {

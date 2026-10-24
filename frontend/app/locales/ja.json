@@ -34,6 +34,7 @@
   "layout": {
     "nav": {
       "projects": "プロジェクト",
+      "library": "素材",
       "settings": "設定"
     },
     "banner": {
@@ -152,6 +153,69 @@
       "hoursAgo": "{n} 時間前",
       "daysAgo": "{n} 日前"
     }
+  },
+  "library": {
+    "title": "素材",
+    "sub": "全プロジェクトのキャラクターとシーン素材",
+    "category": {
+      "character": "キャラクター",
+      "scene": "シーン"
+    },
+    "newFolder": "新規フォルダ",
+    "upload": "アップロード",
+    "uploading": "アップロード中 {done}/{total}",
+    "searchPlaceholder": "フォルダやファイルを検索",
+    "root": "すべて",
+    "sections": {
+      "myFolders": "マイフォルダ",
+      "projectFolders": "プロジェクトフォルダ",
+      "files": "ファイル"
+    },
+    "projectTag": "プロジェクト",
+    "projectHint": "プロジェクトごとに自動作成され、内容は同期されます",
+    "fileCount": "{n} ファイル",
+    "itemCount": "{n} 件",
+    "openProject": "プロジェクトを開く",
+    "readonlyHint": "プロジェクト素材は読み取り専用です。プロジェクト内で編集してください",
+    "noImage": "画像なし",
+    "empty": {
+      "files": "{category}素材はまだありません",
+      "filesDesc": "「アップロード」をクリックするか画像をドロップしてください",
+      "folder": "フォルダは空です",
+      "folderDesc": "「アップロード」をクリックするか画像をドロップしてください",
+      "project": "このプロジェクトには{category}がありません",
+      "projectDesc": "プロジェクトで抽出・追加すると自動的に表示されます",
+      "search": "一致する素材がありません"
+    },
+    "actions": {
+      "rename": "名前を変更",
+      "move": "移動…",
+      "delete": "削除",
+      "preview": "プレビュー"
+    },
+    "dialogs": {
+      "newFolderTitle": "新規フォルダ",
+      "renameFolderTitle": "フォルダ名を変更",
+      "renameFileTitle": "ファイル名を変更",
+      "folderNamePlaceholder": "フォルダ名を入力",
+      "fileNamePlaceholder": "ファイル名を入力",
+      "moveTitle": "ファイルを移動",
+      "moveTarget": "移動先",
+      "rootFolder": "ルート（フォルダなし）",
+      "deleteFolderTitle": "フォルダを削除",
+      "deleteFolderMessage": "フォルダ「{name}」を削除しますか？中の {n} 個のファイルも削除されます。",
+      "deleteFileTitle": "ファイルを削除",
+      "deleteFileMessage": "「{name}」を削除しますか？"
+    },
+    "toast": {
+      "folderCreated": "フォルダを作成しました",
+      "renamed": "名前を変更しました",
+      "moved": "移動しました",
+      "deleted": "削除しました",
+      "uploaded": "{n} 個のファイルをアップロードしました",
+      "uploadSkipped": "画像以外の {n} 個のファイルをスキップしました"
+    },
+    "dropHint": "ドロップして「{target}」にアップロード"
   },
   "detail": {
     "head": {

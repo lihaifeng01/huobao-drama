@@ -105,9 +105,12 @@ export const taskAPI = {
   listByEpisode: (episodeId: number) => api.get<{ tasks: any[]; merges: any[] }>(`/episodes/${episodeId}/generation-tasks`),
 }
 
-async function uploadReq<T = any>(path: string, file: File): Promise<T> {
+async function uploadReq<T = any>(path: string, file: File, fields?: Record<string, string | number | null | undefined>): Promise<T> {
   const fd = new FormData()
   fd.append('file', file)
+  for (const [k, v] of Object.entries(fields || {})) {
+    if (v !== undefined && v !== null && v !== '') fd.append(k, String(v))
+  }
   console.log(`%c[API] %cPOST %c${path} %c${file.name}`, 'color:#888', 'color:#4fc3f7;font-weight:bold', 'color:#ccc', 'color:#888')
   const resp = await fetch(`${BASE}${path}`, { method: 'POST', body: fd })
   const json = await resp.json()
@@ -123,6 +126,20 @@ export const uploadAPI = {
   video: (f: File) => uploadReq<{ url: string; path: string }>('/upload/video', f),
   audio: (f: File) => uploadReq<{ url: string; path: string }>('/upload/audio', f),
 }
+// 全局素材库：category = character | scene；项目文件夹只读，我的文件夹/文件可增删改
+export type LibraryCategory = 'character' | 'scene'
+export const libraryAPI = {
+  overview: (category: LibraryCategory) => api.get(`/library/${category}`),
+  folder: (category: LibraryCategory, id: number) => api.get(`/library/${category}/folders/${id}`),
+  project: (category: LibraryCategory, dramaId: number) => api.get(`/library/${category}/projects/${dramaId}`),
+  createFolder: (category: LibraryCategory, name: string) => api.post(`/library/${category}/folders`, { name }),
+  renameFolder: (id: number, name: string) => api.put(`/library/folders/${id}`, { name }),
+  delFolder: (id: number) => api.del(`/library/folders/${id}`),
+  upload: (category: LibraryCategory, f: File, folderId?: number | null) => uploadReq(`/library/${category}/files`, f, { folder_id: folderId }),
+  updateFile: (id: number, data: { name?: string; description?: string; folder_id?: number | null }) => api.put(`/library/files/${id}`, data),
+  delFile: (id: number) => api.del(`/library/files/${id}`),
+}
+
 export const mergeAPI = {
   merge: (epId: number, storyboardIds?: number[]) => api.post(`/merge/episodes/${epId}/merge`, storyboardIds?.length ? { storyboard_ids: storyboardIds } : {}),
   status: (epId: number) => api.get(`/merge/episodes/${epId}/merge`),
