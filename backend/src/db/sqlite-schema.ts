@@ -288,6 +288,20 @@ export const sqliteSchemaStatements = [
     deleted_at TEXT
   )`,
 
+  // 角色造型：同一角色的多套造型（服装/妆发变化），默认造型即 characters 本身的形象图，不落此表
+  `CREATE TABLE IF NOT EXISTS character_looks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    character_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    image_url TEXT,
+    sort_order INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_character_looks_character_id ON character_looks (character_id)`,
+
   // 应用级全局设置（key-value，如 AI 内容语言 content_language）
   `CREATE TABLE IF NOT EXISTS app_settings (
     key TEXT PRIMARY KEY,
@@ -374,8 +388,30 @@ const UPGRADE_SQL = 'UPDATE style_presets SET "name" = ?, "prompt" = ?, "descrip
 // 内容寻址下架：命中下架种子原文才删除
 const REMOVE_SQL = 'DELETE FROM style_presets WHERE "value" = ? AND "prompt" = ?'
 
+/**
+ * 增量列：CREATE TABLE IF NOT EXISTS 不会给已存在的表补列，按 PRAGMA table_info 缺失才 ALTER（幂等）
+ */
+const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
+  // 角色别名（JSON 字符串数组），提取去重与 @ 引用时视为同一角色
+  { table: 'characters', column: 'aliases', ddl: 'ALTER TABLE characters ADD COLUMN aliases TEXT' },
+  // 本集使用的造型（空 = 默认造型）
+  { table: 'episode_characters', column: 'look_id', ddl: 'ALTER TABLE episode_characters ADD COLUMN look_id INTEGER' },
+  // 单个镜头覆盖造型（空 = 跟随本集，0 = 强制默认造型）
+  { table: 'storyboard_characters', column: 'look_id', ddl: 'ALTER TABLE storyboard_characters ADD COLUMN look_id INTEGER' },
+]
+
+/** 依赖增量列的索引，须在补列之后建 */
+const POST_COLUMN_STATEMENTS: string[] = []
+
 export function initSqliteSchema(sqlite: Database.Database) {
   for (const statement of sqliteSchemaStatements) {
+    sqlite.exec(statement)
+  }
+  for (const { table, column, ddl } of ADDED_COLUMNS) {
+    const cols = sqlite.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
+    if (!cols.some(c => c.name === column)) sqlite.exec(ddl)
+  }
+  for (const statement of POST_COLUMN_STATEMENTS) {
     sqlite.exec(statement)
   }
   const insertSeed = sqlite.prepare(SEED_SQL)

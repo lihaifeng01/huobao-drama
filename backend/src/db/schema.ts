@@ -58,16 +58,31 @@ export const characters = sqliteTable('characters', {
   seedValue: text('seed_value'),
   sortOrder: integer('sort_order'),
   localPath: text('local_path'),
+  aliases: text('aliases'), // JSON 字符串数组
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),
 })
 
-// Episode-Character many-to-many
+// 角色造型：默认造型即 characters 自身形象图；此表只存额外造型
+export const characterLooks = sqliteTable('character_looks', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  characterId: integer('character_id').notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  imageUrl: text('image_url'),
+  sortOrder: integer('sort_order').default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+})
+
+// Episode-Character many-to-many；lookId 为本集使用的造型（空 = 默认造型）
 export const episodeCharacters = sqliteTable('episode_characters', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   episodeId: integer('episode_id').notNull(),
   characterId: integer('character_id').notNull(),
+  lookId: integer('look_id'),
   createdAt: text('created_at').notNull(),
 })
 
@@ -137,9 +152,11 @@ export const storyboards = sqliteTable('storyboards', {
   deletedAt: text('deleted_at'),
 })
 
+// lookId：该镜头覆盖使用的造型（空 = 跟随本集，0 = 强制默认造型）
 export const storyboardCharacters = sqliteTable('storyboard_characters', {
   storyboardId: integer('storyboard_id').notNull(),
   characterId: integer('character_id').notNull(),
+  lookId: integer('look_id'),
 }, (table) => [
   primaryKey({ columns: [table.storyboardId, table.characterId] }),
 ])

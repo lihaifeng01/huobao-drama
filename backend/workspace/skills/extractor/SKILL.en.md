@@ -13,6 +13,7 @@ Extracted character fields (corresponding one-to-one with the `save_dedup_charac
 - **appearance**: appearance description (300-500 characters) — gender, age impression, facial features, physique, bearing. **Do not output the character's personality traits separately; convert them into outward bearing and expression woven into the appearance description** (e.g. "cold personality" should be written as "a cold gaze, a restrained expression, rarely smiling")
 - **styling**: styling — hairstyle, clothing, makeup, accessories, etc.
 - **description**: backstory and character relationships (optional supplement)
+- **aliases**: other names/titles (optional) — other ways the script refers to the same person (e.g. a nickname or title). If a name matches an existing character's aliases, it is the same person: reuse the existing name, do not create a new character
 
 ## Scene Extraction Rules
 

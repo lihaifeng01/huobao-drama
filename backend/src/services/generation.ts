@@ -28,6 +28,8 @@ interface GenerateImageParams {
   sceneId?: number
   characterId?: number
   propId?: number
+  // 角色造型（character_looks.id）：完成后回写到造型而非角色主形象；此时不传 characterId
+  lookId?: number
   prompt: string
   model?: string
   size?: string
@@ -79,6 +81,7 @@ export async function generateImage(params: GenerateImageParams): Promise<number
     size: params.size || '1920x1080',
     frameType: params.frameType,
     referenceImages: params.referenceImages,
+    lookId: params.lookId,
   })
 
   logTaskStart('ImageTask', 'enqueue', {
@@ -449,6 +452,9 @@ async function writeBackImageAssets(record: SysTaskRecord, localPath: string) {
   }
   if (record.characterId) {
     await db.update(schema.characters).set({ imageUrl: localPath, updatedAt: now() }).where(eq(schema.characters.id, record.characterId))
+  }
+  if (params.lookId) {
+    await db.update(schema.characterLooks).set({ imageUrl: localPath, updatedAt: now() }).where(eq(schema.characterLooks.id, Number(params.lookId)))
   }
   if (record.sceneId) {
     await db.update(schema.scenes).set({ imageUrl: localPath, status: 'completed', updatedAt: now() }).where(eq(schema.scenes.id, record.sceneId))

@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { db, getInsertId, schema } from '../db/index.js'
 import { success, created, badRequest, now } from '../utils/response.js'
 import { toSnakeCase } from '../utils/transform.js'
@@ -7,6 +7,7 @@ import { generateImage } from '../services/generation.js'
 import { getDramaStylePrompt } from '../services/style-preset.js'
 import { ensureCharacterFinalPrompt } from '../services/final-prompt.js'
 import { logTaskError, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
+import { cleanAliases, findAliasConflict, findCharacterByName, mergeCharacters, projectCharacters } from '../services/character-identity.js'
 
 const app = new Hono()
 const CHARACTER_IMAGE_SIZE = '1920x1080'
@@ -16,9 +17,17 @@ app.post('/', async (c) => {
   const body = await c.req.json()
   if (!body.drama_id) return badRequest(c, 'drama_id 必填')
   if (!body.name?.trim()) return badRequest(c, '名称必填')
+  const name = body.name.trim()
+  const inProject = await projectCharacters(Number(body.drama_id))
+  const clash = findCharacterByName(inProject, name)
+  if (clash.match && clash.via === 'alias') return badRequest(c, `「${name}」已是角色「${clash.match.name}」的别名`)
+  const aliases = cleanAliases(body.aliases ?? [], name)
+  const conflict = findAliasConflict(inProject, aliases, 0)
+  if (conflict) return badRequest(c, `别名「${conflict.alias}」已被角色「${conflict.owner}」使用`)
   const ts = now()
   const res = await db.insert(schema.characters).values({
-    name: body.name.trim(),
+    name,
+    aliases: aliases.length ? JSON.stringify(aliases) : null,
     role: body.role || '',
     description: body.description || '',
     appearance: body.appearance || '',
@@ -66,8 +75,36 @@ app.put('/:id', async (c) => {
   // 手动编辑最终提示词时以传入值为准；未传入则保留原值（修改信息时不再自动置空）
   if (body.final_prompt !== undefined) updates.finalPrompt = body.final_prompt || null
   else if (body.finalPrompt !== undefined) updates.finalPrompt = body.finalPrompt || null
+  // 别名：同项目内不得与其他角色的本名/别名冲突
+  if (body.aliases !== undefined) {
+    const [char] = await db.select().from(schema.characters).where(eq(schema.characters.id, id))
+    if (!char) return badRequest(c, '角色不存在')
+    const aliases = cleanAliases(body.aliases, updates.name ?? char.name)
+    const conflict = findAliasConflict(await projectCharacters(char.dramaId), aliases, id)
+    if (conflict) return badRequest(c, `别名「${conflict.alias}」已被角色「${conflict.owner}」使用`)
+    updates.aliases = JSON.stringify(aliases)
+  }
   await db.update(schema.characters).set(updates).where(eq(schema.characters.id, id))
   return success(c)
+})
+
+// POST /characters/:id/merge — 把 source_ids 合并进本角色（同项目），源角色名并入别名后软删除
+app.post('/:id/merge', async (c) => {
+  const id = Number(c.req.param('id'))
+  const body = await c.req.json()
+  const sourceIds: number[] = [...new Set((body.source_ids || []).map(Number).filter((x: number) => x && x !== id))] as number[]
+  if (!sourceIds.length) return badRequest(c, '请选择要合并的角色')
+  const [target] = await db.select().from(schema.characters)
+    .where(and(eq(schema.characters.id, id), isNull(schema.characters.deletedAt)))
+  if (!target) return badRequest(c, '角色不存在')
+  const sources = await db.select().from(schema.characters)
+    .where(and(inArray(schema.characters.id, sourceIds), isNull(schema.characters.deletedAt)))
+  if (sources.length !== sourceIds.length || sources.some(s => s.dramaId !== target.dramaId)) {
+    return badRequest(c, '只能合并同一项目中的角色')
+  }
+  const result = mergeCharacters(target, sources, await projectCharacters(target.dramaId))
+  logTaskSuccess('Character', 'merge', { targetId: id, sourceIds, ...result, merged: result.merged.join(',') })
+  return success(c, result)
 })
 
 // DELETE /characters/:id

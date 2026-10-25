@@ -15,6 +15,7 @@ import { eq, and } from 'drizzle-orm'
 import { now } from '../../utils/response.js'
 import { logTaskProgress, logTaskSuccess } from '../../utils/task-logger.js'
 import { getDramaId, getEpisodeId } from '../context.js'
+import { normalizeName, parseAliases, cleanAliases, findCharacterByName, findAliasConflict } from '../../services/character-identity.js'
 
 // ─── 关联辅助 ────────────────────────────────────────────────
 async function linkCharToEpisode(episodeId: number, characterId: number) {
@@ -50,14 +51,7 @@ async function linkPropToEpisode(episodeId: number, propId: number) {
 // ─── 名字归一化（近名去重） ───────────────────────────────────
 // 提取时同一角色/道具可能出现不同书写形式（如「林小雨」与「林小雨（主角）」、
 // 「林小雨(女主)」、「林小雨 」）。归一化后做精确比较，命中即复用已有，不重复创建。
-function normalizeName(name: string): string {
-  return (name || '')
-    .replace(/[（(][^（()）]*[）)]/g, '') // 去掉成对的中/英文括号内容（角色定位/别名）
-    .replace(/[（(].*$/, '')              // 兜底：未闭合括号从首个括号截断
-    .replace(/[\s　]+/g, '')          // 去空白与全角空格
-    .toLowerCase()
-    .trim()
-}
+// normalizeName 与角色别名匹配统一在 services/character-identity.ts
 
 /**
  * 定妆锁定：已有形象图的资产视为「已定妆」，后续集提取合并时不再覆盖其视觉描述
@@ -124,6 +118,7 @@ const readExistingCharacters = createTool({
       appearance: c.appearance || '',
       styling: c.styling || '',
       normalized_name: normalizeName(c.name), // 用于判断近名复用：括号定位/别名视为同名
+      aliases: parseAliases(c.aliases), // 别名/称呼：剧本中用这些称呼指代的就是该角色
       locked: isLocked(c), // 已定妆：外貌/妆造以现有设定为准，合并时不会被覆盖
     }))
     const payload = {
@@ -183,10 +178,11 @@ const readExistingScenes = createTool({
 // 4. 智能保存角色（按名字去重，与现有数据合并）
 const saveDedupCharacters = createTool({
   id: 'save_dedup_characters',
-  description: 'Save extracted characters with deduplication. Existing characters (same name) are merged/updated; new ones are created. All are linked to the current episode.',
+  description: 'Save extracted characters with deduplication. Existing characters (same name, near name, or alias) are merged/updated; new ones are created. All are linked to the current episode. Put other names/titles the script uses for the same person into aliases.',
   inputSchema: z.object({
     characters: z.array(z.object({
       name: z.string(),
+      aliases: z.array(z.string()).optional(),
       role: z.string().optional(),
       description: z.string().optional(),
       appearance: z.string().optional(),
@@ -209,14 +205,20 @@ const saveDedupCharacters = createTool({
       const charsInProject = (await db.select().from(schema.characters)
         .where(eq(schema.characters.dramaId, dramaId)))
         .filter(c => !c.deletedAt)
-      const exact = charsInProject.find(c => c.name === char.name)
-      const normName = normalizeName(char.name)
-      const existing = exact || (normName ? charsInProject.find(c => c.name && normalizeName(c.name) === normName) : undefined)
-      const matchedViaNorm = !!existing && existing !== exact
+      // 名字 → 归一化名字 → 别名；未命中时再用 Agent 给出的别名反查（剧本换了称呼但 Agent 知道是同一人，
+      // 如 name「林总」aliases [「林小雨」]）。反查只认已有角色的本名：Agent 给的别名若只撞上别人的别名，
+      // 多半是 Agent 搞混了，不能据此把两个人合成一个
+      let { match: existing, via } = findCharacterByName(charsInProject, char.name)
+      if (!existing) {
+        for (const alias of char.aliases || []) {
+          const hit = findCharacterByName(charsInProject, alias)
+          if (hit.match && hit.via !== 'alias') { existing = hit.match; via = 'alias'; break }
+        }
+      }
 
       if (existing) {
-        // 归一化命中：括号定位/别名等近名视作同一角色复用，避免重复创建
-        if (matchedViaNorm) logTaskProgress('ExtractTool', 'save-characters-reuse', { episodeId, dramaId, extracted: char.name, reused: existing.name })
+        // 近名/别名命中：视作同一角色复用，避免重复创建
+        if (via !== 'exact') logTaskProgress('ExtractTool', 'save-characters-reuse', { episodeId, dramaId, extracted: char.name, reused: existing.name, via })
         // 已存在：合并信息，保留 ID；已定妆角色只合并定位/人物设定，外貌与妆造保持不变
         const updates: Partial<typeof schema.characters.$inferInsert> = {
           role: char.role || existing.role,
@@ -230,13 +232,20 @@ const saveDedupCharacters = createTool({
           updates.appearance = char.appearance || existing.appearance
           updates.styling = char.styling || char.description || existing.styling
         }
+        // 本次用到的称呼（与本名不同的提取名 + Agent 给出的别名）并入别名；与其他角色冲突的跳过
+        const nextAliases = cleanAliases([...parseAliases(existing.aliases), char.name, ...(char.aliases || [])], existing.name)
+          .filter(a => !findAliasConflict(charsInProject, [a], existing.id))
+        if (nextAliases.length !== parseAliases(existing.aliases).length) updates.aliases = JSON.stringify(nextAliases)
         await db.update(schema.characters).set(updates).where(eq(schema.characters.id, existing.id))
         await linkCharToEpisode(episodeId, existing.id)
         results.merged++
       } else {
         // 新增角色
+        const aliases = cleanAliases(char.aliases || [], char.name)
+          .filter(a => !findAliasConflict(charsInProject, [a], 0))
         const res = await db.insert(schema.characters).values({
           name: char.name,
+          aliases: aliases.length ? JSON.stringify(aliases) : null,
           role: char.role || '',
           description: char.description || '',
           appearance: char.appearance || '',

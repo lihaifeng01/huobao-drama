@@ -340,6 +340,28 @@
                         <div class="character-name-row">
                           <strong class="character-name">{{ c.name }}</strong>
                           <span class="tag">{{ c.role || t('common.role') }}</span>
+                          <span v-if="c.looks?.length" class="look-chip-wrap" @click.stop>
+                            <AppMenu
+                              :open="lookMenuId === c.id"
+                              placement="bottom-start"
+                              :min-width="150"
+                              @update:open="(v) => { lookMenuId = v ? c.id : null }"
+                            >
+                              <template #trigger>
+                                <button type="button" class="tag look-chip" :class="{ 'is-custom': !!c.episode_look_id }" :title="t('looks.episodeLookTitle')">
+                                  {{ t('looks.chip', { name: episodeLookName(c) }) }}
+                                </button>
+                              </template>
+                              <AppMenuItem :selected="!c.episode_look_id" @click="setEpisodeLook(c, null)">{{ t('looks.defaultName') }}</AppMenuItem>
+                              <AppMenuItem v-for="look in c.looks" :key="look.id" :selected="c.episode_look_id === look.id" @click="setEpisodeLook(c, look.id)">
+                                {{ look.name }}
+                                <template v-if="!look.image_url" #trailing><span class="dim">{{ t('looks.noImageShort') }}</span></template>
+                              </AppMenuItem>
+                              <div class="app-menu-sep"></div>
+                              <AppMenuItem @click="lookMenuId = null; openAssetDetail('character', c)">{{ t('looks.manage') }}</AppMenuItem>
+                            </AppMenu>
+                          </span>
+                          <button v-else type="button" class="tag look-chip is-empty" :title="t('looks.manage')" @click.stop="openAssetDetail('character', c)">{{ t('looks.addShort') }}</button>
                         </div>
                         <div class="character-visual-summary" :title="characterVisualSummary(c)">
                           <span>{{ t('episode.asset.appearance') }}{{ characterAppearanceValue(c) }}</span>
@@ -791,6 +813,20 @@
                       </button>
                     </div>
                     <div v-else class="video-bound-refs-empty">{{ t('episode.inspector.noBoundRefs') }}</div>
+                    <div v-if="shotLookRows.length" class="shot-look-rows">
+                      <div class="shot-look-title">{{ t('looks.shotTitle') }}</div>
+                      <label v-for="row in shotLookRows" :key="row.char.id" class="shot-look-row">
+                        <span class="shot-look-name truncate">{{ row.char.name }}</span>
+                        <BaseSelect
+                          :model-value="row.value"
+                          :options="row.options"
+                          :searchable="false"
+                          class="shot-look-select"
+                          @update:model-value="(v) => setShotLook(selectedSb, row.char, v)"
+                        />
+                      </label>
+                      <p v-if="shotLookRows.some(r => r.fallback)" class="shot-look-hint">{{ t('looks.fallbackHint') }}</p>
+                    </div>
                     <p v-if="droppedRefs.length" class="video-ref-truncated">
                       {{ t('episode.ref.truncatedHint', { limit: refImageLimit, names: droppedRefs.map(r => r.name).join(t('common.listJoin')) }) }}
                     </p>
@@ -1200,6 +1236,9 @@
               </section>
             </div>
 
+            <section v-if="assetDetail.type === 'character'" class="asset-detail-looks-panel">
+              <CharacterLooksPanel :character="assetDetail.item" :config-id="episode?.image_config_id || episode?.imageConfigId || null" @changed="onLooksChanged" />
+            </section>
             <section class="asset-detail-prompt-panel">
               <div class="asset-detail-section-title">
                 <span>{{ assetDetail.type === 'character' ? t('episode.asset.finalPromptTurnaround') : assetDetail.type === 'scene' ? t('episode.asset.finalPromptFixed') : t('episode.asset.finalPromptWhiteBg') }}</span>
@@ -1441,6 +1480,7 @@ import {
 } from 'lucide-vue-next'
 import { api, dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, propAPI, taskAPI, mergeAPI, aiConfigAPI, uploadAPI } from '~/composables/useApi'
 import { startTour, autoTour } from '~/composables/useTour'
+import { resolveCharacterLook } from '~/composables/useCharacterIdentity'
 import { useAgent } from '~/composables/useAgent'
 import { toastError, mapError, MODERATION_RE } from '~/composables/useToast'
 import LocaleSwitcher from '~/components/LocaleSwitcher.vue'
@@ -3057,7 +3097,8 @@ function collectShotReferences(sb) {
     else dropped.push(entry)
   }
   for (const char of getStoryboardCharacters(sb)) {
-    push('character', char.id, char.name || '', char?.image_url || char?.imageUrl)
+    // 造型：镜头覆盖 → 本集选择 → 默认形象
+    push('character', char.id, char.name || '', resolveCharacterLook(char, sb).imageUrl)
   }
   const scene = getStoryboardScene(sb)
   if (scene) push('scene', scene.id, scene.location || '', scene.image_url || scene.imageUrl)
@@ -3071,6 +3112,61 @@ function getShotReferenceImages(sb) {
   return collectShotReferences(sb).kept.map(r => r.imageUrl)
 }
 
+// ===== 角色造型：本集选择（角色卡片）与镜头覆盖（检查器） =====
+const lookMenuId = ref(null)
+const SHOT_LOOK_FOLLOW = 'follow'
+function episodeLookName(c) {
+  const look = (c.looks || []).find(l => l.id === c.episode_look_id)
+  return look ? look.name : t('looks.defaultName')
+}
+async function setEpisodeLook(c, lookId) {
+  lookMenuId.value = null
+  if ((c.episode_look_id || null) === lookId) return
+  try {
+    await episodeAPI.setCharacterLook(episode.value.id, c.id, lookId)
+    await refresh()
+  } catch (e) {
+    toastError(e)
+  }
+}
+// 每个已绑定且有额外造型的角色一行：跟随本集 / 默认造型(0) / 各造型
+const shotLookRows = computed(() => {
+  const sb = selectedSb.value
+  if (!sb) return []
+  return getStoryboardCharacters(sb).filter(c => c.looks?.length).map((c) => {
+    const override = sb.character_looks?.[c.id]
+    const resolved = resolveCharacterLook(c, sb)
+    return {
+      char: c,
+      value: override === undefined || override === null ? SHOT_LOOK_FOLLOW : override,
+      fallback: resolved.fallback,
+      options: [
+        { label: t('looks.followEpisode', { name: episodeLookName(c) }), value: SHOT_LOOK_FOLLOW },
+        { label: t('looks.defaultName'), value: 0 },
+        ...c.looks.map(l => ({ label: l.image_url ? l.name : `${l.name}（${t('looks.noImageShort')}）`, value: l.id })),
+      ],
+    }
+  })
+})
+async function setShotLook(sb, char, value) {
+  const lookId = value === SHOT_LOOK_FOLLOW ? null : Number(value)
+  try {
+    await storyboardAPI.setCharacterLook(sb.id, char.id, lookId)
+    await refresh()
+  } catch (e) {
+    toastError(e)
+  }
+}
+// 造型面板内增删改后刷新列表，并同步已打开的详情弹窗
+async function onLooksChanged() {
+  await refresh()
+  const d = assetDetail.value
+  if (d.open && d.type === 'character') {
+    const fresh = chars.value.find(c => c.id === d.item?.id)
+    if (fresh) Object.assign(d.item, { looks: fresh.looks, episode_look_id: fresh.episode_look_id })
+  }
+}
+
 // 当前分镜实际提交的参考图与因超出上限未提交的素材（检查器内计数、标记与提示）
 const selectedShotRefs = computed(() => (selectedSb.value ? collectShotReferences(selectedSb.value) : { kept: [], dropped: [] }))
 const droppedRefs = computed(() => selectedShotRefs.value.dropped)
@@ -3081,7 +3177,7 @@ const droppedRefKeys = computed(() => new Set(droppedRefs.value.map(r => r.key))
 function shotBindableAssets(sb) {
   const out = []
   for (const char of visualChars.value) {
-    const imageUrl = char.image_url || char.imageUrl || ''
+    const imageUrl = resolveCharacterLook(char, sb).imageUrl
     out.push({
       key: `character-${char.id}`,
       id: char.id,
@@ -5195,6 +5291,20 @@ button.video-task-metric.on { box-shadow: 0 0 0 2px var(--accent); }
   text-overflow: ellipsis;
 }
 .video-bound-ref-empty { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+/* 角色造型：卡片上的本集造型选择 */
+.look-chip-wrap { display: inline-flex; }
+.look-chip { cursor: pointer; border: none; font: inherit; font-size: 11px; }
+.look-chip.is-custom { background: var(--accent-bg); color: var(--accent-text); }
+.look-chip.is-empty { background: transparent; border: 1px dashed var(--border-strong); color: var(--text-3); }
+.look-chip:hover { color: var(--text-0); }
+.asset-detail-looks-panel { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+/* 检查器：镜头级造型覆盖 */
+.shot-look-rows { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.shot-look-title { font-size: 11px; font-weight: 650; color: var(--text-2); }
+.shot-look-row { display: grid; grid-template-columns: minmax(0, 72px) minmax(0, 1fr); align-items: center; gap: 8px; font-size: 12px; }
+.shot-look-name { color: var(--text-1); font-weight: 600; }
+.shot-look-hint { font-size: 11px; color: var(--text-3); line-height: 1.5; }
+
 /* 超出参考图上限、本次不会提交的素材 */
 .video-bound-ref.is-dropped { border-style: dashed; border-color: var(--warning); }
 .video-bound-ref.is-dropped img { opacity: 0.35; filter: grayscale(1); }

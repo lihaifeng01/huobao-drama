@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { db, getInsertId, schema } from '../db/index.js'
 import { success, notFound, badRequest, now } from '../utils/response.js'
 import { toSnakeCaseArray, toSnakeCase } from '../utils/transform.js'
@@ -90,6 +90,7 @@ app.delete('/:id', async (c) => {
 })
 
 // GET /episodes/:id/characters — characters linked to this episode
+// 附带 looks（额外造型）与 episode_look_id（本集选用的造型，空 = 默认造型）
 app.get('/:id/characters', async (c) => {
   const episodeId = Number(c.req.param('id'))
   const links = await db.select().from(schema.episodeCharacters)
@@ -98,7 +99,31 @@ app.get('/:id/characters', async (c) => {
   if (!charIds.length) return success(c, [])
   const allChars = await db.select().from(schema.characters)
   const result = allChars.filter(ch => charIds.includes(ch.id) && !ch.deletedAt)
-  return success(c, toSnakeCaseArray(result))
+  const looks = (await db.select().from(schema.characterLooks)
+    .where(and(inArray(schema.characterLooks.characterId, charIds), isNull(schema.characterLooks.deletedAt))))
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.id - b.id)
+  return success(c, result.map(ch => ({
+    ...toSnakeCase(ch),
+    looks: looks.filter(l => l.characterId === ch.id).map(toSnakeCase),
+    episode_look_id: links.find(l => l.characterId === ch.id)?.lookId ?? null,
+  })))
+})
+
+// PUT /episodes/:id/characters/:characterId/look — 设置本集使用的造型 { look_id }（null = 默认造型）
+app.put('/:id/characters/:characterId/look', async (c) => {
+  const episodeId = Number(c.req.param('id'))
+  const characterId = Number(c.req.param('characterId'))
+  const body = await c.req.json()
+  const lookId = body.look_id ? Number(body.look_id) : null
+  if (lookId) {
+    const [look] = await db.select().from(schema.characterLooks)
+      .where(and(eq(schema.characterLooks.id, lookId), isNull(schema.characterLooks.deletedAt)))
+    if (!look || look.characterId !== characterId) return badRequest(c, '造型不属于该角色')
+  }
+  const res = await db.update(schema.episodeCharacters).set({ lookId })
+    .where(and(eq(schema.episodeCharacters.episodeId, episodeId), eq(schema.episodeCharacters.characterId, characterId)))
+  if (!res.changes) return badRequest(c, '该角色未关联到本集')
+  return success(c)
 })
 
 // GET /episodes/:id/scenes — scenes linked to this episode
@@ -173,10 +198,17 @@ app.get('/:episode_id/storyboards', async (c) => {
 
   const links = await db.select().from(schema.storyboardCharacters)
   const charIdsByStoryboard = new Map<number, number[]>()
+  // 镜头级造型覆盖：{ [characterId]: lookId }，0 = 强制默认造型；未覆盖的角色不出现（跟随本集）
+  const looksByStoryboard = new Map<number, Record<number, number>>()
   for (const link of links) {
     const arr = charIdsByStoryboard.get(link.storyboardId) || []
     arr.push(link.characterId)
     charIdsByStoryboard.set(link.storyboardId, arr)
+    if (link.lookId !== null && link.lookId !== undefined) {
+      const map = looksByStoryboard.get(link.storyboardId) || {}
+      map[link.characterId] = link.lookId
+      looksByStoryboard.set(link.storyboardId, map)
+    }
   }
 
   const propLinks = await db.select().from(schema.storyboardProps)
@@ -202,6 +234,7 @@ app.get('/:episode_id/storyboards', async (c) => {
   return success(c, rows.map((row) => ({
     ...toSnakeCase(row),
     character_ids: charIdsByStoryboard.get(row.id) || [],
+    character_looks: looksByStoryboard.get(row.id) || {},
     prop_ids: propIdsByStoryboard.get(row.id) || [],
     characters: allChars
       .filter(ch => (charIdsByStoryboard.get(row.id) || []).includes(ch.id))

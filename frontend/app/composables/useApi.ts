@@ -56,12 +56,16 @@ export const episodeAPI = {
   extractStatus: (id: number) => api.get(`/episodes/${id}/extract-status`),
   generateVideoPrompts: (id: number, model?: string, configId?: number, storyboardIds?: number[]) => api.post(`/episodes/${id}/generate-video-prompts`, { model: model || undefined, config_id: configId || undefined, storyboard_ids: storyboardIds?.length ? storyboardIds : undefined }),
   videoPromptsStatus: (id: number) => api.get(`/episodes/${id}/video-prompts-status`),
+  // 本集使用的角色造型（lookId 为空 = 默认造型）
+  setCharacterLook: (id: number, characterId: number, lookId: number | null) => api.put(`/episodes/${id}/characters/${characterId}/look`, { look_id: lookId }),
 }
 
 export const storyboardAPI = {
   create: (data: any) => api.post('/storyboards', data),
   update: (id: number, data: any) => api.put(`/storyboards/${id}`, data),
   del: (id: number) => api.del(`/storyboards/${id}`),
+  // 镜头级造型覆盖（lookId 为空 = 跟随本集）
+  setCharacterLook: (id: number, characterId: number, lookId: number | null) => api.put(`/storyboards/${id}/character-look`, { character_id: characterId, look_id: lookId }),
 }
 
 export const characterAPI = {
@@ -71,6 +75,17 @@ export const characterAPI = {
   generatePrompt: (id: number, episodeId: number, force = false, textModel?: string, textConfigId?: number) => api.post(`/characters/${id}/generate-prompt`, { episode_id: episodeId, force, text_model: textModel || undefined, text_config_id: textConfigId || undefined }),
   generateImage: (id: number, episodeId: number, model?: string, configId?: number, textModel?: string, textConfigId?: number) => api.post(`/characters/${id}/generate-image`, { episode_id: episodeId, model: model || undefined, config_id: configId || undefined, text_model: textModel || undefined, text_config_id: textConfigId || undefined }),
   batchImages: (ids: number[], episodeId: number, model?: string, configId?: number, textModel?: string, textConfigId?: number) => api.post('/characters/batch-generate-images', { character_ids: ids, episode_id: episodeId, model: model || undefined, config_id: configId || undefined, text_model: textModel || undefined, text_config_id: textConfigId || undefined }),
+  // 把 sourceIds 合并进 id（源角色名并入别名，关联/造型/生成记录迁移后软删除）
+  merge: (id: number, sourceIds: number[]) => api.post(`/characters/${id}/merge`, { source_ids: sourceIds }),
+}
+
+// 角色造型：默认造型即角色自身形象图，这里管理额外造型
+export const lookAPI = {
+  list: (characterId: number) => api.get<any[]>(`/character-looks?character_id=${characterId}`),
+  create: (characterId: number, data: { name: string; description?: string }) => api.post('/character-looks', { character_id: characterId, ...data }),
+  update: (id: number, data: { name?: string; description?: string; image_url?: string | null }) => api.put(`/character-looks/${id}`, data),
+  del: (id: number) => api.del(`/character-looks/${id}`),
+  generateImage: (id: number, configId?: number, model?: string) => api.post(`/character-looks/${id}/generate-image`, { config_id: configId || undefined, model: model || undefined }),
 }
 
 export const sceneAPI = {
