@@ -706,7 +706,12 @@
       "notReady": "Not generated",
       "unbound": "Unbound",
       "gotoGenerate": "Go generate →",
-      "empty": "No scenes, characters or props in this episode yet. Extract assets in “Assets” first, then bind them here."
+      "empty": "No scenes, characters or props in this episode yet. Extract assets in “Assets” first, then bind them here.",
+      "dropped": "Skipped",
+      "droppedTitle": "\"{name}\" exceeds the reference image limit and will not be sent",
+      "truncatedHint": "References exceed the model limit ({limit}). Character images are kept first; these will not be sent: {names}",
+      "truncatedToast": "References exceed the limit ({limit}); not sent: {names}",
+      "truncatedBatchToast": "{n} shots exceed the reference limit ({limit}). Character images were kept first; extra scenes/props were not sent"
     },
     "vid": {
       "shotCount": "{n} shots",

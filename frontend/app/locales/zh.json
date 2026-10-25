@@ -706,7 +706,12 @@
       "notReady": "未生成",
       "unbound": "未绑定",
       "gotoGenerate": "去生成 →",
-      "empty": "当前集还没有场景、角色或道具，先到「资产」提取素材后即可绑定。"
+      "empty": "当前集还没有场景、角色或道具，先到「资产」提取素材后即可绑定。",
+      "dropped": "未提交",
+      "droppedTitle": "「{name}」超出参考图上限，本次不会提交",
+      "truncatedHint": "参考图超出模型上限（{limit} 张），已优先保留角色图，以下素材本次不会提交：{names}",
+      "truncatedToast": "参考图超出上限（{limit} 张），未提交：{names}",
+      "truncatedBatchToast": "{n} 个镜头的参考图超出上限（{limit} 张），已优先保留角色图，超出的场景/道具未提交"
     },
     "vid": {
       "shotCount": "{n} 个镜头",

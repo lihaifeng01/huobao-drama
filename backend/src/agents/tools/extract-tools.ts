@@ -59,6 +59,16 @@ function normalizeName(name: string): string {
     .trim()
 }
 
+/**
+ * 定妆锁定：已有形象图的资产视为「已定妆」，后续集提取合并时不再覆盖其视觉描述
+ * （角色外貌/妆造、场景描述/光影、道具外貌与最终提示词）。否则每集提取都会用本集说法覆盖设定，
+ * 图虽不变，一旦重绘或重生成最终提示词，形象就会按最新一集的描述漂移。
+ * 用户在编辑弹窗中手动修改不受影响（走 PUT 接口，不经过这里）。
+ */
+function isLocked(row: { imageUrl: string | null }): boolean {
+  return !!row.imageUrl
+}
+
 // 场景地点只做空白归一化（不删括号：如「火车站（候车厅）」与「火车站（站台）」是不同场景）
 function normalizeLocation(loc: string): string {
   return (loc || '').replace(/[\s　]+/g, '').toLowerCase().trim()
@@ -114,6 +124,7 @@ const readExistingCharacters = createTool({
       appearance: c.appearance || '',
       styling: c.styling || '',
       normalized_name: normalizeName(c.name), // 用于判断近名复用：括号定位/别名视为同名
+      locked: isLocked(c), // 已定妆：外貌/妆造以现有设定为准，合并时不会被覆盖
     }))
     const payload = {
       count: visibleChars.length,
@@ -152,6 +163,7 @@ const readExistingScenes = createTool({
       prompt: s.prompt || '',
       lighting: s.lighting || '',
       normalized_location: normalizeLocation(s.location), // 用于判断近名复用（仅空白/大小写）
+      locked: isLocked(s), // 已定妆：描述/光影以现有设定为准，合并时不会被覆盖
     }))
     const payload = {
       count: visibleScenes.length,
@@ -186,7 +198,7 @@ const saveDedupCharacters = createTool({
     if ('error' in ids) return ids
     const { episodeId, dramaId } = ids
     const ts = now()
-    const results = { created: 0, merged: 0 }
+    const results = { created: 0, merged: 0, locked: 0 }
     logTaskProgress('ExtractTool', 'save-characters-begin', {
       episodeId,
       dramaId,
@@ -205,14 +217,20 @@ const saveDedupCharacters = createTool({
       if (existing) {
         // 归一化命中：括号定位/别名等近名视作同一角色复用，避免重复创建
         if (matchedViaNorm) logTaskProgress('ExtractTool', 'save-characters-reuse', { episodeId, dramaId, extracted: char.name, reused: existing.name })
-        // 已存在：合并信息，保留 ID
-        await db.update(schema.characters).set({
+        // 已存在：合并信息，保留 ID；已定妆角色只合并定位/人物设定，外貌与妆造保持不变
+        const updates: Partial<typeof schema.characters.$inferInsert> = {
           role: char.role || existing.role,
           description: char.description || existing.description,
-          appearance: char.appearance || existing.appearance,
-          styling: char.styling || char.description || existing.styling,
           updatedAt: ts,
-        }).where(eq(schema.characters.id, existing.id))
+        }
+        if (isLocked(existing)) {
+          results.locked++
+          logTaskProgress('ExtractTool', 'save-characters-locked', { episodeId, dramaId, character: existing.name })
+        } else {
+          updates.appearance = char.appearance || existing.appearance
+          updates.styling = char.styling || char.description || existing.styling
+        }
+        await db.update(schema.characters).set(updates).where(eq(schema.characters.id, existing.id))
         await linkCharToEpisode(episodeId, existing.id)
         results.merged++
       } else {
@@ -234,7 +252,7 @@ const saveDedupCharacters = createTool({
     }
 
     const payload = {
-      message: `角色保存完成：新增 ${results.created}，合并更新 ${results.merged}`,
+      message: `角色保存完成：新增 ${results.created}，合并更新 ${results.merged}${results.locked ? `（其中 ${results.locked} 个已定妆角色保留原外貌/妆造）` : ''}`,
       ...results,
     }
     logTaskSuccess('ExtractTool', 'save-characters-complete', { episodeId, ...results })
@@ -260,7 +278,7 @@ const saveDedupScenes = createTool({
     if ('error' in ids) return ids
     const { episodeId, dramaId } = ids
     const ts = now()
-    const results = { created: 0, reused: 0 }
+    const results = { created: 0, reused: 0, locked: 0 }
     logTaskProgress('ExtractTool', 'save-scenes-begin', {
       episodeId,
       dramaId,
@@ -277,12 +295,17 @@ const saveDedupScenes = createTool({
         || (normLocation ? scenesInProject.find(s => normalizeLocation(s.location) === normLocation && s.time === (scene.time || '')) : undefined)
 
       if (existing) {
-        // 已存在完全匹配的场景：关联并补齐描述/光影
-        await db.update(schema.scenes).set({
-          prompt: scene.prompt || scene.description || existing.prompt,
-          lighting: scene.lighting || existing.lighting,
-          updatedAt: ts,
-        }).where(eq(schema.scenes.id, existing.id))
+        // 已存在完全匹配的场景：关联并补齐描述/光影；已定妆场景保持原描述不变
+        if (isLocked(existing)) {
+          results.locked++
+          logTaskProgress('ExtractTool', 'save-scenes-locked', { episodeId, dramaId, scene: existing.location })
+        } else {
+          await db.update(schema.scenes).set({
+            prompt: scene.prompt || scene.description || existing.prompt,
+            lighting: scene.lighting || existing.lighting,
+            updatedAt: ts,
+          }).where(eq(schema.scenes.id, existing.id))
+        }
         await linkSceneToEpisode(episodeId, existing.id)
         results.reused++
       } else {
@@ -302,7 +325,7 @@ const saveDedupScenes = createTool({
     }
 
     const payload = {
-      message: `场景保存完成：新增 ${results.created}，复用已有 ${results.reused}`,
+      message: `场景保存完成：新增 ${results.created}，复用已有 ${results.reused}${results.locked ? `（其中 ${results.locked} 个已定妆场景保留原描述）` : ''}`,
       ...results,
     }
     logTaskSuccess('ExtractTool', 'save-scenes-complete', { episodeId, ...results })
@@ -331,6 +354,7 @@ const readExistingProps = createTool({
       type: p.type || '',
       description: p.description || '',
       normalized_name: normalizeName(p.name), // 用于判断近名复用：括号定位/别名视为同名
+      locked: isLocked(p), // 已定妆：外貌描述以现有设定为准，合并时不会被覆盖
     }))
     const payload = {
       count: visibleProps.length,
@@ -363,7 +387,7 @@ const saveDedupProps = createTool({
     if ('error' in ids) return ids
     const { episodeId, dramaId } = ids
     const ts = now()
-    const results = { created: 0, merged: 0 }
+    const results = { created: 0, merged: 0, locked: 0 }
     logTaskProgress('ExtractTool', 'save-props-begin', {
       episodeId,
       dramaId,
@@ -382,13 +406,20 @@ const saveDedupProps = createTool({
       if (existing) {
         // 归一化命中：括号定位/别名等近名视作同一道具复用
         if (matchedViaNorm) logTaskProgress('ExtractTool', 'save-props-reuse', { episodeId, dramaId, extracted: prop.name, reused: existing.name })
-        // 已存在：合并信息，保留 ID；物品外貌变更后旧的最终提示词失效
-        await db.update(schema.props).set({
+        // 已存在：合并信息，保留 ID；物品外貌变更后旧的最终提示词失效。
+        // 已定妆道具只合并类型，外貌描述与最终提示词保持不变
+        const updates: Partial<typeof schema.props.$inferInsert> = {
           type: prop.type || existing.type,
-          description: prop.description || existing.description,
-          finalPrompt: prop.description ? null : existing.finalPrompt,
           updatedAt: ts,
-        }).where(eq(schema.props.id, existing.id))
+        }
+        if (isLocked(existing)) {
+          results.locked++
+          logTaskProgress('ExtractTool', 'save-props-locked', { episodeId, dramaId, prop: existing.name })
+        } else {
+          updates.description = prop.description || existing.description
+          updates.finalPrompt = prop.description ? null : existing.finalPrompt
+        }
+        await db.update(schema.props).set(updates).where(eq(schema.props.id, existing.id))
         await linkPropToEpisode(episodeId, existing.id)
         results.merged++
       } else {
@@ -407,7 +438,7 @@ const saveDedupProps = createTool({
     }
 
     const payload = {
-      message: `道具保存完成：新增 ${results.created}，合并更新 ${results.merged}`,
+      message: `道具保存完成：新增 ${results.created}，合并更新 ${results.merged}${results.locked ? `（其中 ${results.locked} 个已定妆道具保留原外貌）` : ''}`,
       ...results,
     }
     logTaskSuccess('ExtractTool', 'save-props-complete', { episodeId, ...results })

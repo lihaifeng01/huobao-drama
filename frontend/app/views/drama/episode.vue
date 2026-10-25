@@ -771,7 +771,7 @@
                   <section class="video-inspector-section">
                     <div class="video-inspector-prompt-head">
                       <span class="video-inspector-label">{{ t('episode.inspector.boundRefs') }}</span>
-                      <span class="tag mono">{{ boundRefAssets.length }}</span>
+                      <span class="tag mono" :class="{ 'tag-warning': droppedRefs.length }">{{ selectedShotRefs.kept.length }}/{{ refImageLimit }}</span>
                     </div>
                     <div v-if="boundRefAssets.length" class="video-bound-refs">
                       <button
@@ -779,16 +779,21 @@
                         :key="asset.key"
                         type="button"
                         class="video-bound-ref"
+                        :class="{ 'is-dropped': droppedRefKeys.has(asset.key) }"
                         :disabled="!asset.ready"
-                        :title="`${asset.name} · ${asset.typeLabel}`"
+                        :title="droppedRefKeys.has(asset.key) ? t('episode.ref.droppedTitle', { name: asset.name }) : `${asset.name} · ${asset.typeLabel}`"
                         @click="asset.ready && openImageViewer(assetImageSrc({ imageUrl: asset.imageUrl }), `${asset.name} ${asset.typeLabel}`)"
                       >
                         <img v-if="asset.ready" :src="thumbOf(assetImageSrc({ imageUrl: asset.imageUrl }))" :alt="asset.name" loading="lazy" @error="thumbFallback($event, assetImageSrc({ imageUrl: asset.imageUrl }))" />
                         <span v-else class="video-bound-ref-empty">{{ asset.kind === 'scene' ? t('episode.ref.shortScene') : asset.kind === 'prop' ? t('episode.ref.shortProp') : t('episode.ref.shortChar') }}</span>
                         <small>{{ asset.name }}</small>
+                        <span v-if="droppedRefKeys.has(asset.key)" class="video-bound-ref-dropped">{{ t('episode.ref.dropped') }}</span>
                       </button>
                     </div>
                     <div v-else class="video-bound-refs-empty">{{ t('episode.inspector.noBoundRefs') }}</div>
+                    <p v-if="droppedRefs.length" class="video-ref-truncated">
+                      {{ t('episode.ref.truncatedHint', { limit: refImageLimit, names: droppedRefs.map(r => r.name).join(t('common.listJoin')) }) }}
+                    </p>
                   </section>
                 </div>
 
@@ -2161,6 +2166,8 @@ function confirmBatchVideos() {
   const ids = targets.map(s => s.id)
   targets.forEach(sb => genVid(sb, { silent: true }))
   toast.success(t('episode.vid.batchStarted', { n: ids.length }))
+  const truncatedCount = targets.filter(sb => collectShotReferences(sb).dropped.length).length
+  if (truncatedCount) toast.warning(t('episode.ref.truncatedBatchToast', { n: truncatedCount, limit: refImageLimit.value }), { duration: 6000 })
   watchAsyncResult(() => ids.every(id => {
     const target = sbs.value.find(s => s.id === id)
     const done = !!getVideoUrl(target)
@@ -3033,22 +3040,41 @@ function formatHistoryTime(iso) {
   return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
-function getShotReferenceImages(sb) {
-  const refs = []
-  const pushRef = (value) => {
-    if (!value || refs.includes(value) || refs.length >= refImageLimit.value) return
-    refs.push(value)
+/**
+ * 收集分镜参考图（生成提交与 @名字 → @图片N 映射共用同一顺序，保证序号一致）
+ * 优先级：角色 → 场景 → 道具。人物一致性最依赖参考图，超出模型上限时优先保留角色图；
+ * 超出部分记入 dropped，供检查器与生成时提示（不再静默丢弃）
+ */
+function collectShotReferences(sb) {
+  const kept = []
+  const dropped = []
+  const seen = new Set()
+  const push = (kind, id, name, url) => {
+    if (!url || seen.has(url)) return
+    seen.add(url)
+    const entry = { key: `${kind}-${id}`, kind, name, imageUrl: url }
+    if (kept.length < refImageLimit.value) kept.push(entry)
+    else dropped.push(entry)
+  }
+  for (const char of getStoryboardCharacters(sb)) {
+    push('character', char.id, char.name || '', char?.image_url || char?.imageUrl)
   }
   const scene = getStoryboardScene(sb)
-  pushRef(scene?.image_url || scene?.imageUrl)
-  for (const char of getStoryboardCharacters(sb)) {
-    pushRef(char?.image_url || char?.imageUrl)
-  }
+  if (scene) push('scene', scene.id, scene.location || '', scene.image_url || scene.imageUrl)
   for (const prop of getStoryboardProps(sb)) {
-    pushRef(prop?.image_url || prop?.imageUrl)
+    push('prop', prop.id, prop.name || '', prop?.image_url || prop?.imageUrl)
   }
-  return refs
+  return { kept, dropped }
 }
+
+function getShotReferenceImages(sb) {
+  return collectShotReferences(sb).kept.map(r => r.imageUrl)
+}
+
+// 当前分镜实际提交的参考图与因超出上限未提交的素材（检查器内计数、标记与提示）
+const selectedShotRefs = computed(() => (selectedSb.value ? collectShotReferences(selectedSb.value) : { kept: [], dropped: [] }))
+const droppedRefs = computed(() => selectedShotRefs.value.dropped)
+const droppedRefKeys = computed(() => new Set(droppedRefs.value.map(r => r.key)))
 
 // 右侧参考素材面板：本集全部可绑定素材（场景单选、角色/道具多选），bound 标记是否已绑定
 // kind 为英文 code（逻辑值）；typeLabel 为显示名（渲染时求值）
@@ -3161,25 +3187,10 @@ const mentionOptions = computed(() => {
   ]
 })
 
-// 按参考图顺序（场景图在前、角色图居中、道具图在后）为 @名字 建立索引映射，供视频提示词引用替换
+// 按参考图提交顺序（角色 → 场景 → 道具，与 getShotReferenceImages 同源）为 @名字 建立索引映射，供视频提示词引用替换
 function getShotReferenceIndexMap(sb) {
-  const ordered = []
-  const seen = new Set()
-  const push = (name, url) => {
-    if (!url || seen.has(url) || ordered.length >= refImageLimit.value) return
-    seen.add(url)
-    ordered.push({ name, imageUrl: url })
-  }
-  const scene = getStoryboardScene(sb)
-  push(scene?.location || '', scene?.image_url || scene?.imageUrl)
-  for (const char of getStoryboardCharacters(sb)) {
-    push(char.name || '', char?.image_url || char?.imageUrl)
-  }
-  for (const prop of getStoryboardProps(sb)) {
-    push(prop.name || '', prop?.image_url || prop?.imageUrl)
-  }
   const nameToIndex = {}
-  ordered.forEach((a, i) => { if (a.name && !(a.name in nameToIndex)) nameToIndex[a.name] = i + 1 })
+  collectShotReferences(sb).kept.forEach((a, i) => { if (a.name && !(a.name in nameToIndex)) nameToIndex[a.name] = i + 1 })
   return nameToIndex
 }
 
@@ -3252,6 +3263,10 @@ function uploadAssetImage(kind, id) {
 }
 
 async function genVid(sb, opts = {}) {
+  const { dropped } = collectShotReferences(sb)
+  if (dropped.length && !opts.silent) {
+    toast.warning(t('episode.ref.truncatedToast', { limit: refImageLimit.value, names: dropped.map(r => r.name).join(t('common.listJoin')) }), { duration: 6000 })
+  }
   const referenceImages = getShotReferenceImages(sb)
   // 参考素材完全来自分镜绑定的角色/场景/道具图片
   const params = {
@@ -5180,6 +5195,29 @@ button.video-task-metric.on { box-shadow: 0 0 0 2px var(--accent); }
   text-overflow: ellipsis;
 }
 .video-bound-ref-empty { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+/* 超出参考图上限、本次不会提交的素材 */
+.video-bound-ref.is-dropped { border-style: dashed; border-color: var(--warning); }
+.video-bound-ref.is-dropped img { opacity: 0.35; filter: grayscale(1); }
+.video-bound-ref-dropped {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--warning-bg);
+  color: var(--tag-warning-text);
+  font-size: 9px;
+  font-weight: 600;
+}
+.video-ref-truncated {
+  margin-top: 8px;
+  padding: 7px 9px;
+  border-radius: var(--radius);
+  background: var(--warning-bg);
+  color: var(--tag-warning-text);
+  font-size: 11px;
+  line-height: 1.5;
+}
 .video-bound-refs-empty { padding: 10px; border: 1px dashed var(--surface-outline); border-radius: var(--radius); color: var(--text-3); font-size: 11px; line-height: 1.5; }
 .video-param-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; white-space: nowrap; }
 .video-param-name { color: var(--text-1); font-weight: 600; flex-shrink: 0; }
