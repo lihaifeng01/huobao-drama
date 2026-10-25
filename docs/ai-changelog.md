@@ -36,12 +36,15 @@
 **前端（Nuxt）**
 - Nuxt 会自动导入 `ref`、`computed` 等。**不要在 `.vue` 文件里把局部变量命名为 `ref` / `computed` / `watch` / `reactive`**：自动导入一旦检测到同名的本地声明，就会放弃给整个文件注入导入，页面运行时报 `ref is not defined`（2026-10-25 踩过）。
 - `components/` 下的组件自动注册，模板里直接用，无需 import。
-- vue-i18n 文案里的 `@` 要写成 `{'@'}`。新增文案要同时加 zh / en / ja / ko 四个语言文件。
+- vue-i18n 文案里的 `@` 要写成 `{'@'}`，否则整段文案编译失败（报 `SyntaxError: 10`），**所在组件整块不渲染**。`frontend/tests/character-looks-structure.test.mjs` 会扫描四个语言文件拦截这个问题。新增文案要同时加 zh / en / ja / ko 四个语言文件。
+- 在一个弹窗里再打开另一个弹窗（比如素材详情弹窗里的「合并角色」），第二个弹窗要用 `<Teleport to="body">`，否则会被第一个弹窗盖住、点不到。
 - 图片路径在库里存相对路径 `static/...`，展示时补前导 `/`；列表用 `thumbOf()` 取缩略图，加载失败时用 `thumbFallback` 回退原图。
 
 **后端**
 - 删除一律软删除（写 `deleted_at`），不要物理删除行或文件。
-- 新表写在 `src/db/sqlite-schema.ts`（DDL，启动时幂等执行）和 `src/db/schema.ts`（Drizzle 定义）。`CREATE TABLE IF NOT EXISTS` 不会给已存在的表补列。给已有表加列的做法见 2026-10-24「多级文件夹」条目里的 `ADDED_COLUMNS`（目前只在 `feature/asset-library` 分支上）。
+- 新表写在 `src/db/sqlite-schema.ts`（DDL，启动时幂等执行）和 `src/db/schema.ts`（Drizzle 定义）。`CREATE TABLE IF NOT EXISTS` 不会给已存在的表补列，给已有表加列用 `sqlite-schema.ts` 里的 `ADDED_COLUMNS`：启动时先查 `PRAGMA table_info`，缺列才执行 `ALTER`。
+  - 以后加列直接往 `ADDED_COLUMNS` 数组里追加条目。依赖新列的索引放进 `POST_COLUMN_STATEMENTS`，它在补列之后执行。
+- 写结构测试（`tests/*.structure.test.mjs`）时，如果把代码挪到了别的文件，要同步改测试里读的文件路径，别删断言。
 
 **本地端到端验证**
 - 用临时数据目录启动后端，同时托管已构建的前端，不会影响真实数据：
@@ -57,14 +60,115 @@
   - 剧集页的「资产制作」需要该集有剧本内容（`PUT /episodes/:id` 写 `script_content`），否则显示「尚未准备就绪」。
   - `POST /storyboards` 不接收 `video_prompt`，要再用 `PUT /storyboards/:id` 写入。
   - 角色、场景、道具创建时传 `episode_id` 才会关联到该集。
-- 用 `pkill -f "tsx src/index.ts"` 停服务时，如果同一条命令里出现了这串文字，会把当前 shell 自己也杀掉。改用 `pkill -f "[t]sx src/index[.]ts"`，并且单独执行。
+- 用 `pkill -f "tsx src/index.ts"` 停服务时，如果同一条命令里出现了这串文字，会把当前 shell 自己也杀掉。改用 `pkill -f "[t]sx src/index[.]ts"`，并且单独执行。即使用了方括号写法，如果同一条命令的 heredoc 里写了启动命令 `npx tsx src/index.ts`，也照样会被匹配。所以写启动脚本和执行它要分成两次调用。
+- 要验证 Agent / 文本模型流程，同样可以模拟 OpenAI 的 `/v1/chat/completions`：`stream: true` 时返回 SSE，否则返回普通 JSON。把每次请求的 system 消息记下来，就能检查 instructions 里实际拼进了什么。
+- 要验证真实的生图流程，可以起一个本地 HTTP 服务模拟 OpenAI 图片接口（`/v1/images/generations` 和 `/v1/images/edits`，返回 `{ data: [{ b64_json }] }`），再用 `POST /ai-configs` 添加一个 `provider: openai`、`base_url` 指向这个服务的配置。这样能检查参考图有没有真的发出去、生成结果写回到了哪里。
 
 ---
 
 ## 变更条目
 
+### 2026-10-25 · 两个功能分支合并到 `dev`
+- **分支**：`dev`。先后合并了 `feature/asset-library` 和 `feature/character-consistency`，都用 merge commit。两个功能分支保留，没有删除，也没有合并到 `master`。
+- **合并前 `dev` 上已有的改动**（来自其他人，不在本记录的条目里）：
+  - 中转站模式：`backend/src/services/adapters/custom.ts`，`agents/index.ts` 的 `getModel` 接入了 `withCustomHeadersFetch`。
+  - Docker 打包优化、弹窗点 × 关闭、设置页改动。
+- **冲突与处理**
+  - `backend/src/db/sqlite-schema.ts`：两边各加了新表和 `ADDED_COLUMNS` 机制，git 把两个 `CREATE TABLE` 块交错在了一起。以素材库一侧为底，补进 `character_looks` 表和别名 / 造型 / 摘要的补列条目，`POST_COLUMN_STATEMENTS` 保留 `library_folders.parent_id` 的索引。核对过两侧的每一行都在结果里。
+  - `backend/src/agents/index.ts`：import 冲突，同时保留 `withCustomHeadersFetch` 和 `logTaskError`。
+  - `detail.vue` / `episode.vue`：两边各自新增的弹窗（`LibraryPicker`、合并弹窗、`EpisodeRecapDialog`）和图标 import 都保留。
+  - `docs/ai-changelog.md`：取角色一致性分支的版本（它是素材库分支版本的超集），再改成合并后的状态。
+- **注意事项**
+  - 素材库的「从素材库选图」只会替换角色的**默认形象**。如果某集选用了别的造型，这一集的画面仍然用那个造型。
+- **验证**：后端类型检查、全部结构测试（与 `dev` 合并前的失败名单对比）、前端构建，并重新跑了素材库、定妆锁定 / 参考图、别名合并造型、前情摘要四组端到端测试。
+
+### 2026-10-25 · 前情摘要（跨集剧情连续性）
+- **分支**：`feature/character-consistency`，接在「角色别名 / 造型」之后；2026-10-25 已合并到 `dev`
+- **背景**：每集剧本单独上传，各集的 Agent 原本拿不到前几集的剧情。
+- **改动**
+  - `episodes` 表新增 4 列（通过 `ADDED_COLUMNS` 补列）：
+    - `summary`：本集摘要。
+    - `summary_source_hash`：生成摘要时所依据剧本的哈希，剧本改动后对不上即视为过期。
+    - `summary_edited`：用户手动编辑过的摘要不会被自动覆盖。
+    - `summary_updated_at`。
+  - `backend/src/services/episode-summary.ts`：
+    - `generateEpisodeSummary`：同一集的并发请求只生成一次。
+    - `saveEditedSummary`、`summaryState`（none / missing / stale / fresh）。
+    - `ensureSummaries`：补齐缺失的摘要，以及过期且没被手动编辑过的摘要。
+    - `buildRecapBlock`：拼「前情提要」。
+  - 摘要用一个内部辅助 Agent `episode_summarizer` 生成（`agents/index.ts` 的 `auxiliaryAgents`，挂在 Mastra 实例上，**不在 `validAgentTypes` 里**，所以不出现在提示词 / 技能设置页）。输出固定四段：【剧情】【人物状态】【未解悬念】【结尾】，不超过 400 字，会跟随内容语言设置。
+  - 注入：`buildInstructions` 对 `script_rewriter`、`extractor`、`storyboard_breaker` 三个 Agent，在技能之后、语言指令之前拼入前情提要。
+    - 范围：紧邻的前 8 集（`RECAP_MAX_EPISODES`），总长约 6000 字，单集截到 800 字，从最近一集往前放，放不下的省略。
+    - 缺失或过期的摘要在这时**懒生成**，单集失败只记日志，不影响 Agent 主流程。
+    - `prompt_generator` 不注入：角色和场景的图片提示词不该混进剧情。
+  - 接口：
+    - `GET /episodes/:id/recap`：返回前面所有集和本集的摘要状态，`in_recap` 表示该集是否在注入范围内。
+    - `POST /episodes/:id/summary`：同步生成，会覆盖手动编辑的版本。
+    - `PUT /episodes/:id/summary`：手动编辑，传空串清除。
+  - 前端：剧集工作台顶栏新增「前情提要」按钮，打开 `components/EpisodeRecapDialog.vue`，可以查看、生成、编辑前几集和本集的摘要。手动编辑过的摘要在剧本改动后会显示过期提示。
+- **设计取舍**
+  - 注入点选在 `buildInstructions`：它按请求解析，已经拿得到 `episodeId`。这样聊天、提取、分镜等所有入口都自动生效，不用逐个入口去改。
+  - 懒生成而不是保存剧本时就生成：不会在用户没用到时偷偷消耗 token。代价是某一集第一次运行 Agent 时可能要多等几次摘要调用（最多 8 集，3 个并发）。
+  - `episode-summary.ts` 里用**动态 import** 引入 `mastra/index.js`，因为 agents → episode-summary → mastra → agents 会形成循环依赖。
+- **注意事项**
+  - 摘要用当时的内容语言生成，之后切换语言不会重新生成已有摘要。
+  - Mastra 可能在多步循环中多次解析 instructions，前情提要每次都会重新查库（很轻）。只有缺失或过期时才会调用模型。
+  - 「省略了更早的集」的提示是按前面集的总数判断的，没有剧本的空集也会被算进去。
+- **验证**
+  - 用本地模拟的 chat 服务通过 API 跑了 14 项：第 1 集不注入；只给缺失的那集补摘要；按集号顺序注入；三个 Agent 有、`prompt_generator` 没有；摘要最新时不重复生成；剧本改动后过期；两个 Agent 并发时只生成一次；手动编辑的不被覆盖；显式重新生成会覆盖手写；清空；没有剧本时返回 400。
+  - Playwright 测了弹窗：第 1 集的提示、生成、编辑、过期提示。
+  - 结构测试：`backend/tests/episode-recap-structure.test.mjs`、`frontend/tests/episode-recap-structure.test.mjs`。
+
+### 2026-10-25 · 角色别名与合并重复角色；角色造型（多套服装/妆发）
+- **分支**：`feature/character-consistency`，接在「定妆锁定」之后；2026-10-25 已合并到 `dev`
+- **改动 1：别名与合并**
+  - `characters.aliases`：JSON 字符串数组，通过 `ADDED_COLUMNS` 补列。
+  - `backend/src/services/character-identity.ts` 统一放了 `normalizeName`、`parseAliases`、`cleanAliases`、`findCharacterByName`（按 本名 → 归一化名 → 别名 的顺序匹配）、`findAliasConflict` 和 `mergeCharacters`。`extract-tools.ts` 里原来的 `normalizeName` 已移到这里。
+  - 提取：`read_existing_characters` 会返回 `aliases`。`save_dedup_characters` 支持别名命中，Agent 也可以在 `aliases` 里写剧本对这个人的其他称呼；本次提取用到的名字会自动并入别名。提取指令在 `services/extraction.ts`，四种语言的 extractor SKILL 文档也已更新。
+  - 接口：
+    - `PUT /characters/:id` 可以修改 `aliases`（同一项目内不能和其他角色的本名或别名冲突）。
+    - `POST /characters` 不允许新建一个名字等于别人别名的角色。
+    - `POST /characters/:id/merge { source_ids }` 合并重复角色。
+  - 合并在一个事务里完成：
+    - 集关联、镜头关联迁到目标角色（目标已有的关联去重）。
+    - 造型和生成记录迁到目标角色。
+    - 目标为空的字段用源角色的补上。
+    - 源角色的名字和别名并入目标别名。
+    - 本项目所有镜头视频提示词里的 `@源名` 改写成 `@目标名`；如果 @ 后面更长地匹配了别的角色名（比如「小雨妈」之于「小雨」）就不改。
+    - 源角色软删除。
+  - **合并后画面不变的规则**：源角色的默认形象，如果目标没有图，就成为目标的形象；如果目标已有不同的图，就转成目标的一个造型（用源角色名命名）。原来用源默认形象的集、镜头：
+    - 集关联被迁过来的：这个集选用该造型；其中跟随本集的镜头继续跟随。
+    - 目标原本已在该集的（源的集关联被去重删除）：这些镜头显式指定该造型。
+  - 前端：项目详情页的角色编辑弹窗里新增「别名 / 称呼」输入框和「合并重复角色…」按钮（合并弹窗用 Teleport 渲染）。
+  - 顺手修复：`GET /dramas` 和 `GET /dramas/:id` 原来会返回已软删除的角色、场景、道具，导致详情页显示已删除的素材。现在已过滤。
+- **改动 2：角色造型**
+  - 新表 `character_looks`。**默认造型就是角色自身的形象图，不写进这张表**，所以已有数据不需要迁移。
+  - `episode_characters.look_id`：本集用哪套造型，空 = 默认造型。
+  - `storyboard_characters.look_id`：单个镜头覆盖，空 = 跟随本集，**0 = 强制默认造型**（比如本集换了装，回忆镜头要用原来的样子）。
+  - 接口：
+    - `GET/POST/PUT/DELETE /character-looks`，在 `routes/characterLooks.ts`。删除造型时，引用它的集和镜头回到默认。
+    - `PUT /episodes/:id/characters/:characterId/look` 设置本集造型；`PUT /storyboards/:id/character-look` 设置镜头覆盖。
+    - `GET /episodes/:id/characters` 额外返回 `looks` 和 `episode_look_id`；`GET /episodes/:id/storyboards` 额外返回 `character_looks`（`{ 角色ID: 造型ID }`）。
+  - 生成造型图：`POST /character-looks/:id/generate-image`。以角色默认形象作参考图，提示词里要求「同一个人，只换造型」。任务参数里带 `lookId`、**不带 `characterId`**，完成后 `writeBackImageAssets` 只写到这个造型，不会覆盖角色主形象。
+  - 两处 `syncStoryboardCharacters`（`routes/storyboards.ts` 和 `agents/tools/storyboard-tools.ts`）原来都是先删再插。现在重建关联时会保留每个角色的 `look_id`，否则改一次角色绑定或 Agent 重拆分镜，造型选择就丢了。
+  - 前端：
+    - 新组件 `components/CharacterLooksPanel.vue`，放在项目详情页的角色编辑弹窗和剧集工作台的角色详情弹窗里。
+    - 剧集工作台的角色卡片上有「造型 · xx」下拉，用来选本集造型。
+    - 视频检查器里新增「本镜头造型」，选项有：跟随本集、默认造型、各套造型。
+    - `composables/useCharacterIdentity.ts` 里的 `resolveCharacterLook(char, sb)` 按 镜头覆盖 → 本集选择 → 默认 的顺序解析。参考图（`collectShotReferences`）和参考素材面板都用它。选中的造型还没有图时，暂用默认形象。
+- **注意事项 / 已知限制**
+  - **火山引擎（Seedream）图片适配器目前不发送参考图**（`services/adapters/volcengine-image.ts`），所以用它生成造型图时没法参考人脸，只能靠提示词。OpenAI 和 Gemini 支持参考图。没有改火山适配器，因为没有真实接口可以验证。
+  - 角色卡片和项目详情页上的大图仍然是默认形象，本集选用的造型只在卡片的标签上显示。
+  - 合并时，如果源角色和目标角色都在同一集，源角色在这一集选的造型会丢失（以目标的为准）。
+  - 视频提示词里的 `@别名` 不会自动映射到参考图，所以合并时会把 `@源名` 改写成目标名。
+- **验证**
+  - 用临时库直接调用提取工具：别名命中、Agent 给的别名反查、和别人别名冲突时不合并（测试时发现并修复了把两个人误合并的问题）。
+  - 通过 API 测试别名、合并、造型的完整流程（包括「目标已在该集」的分支），用本地模拟的 OpenAI 服务确认造型生图发出了 1 张参考图、结果只写到造型上。
+  - Playwright 走了一遍完整界面流程（别名 → 合并 → 新建造型并生成 → 选本集造型 → 镜头覆盖为默认造型），拦截提交请求核对参考图和 `@图片N` 改写结果。
+  - 结构测试：`backend/tests/character-identity-structure.test.mjs`、`frontend/tests/character-looks-structure.test.mjs`。`backend/tests/asset-extract-structure.test.mjs` 因为代码挪了位置，测试读的文件路径已同步修改。
+
 ### 2026-10-25 · 已定妆资产锁定视觉设定；分镜参考图角色优先
-- **分支**：`feature/character-consistency`（基于 `master`，未合并）
+- **分支**：`feature/character-consistency`（基于 `master`）；2026-10-25 已合并到 `dev`
 - **背景**：每集单独上传剧本、单独提取资产。角色本来就是项目级的（`characters.drama_id` 加 `episode_characters` 多对多），按名字和归一化名字复用同一条记录，跨集用的是同一张定妆图。但有两处会让形象悄悄漂移，本次修复：
 - **改动 1：定妆锁定**（`backend/src/agents/tools/extract-tools.ts`）
   - `isLocked(row) = !!row.imageUrl`：有图即视为已定妆。
@@ -89,7 +193,7 @@
   - 结构测试：`backend/tests/asset-lock-structure.test.mjs`、`frontend/tests/shot-reference-priority-structure.test.mjs`。
 
 ### 2026-10-24 · 全局素材库（多级文件夹、项目内从素材库选图）
-- **分支**：`feature/asset-library`（基于 `master`，未合并；分两次提交）
+- **分支**：`feature/asset-library`（基于 `master`，分两次提交）；2026-10-25 已合并到 `dev`
 - **改动**
   - 顶部导航新增「素材」（`/library`，`frontend/app/pages/library.vue`），分「角色」和「场景」两类。
   - 根目录有三块：
@@ -120,8 +224,6 @@
 
 ## 待办 / 已讨论未实施
 
-来自 2026-10-25 关于「跨集角色一致性」的讨论，第 1、4 项已在上面实施：
+来自 2026-10-25 关于「跨集角色一致性」的讨论，第 1–5 项（含前情摘要）已在上面实施：
 
-- **别名与合并重复角色**：给角色加别名列表，提取时按别名匹配；界面提供「合并为同一角色」，迁移 `episode_characters` 和 `storyboard_characters` 关联。解决称呼变化（如「小雨」「林总」）被当成新角色的问题。
-- **角色造型**：一个角色可以有多套造型（各自的图和提示词）。生成新造型时用原定妆图做参考图（图生图），保证脸不变。剧集或镜头选用哪套造型。
-- **前情摘要**：每集完成后生成摘要，提供给后续集的改写和分镜 Agent。目前 Agent 上下文只有 `episodeId` 和 `dramaId`（`backend/src/agents/context.ts`），拿不到前几集的剧情。
+- **火山引擎图片适配器支持参考图**：让 Seedream 生成造型图时也能参考人脸。需要先用真实接口确认参数格式。

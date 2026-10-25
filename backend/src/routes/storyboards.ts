@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { db, getInsertId, schema } from '../db/index.js'
 import { success, created, now, badRequest } from '../utils/response.js'
 import { toSnakeCase } from '../utils/transform.js'
@@ -8,6 +8,10 @@ import { logTaskPayload, logTaskStart, logTaskSuccess } from '../utils/task-logg
 const app = new Hono()
 
 async function syncStoryboardCharacters(storyboardId: number, characterIds: number[]) {
+  // 重建关联时保留仍在镜头中的角色的造型覆盖（look_id），否则改绑定会悄悄丢掉造型选择
+  const previous = await db.select().from(schema.storyboardCharacters)
+    .where(eq(schema.storyboardCharacters.storyboardId, storyboardId))
+  const lookByChar = new Map(previous.map(l => [l.characterId, l.lookId]))
   await db.delete(schema.storyboardCharacters)
     .where(eq(schema.storyboardCharacters.storyboardId, storyboardId))
 
@@ -19,6 +23,7 @@ async function syncStoryboardCharacters(storyboardId: number, characterIds: numb
     await db.insert(schema.storyboardCharacters).values({
       storyboardId,
       characterId,
+      lookId: lookByChar.get(characterId) ?? null,
     })
   }
 }
@@ -162,6 +167,24 @@ app.put('/:id', async (c) => {
 })
 
 // DELETE /storyboards/:id
+// PUT /storyboards/:id/character-look — 镜头级造型覆盖 { character_id, look_id }
+// look_id：null = 跟随本集；0 = 强制默认造型（如本集换装后的回忆镜头）；>0 = 指定造型
+app.put('/:id/character-look', async (c) => {
+  const id = Number(c.req.param('id'))
+  const body = await c.req.json()
+  const characterId = Number(body.character_id)
+  const lookId = body.look_id === 0 || body.look_id === '0' ? 0 : body.look_id ? Number(body.look_id) : null
+  if (lookId) {
+    const [look] = await db.select().from(schema.characterLooks)
+      .where(and(eq(schema.characterLooks.id, lookId), isNull(schema.characterLooks.deletedAt)))
+    if (!look || look.characterId !== characterId) return badRequest(c, '造型不属于该角色')
+  }
+  const res = await db.update(schema.storyboardCharacters).set({ lookId })
+    .where(and(eq(schema.storyboardCharacters.storyboardId, id), eq(schema.storyboardCharacters.characterId, characterId)))
+  if (!res.changes) return badRequest(c, '该角色未绑定到此镜头')
+  return success(c)
+})
+
 app.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'))
   logTaskStart('StoryboardAPI', 'delete', { storyboardId: id })

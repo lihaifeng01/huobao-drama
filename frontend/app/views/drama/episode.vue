@@ -61,6 +61,10 @@
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             {{ t('common.refresh') }}
           </button>
+          <button class="btn recap-trigger" :disabled="!episode" @click="recapOpen = true">
+            <BookOpen :size="12" />
+            {{ t('recap.button') }}
+          </button>
           <button class="btn task-drawer-trigger" @click="openTaskDrawer">
             <ListTodo :size="12" />
             {{ t('episode.topbar.tasks') }}
@@ -340,6 +344,28 @@
                         <div class="character-name-row">
                           <strong class="character-name">{{ c.name }}</strong>
                           <span class="tag">{{ c.role || t('common.role') }}</span>
+                          <span v-if="c.looks?.length" class="look-chip-wrap" @click.stop>
+                            <AppMenu
+                              :open="lookMenuId === c.id"
+                              placement="bottom-start"
+                              :min-width="150"
+                              @update:open="(v) => { lookMenuId = v ? c.id : null }"
+                            >
+                              <template #trigger>
+                                <button type="button" class="tag look-chip" :class="{ 'is-custom': !!c.episode_look_id }" :title="t('looks.episodeLookTitle')">
+                                  {{ t('looks.chip', { name: episodeLookName(c) }) }}
+                                </button>
+                              </template>
+                              <AppMenuItem :selected="!c.episode_look_id" @click="setEpisodeLook(c, null)">{{ t('looks.defaultName') }}</AppMenuItem>
+                              <AppMenuItem v-for="look in c.looks" :key="look.id" :selected="c.episode_look_id === look.id" @click="setEpisodeLook(c, look.id)">
+                                {{ look.name }}
+                                <template v-if="!look.image_url" #trailing><span class="dim">{{ t('looks.noImageShort') }}</span></template>
+                              </AppMenuItem>
+                              <div class="app-menu-sep"></div>
+                              <AppMenuItem @click="lookMenuId = null; openAssetDetail('character', c)">{{ t('looks.manage') }}</AppMenuItem>
+                            </AppMenu>
+                          </span>
+                          <button v-else type="button" class="tag look-chip is-empty" :title="t('looks.manage')" @click.stop="openAssetDetail('character', c)">{{ t('looks.addShort') }}</button>
                         </div>
                         <div class="character-visual-summary" :title="characterVisualSummary(c)">
                           <span>{{ t('episode.asset.appearance') }}{{ characterAppearanceValue(c) }}</span>
@@ -777,7 +803,7 @@
                   <section class="video-inspector-section">
                     <div class="video-inspector-prompt-head">
                       <span class="video-inspector-label">{{ t('episode.inspector.boundRefs') }}</span>
-                      <span class="tag mono">{{ boundRefAssets.length }}</span>
+                      <span class="tag mono" :class="{ 'tag-warning': droppedRefs.length }">{{ selectedShotRefs.kept.length }}/{{ refImageLimit }}</span>
                     </div>
                     <div v-if="boundRefAssets.length" class="video-bound-refs">
                       <button
@@ -785,16 +811,35 @@
                         :key="asset.key"
                         type="button"
                         class="video-bound-ref"
+                        :class="{ 'is-dropped': droppedRefKeys.has(asset.key) }"
                         :disabled="!asset.ready"
-                        :title="`${asset.name} · ${asset.typeLabel}`"
+                        :title="droppedRefKeys.has(asset.key) ? t('episode.ref.droppedTitle', { name: asset.name }) : `${asset.name} · ${asset.typeLabel}`"
                         @click="asset.ready && openImageViewer(assetImageSrc({ imageUrl: asset.imageUrl }), `${asset.name} ${asset.typeLabel}`)"
                       >
                         <img v-if="asset.ready" :src="thumbOf(assetImageSrc({ imageUrl: asset.imageUrl }))" :alt="asset.name" loading="lazy" @error="thumbFallback($event, assetImageSrc({ imageUrl: asset.imageUrl }))" />
                         <span v-else class="video-bound-ref-empty">{{ asset.kind === 'scene' ? t('episode.ref.shortScene') : asset.kind === 'prop' ? t('episode.ref.shortProp') : t('episode.ref.shortChar') }}</span>
                         <small>{{ asset.name }}</small>
+                        <span v-if="droppedRefKeys.has(asset.key)" class="video-bound-ref-dropped">{{ t('episode.ref.dropped') }}</span>
                       </button>
                     </div>
                     <div v-else class="video-bound-refs-empty">{{ t('episode.inspector.noBoundRefs') }}</div>
+                    <div v-if="shotLookRows.length" class="shot-look-rows">
+                      <div class="shot-look-title">{{ t('looks.shotTitle') }}</div>
+                      <label v-for="row in shotLookRows" :key="row.char.id" class="shot-look-row">
+                        <span class="shot-look-name truncate">{{ row.char.name }}</span>
+                        <BaseSelect
+                          :model-value="row.value"
+                          :options="row.options"
+                          :searchable="false"
+                          class="shot-look-select"
+                          @update:model-value="(v) => setShotLook(selectedSb, row.char, v)"
+                        />
+                      </label>
+                      <p v-if="shotLookRows.some(r => r.fallback)" class="shot-look-hint">{{ t('looks.fallbackHint') }}</p>
+                    </div>
+                    <p v-if="droppedRefs.length" class="video-ref-truncated">
+                      {{ t('episode.ref.truncatedHint', { limit: refImageLimit, names: droppedRefs.map(r => r.name).join(t('common.listJoin')) }) }}
+                    </p>
                   </section>
                 </div>
 
@@ -1201,6 +1246,9 @@
               </section>
             </div>
 
+            <section v-if="assetDetail.type === 'character'" class="asset-detail-looks-panel">
+              <CharacterLooksPanel :character="assetDetail.item" :config-id="episode?.image_config_id || episode?.imageConfigId || null" @changed="onLooksChanged" />
+            </section>
             <section class="asset-detail-prompt-panel">
               <div class="asset-detail-section-title">
                 <span>{{ assetDetail.type === 'character' ? t('episode.asset.finalPromptTurnaround') : assetDetail.type === 'scene' ? t('episode.asset.finalPromptFixed') : t('episode.asset.finalPromptWhiteBg') }}</span>
@@ -1436,6 +1484,13 @@
         @close="libraryPick = null"
         @select="applyLibraryImage"
       />
+      <EpisodeRecapDialog
+        :open="recapOpen"
+        :episode-id="episode?.id || null"
+        :model="chatModelOverride() || ''"
+        :config-id="chatConfigId() || null"
+        @close="recapOpen = false"
+      />
       <ConfirmDialog
         :open="assetDelete.open"
         :title="t('episode.delete.title', { type: assetDeleteTypeLabel })"
@@ -1454,10 +1509,11 @@ import { toast } from 'vue-sonner'
 import { useI18n } from 'vue-i18n'
 import {
   Users, FileText, FolderKanban, Clapperboard, Download, Loader2,
-  Plus, X, ListTodo, CircleHelp, Images,
+  Plus, X, ListTodo, CircleHelp, Images, BookOpen,
 } from 'lucide-vue-next'
 import { api, dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, propAPI, taskAPI, mergeAPI, aiConfigAPI, uploadAPI } from '~/composables/useApi'
 import { startTour, autoTour } from '~/composables/useTour'
+import { resolveCharacterLook } from '~/composables/useCharacterIdentity'
 import { useAgent } from '~/composables/useAgent'
 import { toastError, mapError, MODERATION_RE } from '~/composables/useToast'
 import LocaleSwitcher from '~/components/LocaleSwitcher.vue'
@@ -2183,6 +2239,8 @@ function confirmBatchVideos() {
   const ids = targets.map(s => s.id)
   targets.forEach(sb => genVid(sb, { silent: true }))
   toast.success(t('episode.vid.batchStarted', { n: ids.length }))
+  const truncatedCount = targets.filter(sb => collectShotReferences(sb).dropped.length).length
+  if (truncatedCount) toast.warning(t('episode.ref.truncatedBatchToast', { n: truncatedCount, limit: refImageLimit.value }), { duration: 6000 })
   watchAsyncResult(() => ids.every(id => {
     const target = sbs.value.find(s => s.id === id)
     const done = !!getVideoUrl(target)
@@ -3055,29 +3113,107 @@ function formatHistoryTime(iso) {
   return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
-function getShotReferenceImages(sb) {
-  const refs = []
-  const pushRef = (value) => {
-    if (!value || refs.includes(value) || refs.length >= refImageLimit.value) return
-    refs.push(value)
+/**
+ * 收集分镜参考图（生成提交与 @名字 → @图片N 映射共用同一顺序，保证序号一致）
+ * 优先级：角色 → 场景 → 道具。人物一致性最依赖参考图，超出模型上限时优先保留角色图；
+ * 超出部分记入 dropped，供检查器与生成时提示（不再静默丢弃）
+ */
+function collectShotReferences(sb) {
+  const kept = []
+  const dropped = []
+  const seen = new Set()
+  const push = (kind, id, name, url) => {
+    if (!url || seen.has(url)) return
+    seen.add(url)
+    const entry = { key: `${kind}-${id}`, kind, name, imageUrl: url }
+    if (kept.length < refImageLimit.value) kept.push(entry)
+    else dropped.push(entry)
+  }
+  for (const char of getStoryboardCharacters(sb)) {
+    // 造型：镜头覆盖 → 本集选择 → 默认形象
+    push('character', char.id, char.name || '', resolveCharacterLook(char, sb).imageUrl)
   }
   const scene = getStoryboardScene(sb)
-  pushRef(scene?.image_url || scene?.imageUrl)
-  for (const char of getStoryboardCharacters(sb)) {
-    pushRef(char?.image_url || char?.imageUrl)
-  }
+  if (scene) push('scene', scene.id, scene.location || '', scene.image_url || scene.imageUrl)
   for (const prop of getStoryboardProps(sb)) {
-    pushRef(prop?.image_url || prop?.imageUrl)
+    push('prop', prop.id, prop.name || '', prop?.image_url || prop?.imageUrl)
   }
-  return refs
+  return { kept, dropped }
 }
+
+function getShotReferenceImages(sb) {
+  return collectShotReferences(sb).kept.map(r => r.imageUrl)
+}
+
+// 前情提要弹窗（前几集摘要的查看/生成/编辑，见 EpisodeRecapDialog）
+const recapOpen = ref(false)
+
+// ===== 角色造型：本集选择（角色卡片）与镜头覆盖（检查器） =====
+const lookMenuId = ref(null)
+const SHOT_LOOK_FOLLOW = 'follow'
+function episodeLookName(c) {
+  const look = (c.looks || []).find(l => l.id === c.episode_look_id)
+  return look ? look.name : t('looks.defaultName')
+}
+async function setEpisodeLook(c, lookId) {
+  lookMenuId.value = null
+  if ((c.episode_look_id || null) === lookId) return
+  try {
+    await episodeAPI.setCharacterLook(episode.value.id, c.id, lookId)
+    await refresh()
+  } catch (e) {
+    toastError(e)
+  }
+}
+// 每个已绑定且有额外造型的角色一行：跟随本集 / 默认造型(0) / 各造型
+const shotLookRows = computed(() => {
+  const sb = selectedSb.value
+  if (!sb) return []
+  return getStoryboardCharacters(sb).filter(c => c.looks?.length).map((c) => {
+    const override = sb.character_looks?.[c.id]
+    const resolved = resolveCharacterLook(c, sb)
+    return {
+      char: c,
+      value: override === undefined || override === null ? SHOT_LOOK_FOLLOW : override,
+      fallback: resolved.fallback,
+      options: [
+        { label: t('looks.followEpisode', { name: episodeLookName(c) }), value: SHOT_LOOK_FOLLOW },
+        { label: t('looks.defaultName'), value: 0 },
+        ...c.looks.map(l => ({ label: l.image_url ? l.name : `${l.name}（${t('looks.noImageShort')}）`, value: l.id })),
+      ],
+    }
+  })
+})
+async function setShotLook(sb, char, value) {
+  const lookId = value === SHOT_LOOK_FOLLOW ? null : Number(value)
+  try {
+    await storyboardAPI.setCharacterLook(sb.id, char.id, lookId)
+    await refresh()
+  } catch (e) {
+    toastError(e)
+  }
+}
+// 造型面板内增删改后刷新列表，并同步已打开的详情弹窗
+async function onLooksChanged() {
+  await refresh()
+  const d = assetDetail.value
+  if (d.open && d.type === 'character') {
+    const fresh = chars.value.find(c => c.id === d.item?.id)
+    if (fresh) Object.assign(d.item, { looks: fresh.looks, episode_look_id: fresh.episode_look_id })
+  }
+}
+
+// 当前分镜实际提交的参考图与因超出上限未提交的素材（检查器内计数、标记与提示）
+const selectedShotRefs = computed(() => (selectedSb.value ? collectShotReferences(selectedSb.value) : { kept: [], dropped: [] }))
+const droppedRefs = computed(() => selectedShotRefs.value.dropped)
+const droppedRefKeys = computed(() => new Set(droppedRefs.value.map(r => r.key)))
 
 // 右侧参考素材面板：本集全部可绑定素材（场景单选、角色/道具多选），bound 标记是否已绑定
 // kind 为英文 code（逻辑值）；typeLabel 为显示名（渲染时求值）
 function shotBindableAssets(sb) {
   const out = []
   for (const char of visualChars.value) {
-    const imageUrl = char.image_url || char.imageUrl || ''
+    const imageUrl = resolveCharacterLook(char, sb).imageUrl
     out.push({
       key: `character-${char.id}`,
       id: char.id,
@@ -3183,25 +3319,10 @@ const mentionOptions = computed(() => {
   ]
 })
 
-// 按参考图顺序（场景图在前、角色图居中、道具图在后）为 @名字 建立索引映射，供视频提示词引用替换
+// 按参考图提交顺序（角色 → 场景 → 道具，与 getShotReferenceImages 同源）为 @名字 建立索引映射，供视频提示词引用替换
 function getShotReferenceIndexMap(sb) {
-  const ordered = []
-  const seen = new Set()
-  const push = (name, url) => {
-    if (!url || seen.has(url) || ordered.length >= refImageLimit.value) return
-    seen.add(url)
-    ordered.push({ name, imageUrl: url })
-  }
-  const scene = getStoryboardScene(sb)
-  push(scene?.location || '', scene?.image_url || scene?.imageUrl)
-  for (const char of getStoryboardCharacters(sb)) {
-    push(char.name || '', char?.image_url || char?.imageUrl)
-  }
-  for (const prop of getStoryboardProps(sb)) {
-    push(prop.name || '', prop?.image_url || prop?.imageUrl)
-  }
   const nameToIndex = {}
-  ordered.forEach((a, i) => { if (a.name && !(a.name in nameToIndex)) nameToIndex[a.name] = i + 1 })
+  collectShotReferences(sb).kept.forEach((a, i) => { if (a.name && !(a.name in nameToIndex)) nameToIndex[a.name] = i + 1 })
   return nameToIndex
 }
 
@@ -3304,6 +3425,10 @@ async function applyLibraryImage({ image_url }) {
 }
 
 async function genVid(sb, opts = {}) {
+  const { dropped } = collectShotReferences(sb)
+  if (dropped.length && !opts.silent) {
+    toast.warning(t('episode.ref.truncatedToast', { limit: refImageLimit.value, names: dropped.map(r => r.name).join(t('common.listJoin')) }), { duration: 6000 })
+  }
   const referenceImages = getShotReferenceImages(sb)
   // 参考素材完全来自分镜绑定的角色/场景/道具图片
   const params = {
@@ -5240,6 +5365,43 @@ button.video-task-metric.on { box-shadow: 0 0 0 2px var(--accent); }
   text-overflow: ellipsis;
 }
 .video-bound-ref-empty { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+/* 角色造型：卡片上的本集造型选择 */
+.look-chip-wrap { display: inline-flex; }
+.look-chip { cursor: pointer; border: none; font: inherit; font-size: 11px; }
+.look-chip.is-custom { background: var(--accent-bg); color: var(--accent-text); }
+.look-chip.is-empty { background: transparent; border: 1px dashed var(--border-strong); color: var(--text-3); }
+.look-chip:hover { color: var(--text-0); }
+.asset-detail-looks-panel { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+/* 检查器：镜头级造型覆盖 */
+.shot-look-rows { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.shot-look-title { font-size: 11px; font-weight: 650; color: var(--text-2); }
+.shot-look-row { display: grid; grid-template-columns: minmax(0, 72px) minmax(0, 1fr); align-items: center; gap: 8px; font-size: 12px; }
+.shot-look-name { color: var(--text-1); font-weight: 600; }
+.shot-look-hint { font-size: 11px; color: var(--text-3); line-height: 1.5; }
+
+/* 超出参考图上限、本次不会提交的素材 */
+.video-bound-ref.is-dropped { border-style: dashed; border-color: var(--warning); }
+.video-bound-ref.is-dropped img { opacity: 0.35; filter: grayscale(1); }
+.video-bound-ref-dropped {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--warning-bg);
+  color: var(--tag-warning-text);
+  font-size: 9px;
+  font-weight: 600;
+}
+.video-ref-truncated {
+  margin-top: 8px;
+  padding: 7px 9px;
+  border-radius: var(--radius);
+  background: var(--warning-bg);
+  color: var(--tag-warning-text);
+  font-size: 11px;
+  line-height: 1.5;
+}
 .video-bound-refs-empty { padding: 10px; border: 1px dashed var(--surface-outline); border-radius: var(--radius); color: var(--text-3); font-size: 11px; line-height: 1.5; }
 .video-param-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; white-space: nowrap; }
 .video-param-name { color: var(--text-1); font-weight: 600; flex-shrink: 0; }

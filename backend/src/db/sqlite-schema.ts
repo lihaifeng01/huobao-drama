@@ -318,6 +318,20 @@ export const sqliteSchemaStatements = [
   `CREATE INDEX IF NOT EXISTS idx_library_files_category ON library_files (category)`,
   `CREATE INDEX IF NOT EXISTS idx_library_files_folder_id ON library_files (folder_id)`,
 
+  // 角色造型：同一角色的多套造型（服装/妆发变化），默认造型即 characters 本身的形象图，不落此表
+  `CREATE TABLE IF NOT EXISTS character_looks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    character_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    image_url TEXT,
+    sort_order INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_character_looks_character_id ON character_looks (character_id)`,
+
   // 应用级全局设置（key-value，如 AI 内容语言 content_language）
   `CREATE TABLE IF NOT EXISTS app_settings (
     key TEXT PRIMARY KEY,
@@ -409,6 +423,19 @@ const REMOVE_SQL = 'DELETE FROM style_presets WHERE "value" = ? AND "prompt" = ?
  */
 const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: 'library_folders', column: 'parent_id', ddl: 'ALTER TABLE library_folders ADD COLUMN parent_id INTEGER' },
+  // 角色别名（JSON 字符串数组），提取去重与 @ 引用时视为同一角色
+  { table: 'characters', column: 'aliases', ddl: 'ALTER TABLE characters ADD COLUMN aliases TEXT' },
+  // 本集使用的造型（空 = 默认造型）
+  { table: 'episode_characters', column: 'look_id', ddl: 'ALTER TABLE episode_characters ADD COLUMN look_id INTEGER' },
+  // 单个镜头覆盖造型（空 = 跟随本集，0 = 强制默认造型）
+  { table: 'storyboard_characters', column: 'look_id', ddl: 'ALTER TABLE storyboard_characters ADD COLUMN look_id INTEGER' },
+  // 前情摘要：本集剧情/人物状态摘要，供后续集的 Agent 保持连续性
+  { table: 'episodes', column: 'summary', ddl: 'ALTER TABLE episodes ADD COLUMN summary TEXT' },
+  // 生成摘要时所依据剧本的哈希；剧本改动后与当前哈希不一致即视为过期
+  { table: 'episodes', column: 'summary_source_hash', ddl: 'ALTER TABLE episodes ADD COLUMN summary_source_hash TEXT' },
+  // 用户手动编辑过的摘要不被自动重新生成覆盖
+  { table: 'episodes', column: 'summary_edited', ddl: 'ALTER TABLE episodes ADD COLUMN summary_edited INTEGER DEFAULT 0' },
+  { table: 'episodes', column: 'summary_updated_at', ddl: 'ALTER TABLE episodes ADD COLUMN summary_updated_at TEXT' },
 ]
 
 /** 依赖增量列的索引，须在补列之后建 */

@@ -12,6 +12,10 @@ import { logTaskProgress, logTaskSuccess } from '../../utils/task-logger.js'
 import { getDramaId, getEpisodeId } from '../context.js'
 
 async function syncStoryboardCharacters(storyboardId: number, characterIds: number[]) {
+  // 重建关联时保留仍在镜头中的角色的造型覆盖（look_id），避免 Agent 重拆分镜时丢掉用户的造型选择
+  const previous = await db.select().from(schema.storyboardCharacters)
+    .where(eq(schema.storyboardCharacters.storyboardId, storyboardId))
+  const lookByChar = new Map(previous.map(l => [l.characterId, l.lookId]))
   await db.delete(schema.storyboardCharacters)
     .where(eq(schema.storyboardCharacters.storyboardId, storyboardId))
 
@@ -23,6 +27,7 @@ async function syncStoryboardCharacters(storyboardId: number, characterIds: numb
     await db.insert(schema.storyboardCharacters).values({
       storyboardId,
       characterId,
+      lookId: lookByChar.get(characterId) ?? null,
     })
   }
 }

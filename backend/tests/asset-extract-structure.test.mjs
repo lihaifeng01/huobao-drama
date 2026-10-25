@@ -32,14 +32,19 @@ test('extraction service runs per-target async tasks', () => {
 
 test('extraction tools dedupe by normalized name so near-names reuse existing assets', () => {
   const tools = read('src/agents/tools/extract-tools.ts')
+  // normalizeName 与角色匹配（本名 / 归一化名 / 别名）已收敛到 services/character-identity.ts
+  const identity = read('src/services/character-identity.ts')
 
   // 归一化：括号定位/别名后缀去除 + 空白/大小写统一
-  assert.match(tools, /normalizeName\(name: string\)/)
-  assert.match(tools, /replace\(\/\[（\(]/) // 中/英文括号字符类
-  assert.match(tools, /replace\(\/\[\\s/) // 空白字符类
-  assert.match(tools, /\.toLowerCase\(\)/)
+  assert.match(identity, /normalizeName\(name: string\)/)
+  assert.match(identity, /replace\(\/\[（\(]/) // 中/英文括号字符类
+  assert.match(identity, /replace\(\/\[\\s/) // 空白字符类
+  assert.match(identity, /\.toLowerCase\(\)/)
+  assert.match(tools, /import \{ normalizeName[^}]*\} from '\.\.\/\.\.\/services\/character-identity\.js'/)
   // 角色保存：精确匹配优先，归一化近名兜底，命中即复用不重复创建
-  assert.match(tools, /normalizeName\(c\.name\) === normName/)
+  assert.match(identity, /const exact = chars\.find\(c => c\.name === name\)/)
+  assert.match(identity, /normalizeName\(c\.name\) === key/)
+  assert.match(tools, /findCharacterByName\(charsInProject, char\.name\)/)
   assert.match(tools, /matchedViaNorm/)
   assert.match(tools, /save-characters-reuse/)
   // 道具同样按归一化名字复用
