@@ -288,6 +288,36 @@ export const sqliteSchemaStatements = [
     deleted_at TEXT
   )`,
 
+  // 全局素材库（项目之外的角色/场景素材）：用户自建文件夹（可嵌套，parent_id 为空即顶层）+ 用户上传文件
+  // 项目文件夹不落表，由 dramas + characters/scenes 实时聚合
+  `CREATE TABLE IF NOT EXISTS library_folders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category TEXT NOT NULL,
+    parent_id INTEGER,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_library_folders_category ON library_folders (category)`,
+
+  `CREATE TABLE IF NOT EXISTS library_files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category TEXT NOT NULL,
+    folder_id INTEGER,
+    name TEXT NOT NULL,
+    description TEXT,
+    image_url TEXT NOT NULL,
+    file_size INTEGER,
+    width INTEGER,
+    height INTEGER,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_library_files_category ON library_files (category)`,
+  `CREATE INDEX IF NOT EXISTS idx_library_files_folder_id ON library_files (folder_id)`,
+
   // 应用级全局设置（key-value，如 AI 内容语言 content_language）
   `CREATE TABLE IF NOT EXISTS app_settings (
     key TEXT PRIMARY KEY,
@@ -374,8 +404,27 @@ const UPGRADE_SQL = 'UPDATE style_presets SET "name" = ?, "prompt" = ?, "descrip
 // 内容寻址下架：命中下架种子原文才删除
 const REMOVE_SQL = 'DELETE FROM style_presets WHERE "value" = ? AND "prompt" = ?'
 
+/**
+ * 增量列：CREATE TABLE IF NOT EXISTS 不会给已存在的表补列，按 PRAGMA table_info 缺失才 ALTER（幂等）
+ */
+const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
+  { table: 'library_folders', column: 'parent_id', ddl: 'ALTER TABLE library_folders ADD COLUMN parent_id INTEGER' },
+]
+
+/** 依赖增量列的索引，须在补列之后建 */
+const POST_COLUMN_STATEMENTS = [
+  `CREATE INDEX IF NOT EXISTS idx_library_folders_parent_id ON library_folders (parent_id)`,
+]
+
 export function initSqliteSchema(sqlite: Database.Database) {
   for (const statement of sqliteSchemaStatements) {
+    sqlite.exec(statement)
+  }
+  for (const { table, column, ddl } of ADDED_COLUMNS) {
+    const cols = sqlite.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
+    if (!cols.some(c => c.name === column)) sqlite.exec(ddl)
+  }
+  for (const statement of POST_COLUMN_STATEMENTS) {
     sqlite.exec(statement)
   }
   const insertSeed = sqlite.prepare(SEED_SQL)

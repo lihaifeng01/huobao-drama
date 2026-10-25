@@ -63,3 +63,6 @@ SQLite 单文件（默认 `data/huobao.sqlite3`，桌面版在 userData）。启
 - AI 服务配置存 DB（`ai_service_configs` 表），设置页维护，不在配置文件
 - 环境变量全集见 README「环境变量」；`configs/config.yaml` 是死配置（勿参考）
 - `PUBLIC_BASE_URL`：Seedance 引用本地参考资源需公网地址，桌面版无此能力（有中文报错）
+
+## AI 变更记录
+开始工作前先读 `docs/ai-changelog.md`（历次改动、设计取舍与踩坑记录）；每次改动完成后在其中追加条目（倒序，模板见文件内）。

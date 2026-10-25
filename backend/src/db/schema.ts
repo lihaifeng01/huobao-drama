@@ -289,3 +289,29 @@ export const appSettings = sqliteTable('app_settings', {
   value: text('value').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
+
+// 全局素材库：category = character | scene；文件夹可嵌套（parent_id 为空即顶层），文件 folder_id 为空表示根目录
+export const libraryFolders = sqliteTable('library_folders', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  category: text('category').notNull(),
+  parentId: integer('parent_id'),
+  name: text('name').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+})
+
+export const libraryFiles = sqliteTable('library_files', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  category: text('category').notNull(),
+  folderId: integer('folder_id'),
+  name: text('name').notNull(),
+  description: text('description'),
+  imageUrl: text('image_url').notNull(),
+  fileSize: integer('file_size'),
+  width: integer('width'),
+  height: integer('height'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+})

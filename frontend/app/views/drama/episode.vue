@@ -355,6 +355,9 @@
                         <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         {{ t('episode.asset.upload') }}
                       </button>
+                      <button class="btn btn-icon btn-sm library-pick-btn" :title="t('library.picker.button')" :disabled="isUploadingAsset('character', c.id)" @click.stop="openLibraryPicker('character', c.id)">
+                        <Images :size="11" :stroke-width="2" />
+                      </button>
                     </div>
                   </div>
                   <div class="asset-final-prompt" :title="c.final_prompt || c.finalPrompt || ''">
@@ -412,6 +415,9 @@
                     <Loader2 v-if="isUploadingAsset('scene', s.id)" :size="11" class="animate-spin" />
                     <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                     {{ t('episode.asset.upload') }}
+                  </button>
+                  <button class="btn btn-icon btn-sm library-pick-btn" :title="t('library.picker.button')" :disabled="isUploadingAsset('scene', s.id)" @click.stop="openLibraryPicker('scene', s.id)">
+                    <Images :size="11" :stroke-width="2" />
                   </button>
                   <button class="btn btn-sm" :disabled="isPendingSceneImage(s.id)" @click.stop="genSceneImg(s.id)">
                     <Loader2 v-if="isPendingSceneImage(s.id)" :size="11" class="animate-spin" />
@@ -1257,6 +1263,15 @@
                 {{ t('episode.asset.uploadImage') }}
               </button>
               <button
+                v-if="assetDetail.type !== 'prop'"
+                class="btn library-pick-btn"
+                :disabled="isUploadingAsset(assetDetail.type, assetDetail.item.id)"
+                @click="openLibraryPicker(assetDetail.type, assetDetail.item.id)"
+              >
+                <Images :size="11" :stroke-width="2" />
+                {{ t('library.picker.button') }}
+              </button>
+              <button
                 v-if="assetDetail.type === 'character'"
                 class="btn"
                 :disabled="isPendingCharImage(assetDetail.item.id)"
@@ -1414,6 +1429,13 @@
         </div>
       </div>
 
+      <LibraryPicker
+        :open="!!libraryPick"
+        :category="libraryPick?.kind === 'scene' ? 'scene' : 'character'"
+        :applying="libraryApplying"
+        @close="libraryPick = null"
+        @select="applyLibraryImage"
+      />
       <ConfirmDialog
         :open="assetDelete.open"
         :title="t('episode.delete.title', { type: assetDeleteTypeLabel })"
@@ -1432,7 +1454,7 @@ import { toast } from 'vue-sonner'
 import { useI18n } from 'vue-i18n'
 import {
   Users, FileText, FolderKanban, Clapperboard, Download, Loader2,
-  Plus, X, ListTodo, CircleHelp,
+  Plus, X, ListTodo, CircleHelp, Images,
 } from 'lucide-vue-next'
 import { api, dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, propAPI, taskAPI, mergeAPI, aiConfigAPI, uploadAPI } from '~/composables/useApi'
 import { startTour, autoTour } from '~/composables/useTour'
@@ -3236,19 +3258,49 @@ function uploadAssetImage(kind, id) {
     if (!uploadingAssetKeys.value.includes(key)) uploadingAssetKeys.value.push(key)
     try {
       const res = await uploadAPI.image(file)
-      // 与生图回写保持一致：存相对路径（static/...），前端展示时补前导斜杠
-      const payload = { image_url: res.path, local_path: res.path }
-      if (kind === 'character') await characterAPI.update(id, payload)
-      else if (kind === 'scene') await sceneAPI.update(id, payload)
-      else await propAPI.update(id, payload)
+      await setAssetImage(kind, id, res.path)
       toast.success(t('episode.upload.assetDone', { type: assetUploadLabelMap.value[kind] || '' }))
-      await refresh()
     } catch (e) {
       toastError(e)
     } finally {
       uploadingAssetKeys.value = uploadingAssetKeys.value.filter(k => k !== key)
     }
   })
+}
+
+// 写回资产图片：与生图回写保持一致，存相对路径（static/...），前端展示时补前导斜杠
+async function setAssetImage(kind, id, path) {
+  const payload = { image_url: path, local_path: path }
+  if (kind === 'character') await characterAPI.update(id, payload)
+  else if (kind === 'scene') await sceneAPI.update(id, payload)
+  else await propAPI.update(id, payload)
+  await refresh()
+  // 详情弹窗打开时同步刷新预览
+  if (assetDetail.value.open && assetDetail.value.type === kind && assetDetail.value.item?.id === id) {
+    Object.assign(assetDetail.value.item, payload)
+  }
+}
+
+// ===== 从全局素材库选择图片（角色 / 场景）=====
+const libraryPick = ref(null) // { kind, id }
+const libraryApplying = ref(false)
+function openLibraryPicker(kind, id) { libraryPick.value = { kind, id } }
+async function applyLibraryImage({ image_url }) {
+  const target = libraryPick.value
+  if (!target || libraryApplying.value) return
+  const key = `${target.kind}:${target.id}`
+  libraryApplying.value = true
+  if (!uploadingAssetKeys.value.includes(key)) uploadingAssetKeys.value.push(key)
+  try {
+    await setAssetImage(target.kind, target.id, image_url)
+    toast.success(t('library.picker.applied'))
+    libraryPick.value = null
+  } catch (e) {
+    toastError(e)
+  } finally {
+    libraryApplying.value = false
+    uploadingAssetKeys.value = uploadingAssetKeys.value.filter(k => k !== key)
+  }
 }
 
 async function genVid(sb, opts = {}) {
@@ -3378,6 +3430,14 @@ onMounted(() => setTimeout(() => autoTour('episode', EPISODE_TOUR, t), 900))
 </script>
 
 <style scoped>
+/* 卡片内「从素材库选择」：图标按钮，与 btn-sm 等高 */
+.btn-icon.btn-sm.library-pick-btn {
+  width: var(--button-height-sm);
+  min-width: var(--button-height-sm);
+  height: var(--button-height-sm);
+  min-height: var(--button-height-sm);
+  flex-shrink: 0;
+}
 /* ===== Studio Layout ===== */
 .studio {
   display: flex;

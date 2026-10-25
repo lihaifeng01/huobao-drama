@@ -34,6 +34,7 @@
   "layout": {
     "nav": {
       "projects": "项目",
+      "library": "素材",
       "settings": "设置"
     },
     "banner": {
@@ -151,6 +152,82 @@
       "minutesAgo": "{n} 分钟前",
       "hoursAgo": "{n} 小时前",
       "daysAgo": "{n} 天前"
+    }
+  },
+  "library": {
+    "title": "素材",
+    "sub": "跨项目聚合的角色与场景素材",
+    "category": {
+      "character": "角色",
+      "scene": "场景"
+    },
+    "newFolder": "新建文件夹",
+    "upload": "上传",
+    "uploading": "上传中 {done}/{total}",
+    "searchPlaceholder": "搜索文件夹或文件",
+    "root": "全部",
+    "sections": {
+      "myFolders": "我的文件夹",
+      "projectFolders": "项目文件夹",
+      "files": "文件",
+      "subFolders": "子文件夹"
+    },
+    "projectTag": "项目",
+    "projectHint": "随项目自动创建，内容与项目同步",
+    "fileCount": "{n} 个文件",
+    "folderStats": "{folders} 个文件夹 · {files} 个文件",
+    "itemCount": "{n} 项",
+    "openProject": "打开项目",
+    "readonlyHint": "项目素材为只读，请进入项目编辑",
+    "noImage": "暂无图片",
+    "empty": {
+      "files": "还没有上传{category}素材",
+      "filesDesc": "点击「上传」或将图片拖拽到这里",
+      "folder": "文件夹是空的",
+      "folderDesc": "点击「上传」或将图片拖拽到这里",
+      "project": "该项目还没有{category}",
+      "projectDesc": "在项目中提取或新增后会自动出现在这里",
+      "search": "没有匹配的素材"
+    },
+    "actions": {
+      "rename": "重命名",
+      "move": "移动到…",
+      "delete": "删除",
+      "preview": "预览"
+    },
+    "dialogs": {
+      "newFolderTitle": "新建文件夹",
+      "renameFolderTitle": "重命名文件夹",
+      "renameFileTitle": "重命名文件",
+      "folderNamePlaceholder": "输入文件夹名称",
+      "fileNamePlaceholder": "输入文件名称",
+      "moveTitle": "移动文件",
+      "moveTarget": "目标位置",
+      "rootFolder": "根目录（不放入文件夹）",
+      "deleteFolderTitle": "删除文件夹",
+      "deleteFolderMessage": "确定删除文件夹「{name}」吗？其中的 {n} 个文件也会一并删除。",
+      "deleteFileTitle": "删除文件",
+      "deleteFileMessage": "确定删除「{name}」吗？",
+      "moveFolderTitle": "移动文件夹",
+      "deleteFolderNestedMessage": "确定删除文件夹「{name}」吗？其中的全部子文件夹和 {n} 个文件也会一并删除。"
+    },
+    "toast": {
+      "folderCreated": "文件夹已创建",
+      "renamed": "已重命名",
+      "moved": "已移动",
+      "deleted": "已删除",
+      "uploaded": "已上传 {n} 个文件",
+      "uploadSkipped": "{n} 个文件不是图片，已跳过"
+    },
+    "dropHint": "松开即可上传到「{target}」",
+    "picker": {
+      "button": "从素材库选择图片",
+      "short": "素材库",
+      "title": "从素材库选择{category}图片",
+      "hint": "可从我的文件夹或其他项目中选择，点击图片即可应用",
+      "use": "使用",
+      "empty": "这里还没有素材",
+      "applied": "已应用素材库图片"
     }
   },
   "detail": {

@@ -251,6 +251,9 @@
                         <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         {{ t('episode.asset.upload') }}
                       </button>
+                      <button class="btn btn-icon btn-sm library-pick-btn" type="button" :title="t('library.picker.button')" :disabled="isUploading(m)" @click.stop="openLibraryPicker(m)">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 22H4a2 2 0 0 1-2-2V6"/><path d="m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18"/><circle cx="12" cy="8" r="2"/><rect width="16" height="16" x="6" y="2" rx="2"/></svg>
+                      </button>
                     </div>
                   </div>
                   <div class="asset-final-prompt" :title="m.finalPrompt || ''">
@@ -307,6 +310,9 @@
                     <span v-if="isUploading(m)" class="ring-spinner sm"></span>
                     <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                     {{ t('episode.asset.upload') }}
+                  </button>
+                  <button v-if="g.kindKey === 'scene'" class="btn btn-icon btn-sm library-pick-btn" type="button" :title="t('library.picker.button')" :disabled="isUploading(m)" @click.stop="openLibraryPicker(m)">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 22H4a2 2 0 0 1-2-2V6"/><path d="m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18"/><circle cx="12" cy="8" r="2"/><rect width="16" height="16" x="6" y="2" rx="2"/></svg>
                   </button>
                   <button class="btn btn-sm" type="button" :disabled="isPending(m)" @click.stop="generateMaterial(m)">
                     <span v-if="isPending(m)" class="ring-spinner sm"></span>
@@ -493,6 +499,15 @@
                 {{ t('episode.asset.uploadImage') }}
               </button>
               <button
+                v-if="editTarget.kindKey !== 'prop'"
+                class="btn library-pick-btn"
+                :disabled="isUploading(editTarget)"
+                @click="openLibraryPicker(editTarget)"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 22H4a2 2 0 0 1-2-2V6"/><path d="m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18"/><circle cx="12" cy="8" r="2"/><rect width="16" height="16" x="6" y="2" rx="2"/></svg>
+                {{ t('library.picker.button') }}
+              </button>
+              <button
                 class="btn"
                 :disabled="isPending(editTarget)"
                 @click="generateMaterial(editTarget)"
@@ -550,6 +565,13 @@
         </div>
       </div>
     </div>
+    <LibraryPicker
+      :open="!!libraryPickTarget"
+      :category="libraryPickTarget?.kindKey === 'scene' ? 'scene' : 'character'"
+      :applying="libraryApplying"
+      @close="libraryPickTarget = null"
+      @select="applyLibraryImage"
+    />
     <ConfirmDialog
       :open="!!episodeToDelete"
       :title="t('detail.ep.deleteTitle')"
@@ -807,17 +829,8 @@ function uploadMaterial(m) {
     uploadingMaterials.value = new Set(uploadingMaterials.value).add(key)
     try {
       const res = await uploadAPI.image(file)
-      // 与生图回写保持一致：存相对路径（static/...），展示时补前导斜杠
-      const payload = { image_url: res.path, local_path: res.path }
-      if (m.kindKey === 'character') await characterAPI.update(m.id, payload)
-      else if (m.kindKey === 'scene') await sceneAPI.update(m.id, payload)
-      else await propAPI.update(m.id, payload)
+      await setMaterialImage(m, res.path)
       toast.success(t('detail.mat.uploaded', { kind: m.kind, name: m.name }))
-      await load()
-      // 详情弹窗打开时同步刷新预览
-      if (editTarget.value && editTarget.value.kindKey === m.kindKey && editTarget.value.id === m.id) {
-        editTarget.value = { ...editTarget.value, image_url: res.path, local_path: res.path }
-      }
     } catch (e) {
       toastError(e)
     } finally {
@@ -825,6 +838,41 @@ function uploadMaterial(m) {
     }
   }
   input.click()
+}
+
+// 写回素材图片：与生图回写保持一致，存相对路径（static/...），展示时补前导斜杠
+async function setMaterialImage(m, path) {
+  const payload = { image_url: path, local_path: path }
+  if (m.kindKey === 'character') await characterAPI.update(m.id, payload)
+  else if (m.kindKey === 'scene') await sceneAPI.update(m.id, payload)
+  else await propAPI.update(m.id, payload)
+  await load()
+  // 详情弹窗打开时同步刷新预览
+  if (editTarget.value && editTarget.value.kindKey === m.kindKey && editTarget.value.id === m.id) {
+    editTarget.value = { ...editTarget.value, image_url: path, local_path: path }
+  }
+}
+
+/* ===== 从全局素材库选择图片（角色 / 场景） ===== */
+const libraryPickTarget = ref(null)
+const libraryApplying = ref(false)
+function openLibraryPicker(m) { libraryPickTarget.value = m }
+async function applyLibraryImage({ image_url }) {
+  const m = libraryPickTarget.value
+  if (!m || libraryApplying.value) return
+  const key = pendingKey(m)
+  libraryApplying.value = true
+  uploadingMaterials.value = new Set(uploadingMaterials.value).add(key)
+  try {
+    await setMaterialImage(m, image_url)
+    toast.success(t('library.picker.applied'))
+    libraryPickTarget.value = null
+  } catch (e) {
+    toastError(e)
+  } finally {
+    libraryApplying.value = false
+    uploadingMaterials.value = new Set([...uploadingMaterials.value].filter(k => k !== key))
+  }
 }
 
 function openAssetViewer(m) {
@@ -918,6 +966,14 @@ onMounted(load)
 </script>
 
 <style scoped>
+/* 卡片内「从素材库选择」：图标按钮，与 btn-sm 等高 */
+.btn-icon.btn-sm.library-pick-btn {
+  width: var(--button-height-sm);
+  min-width: var(--button-height-sm);
+  height: var(--button-height-sm);
+  min-height: var(--button-height-sm);
+  flex-shrink: 0;
+}
 .page {
   padding: 20px 28px 40px;
   overflow-y: auto;
