@@ -56,6 +56,10 @@ export const episodeAPI = {
   extractStatus: (id: number) => api.get(`/episodes/${id}/extract-status`),
   generateVideoPrompts: (id: number, model?: string, configId?: number, storyboardIds?: number[]) => api.post(`/episodes/${id}/generate-video-prompts`, { model: model || undefined, config_id: configId || undefined, storyboard_ids: storyboardIds?.length ? storyboardIds : undefined }),
   videoPromptsStatus: (id: number) => api.get(`/episodes/${id}/video-prompts-status`),
+  // 前情提要：前几集摘要 + 本集摘要状态；生成（同步，覆盖手写）/ 手动编辑（空串清除）
+  recap: (id: number) => api.get(`/episodes/${id}/recap`),
+  generateSummary: (id: number, model?: string, configId?: number) => api.post(`/episodes/${id}/summary`, { model: model || undefined, config_id: configId || undefined }),
+  saveSummary: (id: number, summary: string) => api.put(`/episodes/${id}/summary`, { summary }),
   // 本集使用的角色造型（lookId 为空 = 默认造型）
   setCharacterLook: (id: number, characterId: number, lookId: number | null) => api.put(`/episodes/${id}/characters/${characterId}/look`, { look_id: lookId }),
 }

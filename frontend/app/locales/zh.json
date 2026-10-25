@@ -908,6 +908,33 @@
     "mergeConfirm": "合并 {n} 个角色",
     "merged": "已将 {names} 合并到「{name}」"
   },
+  "recap": {
+    "button": "前情提要",
+    "title": "前情提要",
+    "desc": "运行剧本改写、资产提取、分镜拆解时，会把紧邻前 {n} 集的摘要作为前情提要提供给 AI，保持人物称呼、关系、伤势、换装与情节连贯。缺失或剧本已改动的摘要会在运行时自动生成；手动编辑过的摘要不会被自动覆盖。",
+    "previous": "前几集",
+    "current": "本集摘要",
+    "currentHint": "供后续剧集使用",
+    "firstEpisode": "这是第一集，没有前情。",
+    "episodeTitle": "第 {n} 集《{title}》",
+    "state": {
+      "fresh": "已生成",
+      "edited": "手动编辑",
+      "stale": "剧本已改动",
+      "missing": "未生成",
+      "none": "无剧本"
+    },
+    "outOfRange": "超出前情范围，不会提供给 AI",
+    "edit": "编辑",
+    "generate": "生成",
+    "regenerate": "重新生成",
+    "generating": "生成中…",
+    "generated": "第 {n} 集摘要已生成",
+    "notGenerated": "尚未生成，运行后续集的 AI 时会自动生成",
+    "noScript": "本集还没有剧本内容",
+    "placeholder": "【剧情】…\n【人物状态】人物名：状态\n【未解悬念】…\n【结尾】…",
+    "staleEditedHint": "剧本在你编辑摘要后又改动过，摘要可能已不准确；手动编辑的摘要不会被自动重新生成。"
+  },
   "errors": {
     "network": "无法连接服务器，请检查网络或服务是否已启动",
     "server": "服务返回异常，请稍后重试",

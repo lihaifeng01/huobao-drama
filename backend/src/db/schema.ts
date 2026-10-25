@@ -38,6 +38,11 @@ export const episodes = sqliteTable('episodes', {
   imageConfigId: integer('image_config_id'),
   videoConfigId: integer('video_config_id'),
   resolution: text('resolution').default('720p'),
+  // 前情摘要（见 services/episode-summary.ts）
+  summary: text('summary'),
+  summarySourceHash: text('summary_source_hash'),
+  summaryEdited: integer('summary_edited', { mode: 'boolean' }).default(false),
+  summaryUpdatedAt: text('summary_updated_at'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),

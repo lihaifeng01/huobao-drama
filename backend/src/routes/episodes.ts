@@ -6,6 +6,7 @@ import { toSnakeCaseArray, toSnakeCase } from '../utils/transform.js'
 import { getActiveConfigId } from '../services/ai.js'
 import { EXTRACT_TARGETS, getExtractionStatus, startExtraction, type ExtractTarget } from '../services/extraction.js'
 import { getVideoPromptBatchStatus, startVideoPromptBatch } from '../services/video-prompts.js'
+import { RECAP_MAX_EPISODES, generateEpisodeSummary, previousEpisodes, saveEditedSummary, summaryState } from '../services/episode-summary.js'
 
 const app = new Hono()
 
@@ -148,6 +149,53 @@ app.get('/:id/props', async (c) => {
   const allProps = await db.select().from(schema.props)
   const result = allProps.filter(p => propIds.includes(p.id) && !p.deletedAt)
   return success(c, toSnakeCaseArray(result))
+})
+
+// GET /episodes/:id/recap — 前情提要：前几集摘要（最多 RECAP_MAX_EPISODES 集）+ 本集摘要状态
+app.get('/:id/recap', async (c) => {
+  const id = Number(c.req.param('id'))
+  const [ep] = await db.select().from(schema.episodes).where(eq(schema.episodes.id, id))
+  if (!ep) return notFound(c, '剧集不存在')
+  const prev = await previousEpisodes(id, Infinity)
+  const view = (e: typeof ep) => ({
+    id: e.id,
+    episode_number: e.episodeNumber,
+    title: e.title,
+    summary: e.summary || '',
+    state: summaryState(e),
+    edited: !!e.summaryEdited,
+    summary_updated_at: e.summaryUpdatedAt,
+  })
+  return success(c, {
+    max_episodes: RECAP_MAX_EPISODES,
+    // in_recap：是否在注入 Agent 的前情提要范围内（紧邻的前 RECAP_MAX_EPISODES 集）
+    previous: prev.map((e, i) => ({ ...view(e), in_recap: i >= prev.length - RECAP_MAX_EPISODES })),
+    current: view(ep),
+  })
+})
+
+// POST /episodes/:id/summary — 生成/重新生成本集摘要（同步返回；会覆盖手动编辑）
+app.post('/:id/summary', async (c) => {
+  const id = Number(c.req.param('id'))
+  const body = await c.req.json().catch(() => ({}))
+  try {
+    const summary = await generateEpisodeSummary(id, { model: body.model || undefined, configId: body.config_id ?? undefined })
+    return success(c, { summary })
+  } catch (err: any) {
+    return badRequest(c, err.message)
+  }
+})
+
+// PUT /episodes/:id/summary — 手动编辑摘要 { summary }（之后不再被自动重新生成覆盖；传空串清除）
+app.put('/:id/summary', async (c) => {
+  const id = Number(c.req.param('id'))
+  const body = await c.req.json()
+  try {
+    await saveEditedSummary(id, String(body.summary ?? ''))
+    return success(c)
+  } catch (err: any) {
+    return badRequest(c, err.message)
+  }
 })
 
 // POST /episodes/:id/extract — 异步提取资产（target: characters | scenes | props），立即返回，前端轮询状态

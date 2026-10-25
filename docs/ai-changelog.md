@@ -61,11 +61,49 @@
   - `POST /storyboards` 不接收 `video_prompt`，要再用 `PUT /storyboards/:id` 写入。
   - 角色、场景、道具创建时传 `episode_id` 才会关联到该集。
 - 用 `pkill -f "tsx src/index.ts"` 停服务时，如果同一条命令里出现了这串文字，会把当前 shell 自己也杀掉。改用 `pkill -f "[t]sx src/index[.]ts"`，并且单独执行。即使用了方括号写法，如果同一条命令的 heredoc 里写了启动命令 `npx tsx src/index.ts`，也照样会被匹配。所以写启动脚本和执行它要分成两次调用。
+- 要验证 Agent / 文本模型流程，同样可以模拟 OpenAI 的 `/v1/chat/completions`：`stream: true` 时返回 SSE，否则返回普通 JSON。把每次请求的 system 消息记下来，就能检查 instructions 里实际拼进了什么。
 - 要验证真实的生图流程，可以起一个本地 HTTP 服务模拟 OpenAI 图片接口（`/v1/images/generations` 和 `/v1/images/edits`，返回 `{ data: [{ b64_json }] }`），再用 `POST /ai-configs` 添加一个 `provider: openai`、`base_url` 指向这个服务的配置。这样能检查参考图有没有真的发出去、生成结果写回到了哪里。
 
 ---
 
 ## 变更条目
+
+### 2026-10-25 · 前情摘要（跨集剧情连续性）
+- **分支**：`feature/character-consistency`（未合并），接在「角色别名 / 造型」之后
+- **背景**：每集剧本单独上传，各集的 Agent 原本拿不到前几集的剧情。
+- **改动**
+  - `episodes` 表新增 4 列（通过 `ADDED_COLUMNS` 补列）：
+    - `summary`：本集摘要。
+    - `summary_source_hash`：生成摘要时所依据剧本的哈希，剧本改动后对不上即视为过期。
+    - `summary_edited`：用户手动编辑过的摘要不会被自动覆盖。
+    - `summary_updated_at`。
+  - `backend/src/services/episode-summary.ts`：
+    - `generateEpisodeSummary`：同一集的并发请求只生成一次。
+    - `saveEditedSummary`、`summaryState`（none / missing / stale / fresh）。
+    - `ensureSummaries`：补齐缺失的摘要，以及过期且没被手动编辑过的摘要。
+    - `buildRecapBlock`：拼「前情提要」。
+  - 摘要用一个内部辅助 Agent `episode_summarizer` 生成（`agents/index.ts` 的 `auxiliaryAgents`，挂在 Mastra 实例上，**不在 `validAgentTypes` 里**，所以不出现在提示词 / 技能设置页）。输出固定四段：【剧情】【人物状态】【未解悬念】【结尾】，不超过 400 字，会跟随内容语言设置。
+  - 注入：`buildInstructions` 对 `script_rewriter`、`extractor`、`storyboard_breaker` 三个 Agent，在技能之后、语言指令之前拼入前情提要。
+    - 范围：紧邻的前 8 集（`RECAP_MAX_EPISODES`），总长约 6000 字，单集截到 800 字，从最近一集往前放，放不下的省略。
+    - 缺失或过期的摘要在这时**懒生成**，单集失败只记日志，不影响 Agent 主流程。
+    - `prompt_generator` 不注入：角色和场景的图片提示词不该混进剧情。
+  - 接口：
+    - `GET /episodes/:id/recap`：返回前面所有集和本集的摘要状态，`in_recap` 表示该集是否在注入范围内。
+    - `POST /episodes/:id/summary`：同步生成，会覆盖手动编辑的版本。
+    - `PUT /episodes/:id/summary`：手动编辑，传空串清除。
+  - 前端：剧集工作台顶栏新增「前情提要」按钮，打开 `components/EpisodeRecapDialog.vue`，可以查看、生成、编辑前几集和本集的摘要。手动编辑过的摘要在剧本改动后会显示过期提示。
+- **设计取舍**
+  - 注入点选在 `buildInstructions`：它按请求解析，已经拿得到 `episodeId`。这样聊天、提取、分镜等所有入口都自动生效，不用逐个入口去改。
+  - 懒生成而不是保存剧本时就生成：不会在用户没用到时偷偷消耗 token。代价是某一集第一次运行 Agent 时可能要多等几次摘要调用（最多 8 集，3 个并发）。
+  - `episode-summary.ts` 里用**动态 import** 引入 `mastra/index.js`，因为 agents → episode-summary → mastra → agents 会形成循环依赖。
+- **注意事项**
+  - 摘要用当时的内容语言生成，之后切换语言不会重新生成已有摘要。
+  - Mastra 可能在多步循环中多次解析 instructions，前情提要每次都会重新查库（很轻）。只有缺失或过期时才会调用模型。
+  - 「省略了更早的集」的提示是按前面集的总数判断的，没有剧本的空集也会被算进去。
+- **验证**
+  - 用本地模拟的 chat 服务通过 API 跑了 14 项：第 1 集不注入；只给缺失的那集补摘要；按集号顺序注入；三个 Agent 有、`prompt_generator` 没有；摘要最新时不重复生成；剧本改动后过期；两个 Agent 并发时只生成一次；手动编辑的不被覆盖；显式重新生成会覆盖手写；清空；没有剧本时返回 400。
+  - Playwright 测了弹窗：第 1 集的提示、生成、编辑、过期提示。
+  - 结构测试：`backend/tests/episode-recap-structure.test.mjs`、`frontend/tests/episode-recap-structure.test.mjs`。
 
 ### 2026-10-25 · 角色别名与合并重复角色；角色造型（多套服装/妆发）
 - **分支**：`feature/character-consistency`（未合并），接在「定妆锁定」之后
@@ -172,7 +210,6 @@
 
 ## 待办 / 已讨论未实施
 
-来自 2026-10-25 关于「跨集角色一致性」的讨论，第 1、2、3、4 项已在上面实施：
+来自 2026-10-25 关于「跨集角色一致性」的讨论，第 1–5 项（含前情摘要）已在上面实施：
 
 - **火山引擎图片适配器支持参考图**：让 Seedream 生成造型图时也能参考人脸。需要先用真实接口确认参数格式。
-- **前情摘要**：每集完成后生成摘要，提供给后续集的改写和分镜 Agent。目前 Agent 上下文只有 `episodeId` 和 `dramaId`（`backend/src/agents/context.ts`），拿不到前几集的剧情。

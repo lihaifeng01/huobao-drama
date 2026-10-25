@@ -398,6 +398,13 @@ const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: 'episode_characters', column: 'look_id', ddl: 'ALTER TABLE episode_characters ADD COLUMN look_id INTEGER' },
   // 单个镜头覆盖造型（空 = 跟随本集，0 = 强制默认造型）
   { table: 'storyboard_characters', column: 'look_id', ddl: 'ALTER TABLE storyboard_characters ADD COLUMN look_id INTEGER' },
+  // 前情摘要：本集剧情/人物状态摘要，供后续集的 Agent 保持连续性
+  { table: 'episodes', column: 'summary', ddl: 'ALTER TABLE episodes ADD COLUMN summary TEXT' },
+  // 生成摘要时所依据剧本的哈希；剧本改动后与当前哈希不一致即视为过期
+  { table: 'episodes', column: 'summary_source_hash', ddl: 'ALTER TABLE episodes ADD COLUMN summary_source_hash TEXT' },
+  // 用户手动编辑过的摘要不被自动重新生成覆盖
+  { table: 'episodes', column: 'summary_edited', ddl: 'ALTER TABLE episodes ADD COLUMN summary_edited INTEGER DEFAULT 0' },
+  { table: 'episodes', column: 'summary_updated_at', ddl: 'ALTER TABLE episodes ADD COLUMN summary_updated_at TEXT' },
 ]
 
 /** 依赖增量列的索引，须在补列之后建 */

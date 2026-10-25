@@ -61,6 +61,10 @@
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             {{ t('common.refresh') }}
           </button>
+          <button class="btn recap-trigger" :disabled="!episode" @click="recapOpen = true">
+            <BookOpen :size="12" />
+            {{ t('recap.button') }}
+          </button>
           <button class="btn task-drawer-trigger" @click="openTaskDrawer">
             <ListTodo :size="12" />
             {{ t('episode.topbar.tasks') }}
@@ -1458,6 +1462,13 @@
         </div>
       </div>
 
+      <EpisodeRecapDialog
+        :open="recapOpen"
+        :episode-id="episode?.id || null"
+        :model="chatModelOverride() || ''"
+        :config-id="chatConfigId() || null"
+        @close="recapOpen = false"
+      />
       <ConfirmDialog
         :open="assetDelete.open"
         :title="t('episode.delete.title', { type: assetDeleteTypeLabel })"
@@ -1476,7 +1487,7 @@ import { toast } from 'vue-sonner'
 import { useI18n } from 'vue-i18n'
 import {
   Users, FileText, FolderKanban, Clapperboard, Download, Loader2,
-  Plus, X, ListTodo, CircleHelp,
+  Plus, X, ListTodo, CircleHelp, BookOpen,
 } from 'lucide-vue-next'
 import { api, dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, propAPI, taskAPI, mergeAPI, aiConfigAPI, uploadAPI } from '~/composables/useApi'
 import { startTour, autoTour } from '~/composables/useTour'
@@ -3111,6 +3122,9 @@ function collectShotReferences(sb) {
 function getShotReferenceImages(sb) {
   return collectShotReferences(sb).kept.map(r => r.imageUrl)
 }
+
+// 前情提要弹窗（前几集摘要的查看/生成/编辑，见 EpisodeRecapDialog）
+const recapOpen = ref(false)
 
 // ===== 角色造型：本集选择（角色卡片）与镜头覆盖（检查器） =====
 const lookMenuId = ref(null)

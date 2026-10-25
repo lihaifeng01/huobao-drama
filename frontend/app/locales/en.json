@@ -908,6 +908,33 @@
     "mergeConfirm": "Merge {n} characters",
     "merged": "Merged {names} into \"{name}\""
   },
+  "recap": {
+    "button": "Recap",
+    "title": "Previously on",
+    "desc": "When rewriting the script, extracting assets or breaking down storyboards, summaries of the previous {n} episodes are given to the AI as a recap to keep names, relationships, injuries, outfits and plot consistent. Missing or outdated summaries are generated automatically; hand-edited ones are never overwritten automatically.",
+    "previous": "Previous episodes",
+    "current": "This episode",
+    "currentHint": "Used by later episodes",
+    "firstEpisode": "This is the first episode — nothing to recap.",
+    "episodeTitle": "Episode {n}: {title}",
+    "state": {
+      "fresh": "Generated",
+      "edited": "Edited",
+      "stale": "Script changed",
+      "missing": "Not generated",
+      "none": "No script"
+    },
+    "outOfRange": "Outside the recap window, not sent to the AI",
+    "edit": "Edit",
+    "generate": "Generate",
+    "regenerate": "Regenerate",
+    "generating": "Generating…",
+    "generated": "Episode {n} summary generated",
+    "notGenerated": "Not generated yet — it will be generated automatically when the AI runs on a later episode",
+    "noScript": "This episode has no script yet",
+    "placeholder": "Plot…\nCharacter states: name: state\nOpen threads…\nEnding…",
+    "staleEditedHint": "The script changed after you edited this summary, so it may be outdated. Hand-edited summaries are not regenerated automatically."
+  },
   "errors": {
     "network": "Cannot reach the server. Check your network or that the service is running.",
     "server": "The server returned an unexpected response. Please try again later.",
