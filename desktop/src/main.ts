@@ -1,8 +1,8 @@
 /**
  * Electron 主进程 — 桌面壳
  *
- * 职责：读存储配置 → 取空闲端口 → 准备 userData 目录（数据 + workspace 模板）→
- * utilityProcess.fork 拉起后端（esbuild bundle）→ 轮询健康检查 → 开窗口。
+ * 职责：显示启动页 → 读存储配置 / 取空闲端口 → 准备数据与 workspace →
+ * utilityProcess.fork 拉起后端 → 有截止时间的健康检查 → 窗口切入应用页面。
  * 后端与窗口同源（http://127.0.0.1:<port>），前端全部相对路径，无 CORS 问题。
  *
  * 后端可重启（startBackend）：存储位置迁移 = 停后端 → 搬文件 → 换 currentDataDir →
@@ -16,6 +16,7 @@ import * as fsp from 'fs/promises'
 import * as path from 'path'
 import { registerMigrationIpc } from './migrate'
 import { registerUpdater, markQuitting } from './updater'
+import { createStartupLog, redactStartupLog, waitForBackend } from './startup'
 
 // 主进程打 CJS 产物，__dirname 天然可用（import.meta.url 在 CJS 下为 undefined）
 declare const __dirname: string
@@ -35,13 +36,48 @@ let quitting = false
 let backendRestarting = false
 let backendPort = 0
 let currentDataDir = ''
+let backendReady = false
+let fatalReported = false
+let backendStartupTail = ''
 
 // userData 显式按模式区分：打包版 / dev 版互不干扰（数据库、上传文件、单实例锁均隔离），
 // 不依赖 package.json 命名（打包后与 dev 同名会导致单实例锁误杀）
-app.setPath('userData', path.join(
+const userDataDir = path.join(
   app.getPath('appData'),
   app.isPackaged ? 'HuobaoDrama' : 'HuobaoDrama-Dev',
-))
+)
+try {
+  fs.mkdirSync(userDataDir, { recursive: true })
+  app.setPath('userData', userDataDir)
+} catch (error) {
+  dialog.showErrorBox('火宝短剧启动失败', `无法准备用户目录：${userDataDir}\n${(error as Error).message}`)
+  app.exit(1)
+}
+
+const startupLog = createStartupLog(path.join(app.getPath('userData'), 'logs'))
+startupLog.write(`launch version=${app.getVersion()} platform=${process.platform} arch=${process.arch} electron=${process.versions.electron} pid=${process.pid}`)
+
+function failStartup(error: unknown) {
+  if (fatalReported || quitting) return
+  fatalReported = true
+  const message = redactStartupLog(error instanceof Error ? error.message : error)
+  startupLog.write(`fatal: ${error instanceof Error ? error.stack : error}`)
+  showMainWindow()
+  dialog.showErrorBox('火宝短剧启动失败', `${message}\n\n启动日志：${startupLog.file}\n请将此日志发给技术支持，无需删除项目数据。`)
+  app.quit()
+}
+process.on('uncaughtException', failStartup)
+process.on('unhandledRejection', failStartup)
+app.on('child-process-gone', (_event, details) => {
+  startupLog.write(`child-process-gone: ${JSON.stringify(details)}`)
+})
+
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+}
 
 // 从终端启动时若父进程管道关闭（如 `| head` 退出/终端关闭），转发后端日志会写出
 // EPIPE 且属于异步回调抛出，try/catch 拦不住，会弹 "write EPIPE" 未捕获异常框
@@ -50,16 +86,16 @@ process.stderr.on('error', () => {})
 
 if (!app.requestSingleInstanceLock()) {
   // 双开会抢 SQLite 写锁；让已有实例聚焦窗口即可
+  startupLog.write('second launch: handing off to existing instance')
   app.quit()
 } else {
   app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.focus()
-    }
+    startupLog.write('second-instance: showing existing window')
+    showMainWindow()
   })
+  app.on('activate', showMainWindow)
   // utilityProcess 要求 app ready 之后才能创建
-  app.whenReady().then(bootstrap)
+  app.whenReady().then(bootstrap).catch(failStartup)
 }
 
 function getFreePort(): Promise<number> {
@@ -73,19 +109,9 @@ function getFreePort(): Promise<number> {
   })
 }
 
-async function waitHealthy(port: number, timeoutMs = 15000): Promise<void> {
-  const deadline = Date.now() + timeoutMs
-  let lastErr: unknown = null
-  while (Date.now() < deadline) {
-    try {
-      const res = await fetch(`http://127.0.0.1:${port}/api/v1/health`)
-      if (res.ok) return
-    } catch (err) {
-      lastErr = err
-    }
-    await new Promise(r => setTimeout(r, 300))
-  }
-  throw new Error(`后端启动超时: ${String(lastErr)}`)
+async function waitHealthy(port: number, timeoutMs = 60_000): Promise<void> {
+  await waitForBackend(port, timeoutMs, () => quitting || fatalReported)
+  backendReady = true
 }
 
 // ---- 存储配置（userData/storage-config.json，必须在数据目录之外） ----
@@ -167,6 +193,8 @@ function stopBackend(): Promise<void> {
 }
 
 function startBackend(): void {
+  backendReady = false
+  backendStartupTail = ''
   const resources = resolveResourceDir()
   const env: NodeJS.ProcessEnv = {
     ...process.env,
@@ -188,16 +216,29 @@ function startBackend(): void {
     env,
     serviceName: 'huobao-backend',
     stdio: 'pipe',
+    cwd: currentDataDir,
   })
-  console.log(`[main] backend forked from ${BACKEND_BUNDLE}`)
-  backend.stdout?.on('data', chunk => process.stdout.write(`[backend] ${chunk}`))
-  backend.stderr?.on('data', chunk => process.stderr.write(`[backend] ${chunk}`))
-  backend.on('exit', code => {
-    backend = null
+  const child = backend
+  startupLog.write(`backend forked from ${BACKEND_BUNDLE}`)
+  child.on('spawn', () => startupLog.write(`backend spawned pid=${child.pid}`))
+  child.stdout?.on('data', chunk => {
+    process.stdout.write(`[backend] ${chunk}`)
+    if (!backendReady) startupLog.write(`[backend] ${chunk}`)
+  })
+  child.stderr?.on('data', chunk => {
+    process.stderr.write(`[backend] ${chunk}`)
+    if (!backendReady) {
+      const safe = redactStartupLog(String(chunk))
+      backendStartupTail = (backendStartupTail + safe).slice(-3000)
+      startupLog.write(`[backend stderr] ${safe}`)
+    }
+  })
+  child.on('exit', code => {
+    if (backend === child) backend = null
+    startupLog.write(`backend exited code=${code} restarting=${backendRestarting}`)
     // 迁移/重启期间的退出是预期行为，由调用方接管
     if (!quitting && !backendRestarting) {
-      dialog.showErrorBox('火宝短剧', `后台服务异常退出（code ${code}），应用即将关闭。请重新启动。`)
-      app.quit()
+      failStartup(new Error(`后台服务异常退出（code ${code}）。${backendStartupTail ? '\n' + backendStartupTail : ''}`))
     }
   })
 }
@@ -209,17 +250,22 @@ function createWindow() {
     width: 1440,
     height: 900,
     title: '火宝短剧',
-    show: false,
+    show: true,
+    backgroundColor: '#f6f7fb',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
   })
-  mainWindow.once('ready-to-show', () => mainWindow?.show())
+  mainWindow.once('ready-to-show', showMainWindow)
+  mainWindow.webContents.on('render-process-gone', (_event, details) => failStartup(new Error(`界面进程退出：${details.reason} (${details.exitCode})`)))
+  mainWindow.webContents.on('unresponsive', () => startupLog.write('renderer unresponsive'))
   // 页面标题自带产品名，避免文件路径兜底标题
   mainWindow.on('page-title-updated', e => e.preventDefault())
   mainWindow.on('closed', () => { mainWindow = null })
   // 外链一律交给系统浏览器：应用内不弹新窗（如设置页「前往 api.firemux.cn 获取 Key」）
-  const isAppUrl = (url: string) => url.startsWith(`http://127.0.0.1:${backendPort}`)
+  const isAppUrl = (url: string) => {
+    try { return new URL(url).origin === `http://127.0.0.1:${backendPort}` } catch { return false }
+  }
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//i.test(url) && !isAppUrl(url)) void shell.openExternal(url)
     return { action: 'deny' }
@@ -230,7 +276,7 @@ function createWindow() {
     e.preventDefault()
     if (/^https?:\/\//i.test(url)) void shell.openExternal(url)
   })
-  return mainWindow.loadURL(`http://127.0.0.1:${backendPort}`)
+  return mainWindow.loadFile(path.join(__dirname, 'starting.html'))
 }
 
 // ---- 启动 ----
@@ -240,9 +286,11 @@ let currentFrontendDist = ''
 
 async function bootstrap() {
   try {
+    await createWindow()
+    if (quitting) return
     backendPort = await getFreePort()
     const userData = app.getPath('userData')
-    console.log(`[main] port=${backendPort} userData=${userData}`)
+    startupLog.write(`port=${backendPort} userData=${userData}`)
 
     // 存储配置最先读（决定数据目录）；配置损坏时回退默认且不阻断启动
     currentDataDir = loadStorageConfig()
@@ -255,20 +303,26 @@ async function bootstrap() {
     currentWorkspaceDir = app.isPackaged
       ? path.join(userData, 'workspace')
       : templateDir
+    startupLog.write('preparing workspace')
     if (app.isPackaged) syncWorkspaceTemplate(templateDir, currentWorkspaceDir)
 
     currentFrontendDist = app.isPackaged
       ? path.join(resources, 'frontend')
       : path.join(REPO_ROOT, 'frontend', '.output', 'public')
 
+    if (!fs.existsSync(BACKEND_BUNDLE)) throw new Error('安装资源缺失：build/backend.mjs')
+    if (!fs.existsSync(path.join(currentFrontendDist, 'index.html'))) throw new Error('安装资源缺失：frontend/index.html')
+    if (quitting) return
     startBackend()
     await waitHealthy(backendPort)
-    console.log('[main] backend healthy, opening window')
-    await createWindow()
+    if (quitting || fatalReported || !mainWindow || mainWindow.isDestroyed()) return
+    backendReady = true
+    startupLog.write('backend healthy, loading application')
+    await mainWindow.loadURL(`http://127.0.0.1:${backendPort}`)
+    showMainWindow()
+    startupLog.write('application loaded')
   } catch (err) {
-    console.error('[main] 启动失败:', err)
-    dialog.showErrorBox('火宝短剧', `启动失败：\n${(err as Error)?.message || err}`)
-    app.quit()
+    failStartup(err)
   }
 }
 

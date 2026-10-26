@@ -974,6 +974,24 @@
       "smooth": "표준",
       "hd": "고화질",
       "uhd": "초고화질"
+    },
+    "recovery": {
+      "remotePreview": "영상이 생성되었지만 아직 로컬에 저장되지 않았습니다. 온라인으로 재생하거나 아래 링크를 여세요. 다운로드가 완료되면 로컬 영상으로 전환됩니다.",
+      "remoteUnavailable": "온라인 미리보기를 불러올 수 없습니다. 링크를 열거나 다운로드를 재개하세요. 링크가 만료되었을 수 있습니다.",
+      "restoreDownload": "다운로드 재개",
+      "localDownloadFailed": "생성됨 · 다운로드 실패",
+      "restore": "영상 복구",
+      "newGeneration": "다시 생성",
+      "downloadFailed": "영상은 생성되었지만 전달 또는 저장에 실패했습니다. 복구해 주세요.",
+      "unknownSubmission": "제출 결과가 불확실합니다. 다시 생성하기 전에 원본 작업을 확인하세요.",
+      "downloading": "영상 생성 완료, 다운로드 중",
+      "diagnostics": "진단 정보 복사",
+      "copied": "진단 정보를 복사했습니다",
+      "confirmNew": "새 생성 작업을 제출하며 추가 요금이 발생할 수 있습니다. 계속할까요?",
+      "restoreFailed": "영상 복구 ({n})",
+      "transferring": "영상 생성 완료, 전송 중",
+      "awaitingDelivery": "영상 생성 완료, 전달 대기 중",
+      "restoreHint": "기존 작업을 복구하여 중복 생성을 방지하세요"
     }
   },
   "looks": {

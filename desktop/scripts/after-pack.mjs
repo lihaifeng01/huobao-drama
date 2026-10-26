@@ -13,6 +13,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { validateWindowsPackage, assertWindowsX64 } from './validate-windows-package.mjs'
+import { Arch } from 'builder-util'
+import { assertMacArchitecture } from './prepare-mac-media.mjs'
 
 const WIN_BIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'build', 'win-bin', 'better_sqlite3.node')
 
@@ -25,9 +28,24 @@ export default async function afterPack(context) {
   const exe = context.electronPlatformName === 'win32' ? '.exe' : ''
   for (const name of [`ffmpeg${exe}`, `ffprobe${exe}`]) {
     const p = path.join(resourcesDir, 'bin', name)
-    if (!fs.existsSync(p)) throw new Error(`打包产物缺少 bin/${name}（检查 prepare-resources 与 \${os} 目录命名）`)
+    if (!fs.existsSync(p)) throw new Error(`打包产物缺少 bin/${name}（检查 prepare-resources 的平台与架构目录）`)
+    if (context.electronPlatformName === 'darwin') assertMacArchitecture(p, Arch[context.arch])
   }
 
+  if (context.electronPlatformName === 'darwin') {
+    const arch = Arch[context.arch]
+    const nativeRoot = path.join(resourcesDir, 'app.asar.unpacked', 'node_modules')
+    for (const file of [
+      path.join(nativeRoot, 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node'),
+      path.join(nativeRoot, '@img', `sharp-darwin-${arch}`, 'lib', `sharp-darwin-${arch}.node`),
+    ]) assertMacArchitecture(file, arch)
+    const vips = path.join(nativeRoot, '@img', `sharp-libvips-darwin-${arch}`, 'lib')
+    const libraries = fs.readdirSync(vips).filter(file => file.endsWith('.dylib'))
+    if (!libraries.length) throw new Error(`缺少 macOS ${arch} libvips 动态库`)
+    for (const file of libraries) assertMacArchitecture(path.join(vips, file), arch)
+    console.log(`[package-check] macOS ${arch} 媒体工具与原生模块架构一致 ✓`)
+    return
+  }
   if (context.electronPlatformName !== 'win32') return
   if (!fs.existsSync(WIN_BIN)) {
     throw new Error(
@@ -41,8 +59,10 @@ export default async function afterPack(context) {
     'better-sqlite3', 'build', 'Release', 'better_sqlite3.node',
   )
   if (!fs.existsSync(target)) throw new Error(`未找到待替换的 better_sqlite3.node: ${target}`)
+  assertWindowsX64(WIN_BIN)
   fs.copyFileSync(WIN_BIN, target)
   // 顺手清掉宿主机平台预编译残留（bindings 不会命中，但白占体积）
   fs.rmSync(path.join(path.dirname(path.dirname(path.dirname(target))), 'bin'), { recursive: true, force: true })
   console.log(`[after-pack] win32 better_sqlite3.node 已替换为 PE 二进制 (${(fs.statSync(target).size / 1024 / 1024).toFixed(1)}MB)`)
+  validateWindowsPackage(resourcesDir, context.packager.info.framework.version)
 }

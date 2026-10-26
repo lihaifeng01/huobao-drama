@@ -109,13 +109,13 @@ export class MiniMaxVideoAdapter implements VideoProviderAdapter {
   }
 
   parseGenerateResponse(result: any): VideoGenResponse {
-    if (result.task_id) {
-      return { isAsync: true, taskId: String(result.task_id) }
-    }
+    const taskId = result.task_id ?? result.task?.id
+    const state = result.task?.status ?? result.status
     const videoUrl = result.task?.content?.url || result.content?.url || result.video_url
-    if (videoUrl) {
-      return { isAsync: false, videoUrl }
+    if (videoUrl && (!state || state === 'succeeded')) {
+      return { isAsync: false, videoUrl, taskId: taskId == null ? undefined : String(taskId), duration: result.task?.duration ?? result.duration }
     }
+    if (taskId != null) return { isAsync: true, taskId: String(taskId) }
     throw new Error('No task_id or video url in response')
   }
 
@@ -139,6 +139,7 @@ export class MiniMaxVideoAdapter implements VideoProviderAdapter {
       return {
         status: 'completed',
         videoUrl: task.content?.url || task.video_url,
+        duration: task.duration,
       }
     }
     if (status === 'failed' || status === 'cancelled') {
@@ -147,7 +148,7 @@ export class MiniMaxVideoAdapter implements VideoProviderAdapter {
       const code = err && typeof err === 'object' && err.code ? `[${err.code}] ` : ''
       return { status: 'failed', error: `${code}${msg}` }
     }
-    return { status: status || 'processing' }
+    return { status: 'processing', stage: task.delivery?.status === 'transferring' ? 'transferring' : undefined }
   }
 
   extractVideoUrl(result: any): string | null {

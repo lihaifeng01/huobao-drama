@@ -974,6 +974,24 @@
       "smooth": "Smooth",
       "hd": "HD",
       "uhd": "UHD"
+    },
+    "recovery": {
+      "remotePreview": "Video generated, but not saved locally yet. Play online or open the link below. Playback switches to the local file after download.",
+      "remoteUnavailable": "Online preview could not load. Try opening the link or resuming the download; the link may have expired.",
+      "restoreDownload": "Resume download",
+      "localDownloadFailed": "Generated · Download failed",
+      "restore": "Recover video",
+      "newGeneration": "Generate again",
+      "downloadFailed": "Video generated; delivery or saving failed. Recover the video.",
+      "unknownSubmission": "Submission uncertain. Check the upstream task before generating again.",
+      "downloading": "Video generated; downloading",
+      "diagnostics": "Copy diagnostics",
+      "copied": "Diagnostics copied",
+      "confirmNew": "This submits a new generation task and may incur another charge. Continue?",
+      "restoreFailed": "Recover videos ({n})",
+      "transferring": "Video generated; transferring",
+      "awaitingDelivery": "Video generated; awaiting delivery",
+      "restoreHint": "Recover the existing task instead of generating again"
     }
   },
   "looks": {

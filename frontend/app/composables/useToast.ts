@@ -41,7 +41,7 @@ export function mapError(err: unknown, opts?: { fallback?: string }): string {
   const msg = messageOf(err).trim()
   if (!msg) return opts?.fallback ? t(opts.fallback) : t('errors.unknown')
 
-  if (err instanceof TypeError && NETWORK_RE.test(msg)) return t('errors.network')
+  if (NETWORK_RE.test(msg)) return t('errors.network')
   if (err instanceof SyntaxError || NONJSON_RE.test(msg)) return t('errors.server')
   if (MODERATION_RE.test(msg)) return t('errors.moderation')
   if (AUTH_RE.test(msg)) return t('errors.auth')

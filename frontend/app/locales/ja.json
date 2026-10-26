@@ -974,6 +974,24 @@
       "smooth": "標準",
       "hd": "高画質",
       "uhd": "超高画質"
+    },
+    "recovery": {
+      "remotePreview": "動画は生成済みですが、まだローカルに保存されていません。オンライン再生または下のリンクをご利用ください。ダウンロード後はローカル動画に切り替わります。",
+      "remoteUnavailable": "オンラインプレビューを読み込めません。リンクを開くか、ダウンロードを再開してください。リンクの有効期限が切れている可能性があります。",
+      "restoreDownload": "ダウンロードを再開",
+      "localDownloadFailed": "生成済み · ダウンロード失敗",
+      "restore": "動画を復旧",
+      "newGeneration": "再生成",
+      "downloadFailed": "動画は生成済みですが配信または保存に失敗しました。復旧してください。",
+      "unknownSubmission": "送信結果が不明です。再生成前に上流のタスクを確認してください。",
+      "downloading": "動画生成済み・ダウンロード中",
+      "diagnostics": "診断情報をコピー",
+      "copied": "診断情報をコピーしました",
+      "confirmNew": "新しい生成タスクを送信します。再度料金が発生する可能性があります。続行しますか？",
+      "restoreFailed": "動画を復旧 ({n})",
+      "transferring": "動画生成済み・転送中",
+      "awaitingDelivery": "動画生成済み・配信待ち",
+      "restoreHint": "既存のタスクを復旧し、重複生成を避けます"
     }
   },
   "looks": {

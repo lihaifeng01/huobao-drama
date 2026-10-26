@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![下载](https://img.shields.io/github/v/release/chatfire-AI/huobao-drama?style=flat&logo=github&label=%E4%B8%8B%E8%BD%BD)](https://github.com/chatfire-AI/huobao-drama/releases/latest)
 
-[English](README.md) | **简体中文** | [日本語](README.ja.md) | [한국어](README.ko.md)
+[中英双语](README.md) | **简体中文** | [English](README.en.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
 [功能特性](#-功能特性) • [快速开始](#-快速开始) • [图文教程](#-图文教程) • [桌面版](#-桌面应用推荐) • [部署指南](#-部署指南)
 
@@ -20,7 +20,7 @@
 部署完成后在「设置 → 火宝快捷配置」粘贴 Key，一键写入三条推荐配置，开箱即用
 
 <h3>📥 <a href="https://github.com/chatfire-AI/huobao-drama/releases/latest">下载桌面版（macOS / Windows）</a></h3>
-<h3>🌐 <a href="https://www.chatfire.site">官方网站</a></h3>
+<h3>🌐 <a href="https://www.firemux.cn">官方网站</a></h3>
 
 </div>
 
@@ -617,22 +617,12 @@ cd ../frontend && npm run build
 
 ---
 
-## ☕ 捐赠支持
-
-如果这个项目对你有帮助，欢迎扫码请作者喝杯咖啡 ☕，你的支持是持续更新的动力！
-
-<div align="center">
-  <img src="donate.png" alt="支付宝捐赠二维码" width="240" />
-</div>
-
----
-
 ## 💬 微信群
 
 扫码加入微信群交流：
 
 <div align="center">
-  <img src="docs/images/wx-group.jpg" width="200" alt="微信群二维码" />
+  <img src="docs/images/wx-group.png" width="200" alt="微信群二维码" />
 </div>
 
 ---

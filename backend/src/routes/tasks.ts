@@ -1,13 +1,30 @@
 import { Hono } from 'hono'
-import { eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 import { db, schema } from '../db/index.js'
 import { success, created, badRequest } from '../utils/response.js'
-import { generateImage, generateVideo } from '../services/generation.js'
+import { generateImage, generateVideo, recoverVideoTask } from '../services/generation.js'
+import { safeTaskError } from '../services/video-download.js'
 import { getActiveConfig, getConfigById } from '../services/ai.js'
 import { getDramaStylePrompt } from '../services/style-preset.js'
 import { logTaskError, logTaskPayload, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
 
 const app = new Hono()
+
+app.post('/:id/recover', async c => {
+  try {
+    await recoverVideoTask(Number(c.req.param('id')))
+    return success(c, { id: Number(c.req.param('id')) })
+  } catch (error) { return badRequest(c, safeTaskError(error)) }
+})
+
+app.get('/:id/diagnostics', async c => {
+  const [task] = await db.select().from(schema.sysTask).where(eq(schema.sysTask.id, Number(c.req.param('id'))))
+  if (!task) return badRequest(c, '任务不存在')
+  return success(c, { id: task.id, upstreamTaskId: task.taskId, provider: task.provider, model: task.model,
+    status: task.status, stage: task.stage, errorCode: task.errorCode, error: safeTaskError(task.errorMsg),
+    hasResult: !!task.resultUrl, hasLocalFile: !!task.localPath, createdAt: task.createdAt, updatedAt: task.updatedAt,
+    version: process.env.HUOBAO_VERSION || 'development' })
+})
 
 type TaskType = 'image' | 'video'
 
@@ -118,6 +135,15 @@ app.post('/', async (c) => {
   const videoBody = type === 'video' ? normalizeVideoRequest(body) : null
 
   try {
+    if (type === 'video' && body.storyboard_id) {
+      const [latest] = await db.select().from(schema.sysTask).where(and(
+        eq(schema.sysTask.type, 'video'), eq(schema.sysTask.storyboardId, Number(body.storyboard_id))
+      )).orderBy(desc(schema.sysTask.id)).limit(1)
+      if (latest?.status === 'processing') return badRequest(c, '该分镜已有运行中的任务，请等待结果')
+      if (latest?.status === 'failed' && body.force_new !== true) {
+        return badRequest(c, '请先恢复原任务；重新生成需明确确认可能再次计费')
+      }
+    }
     // 请求显式指定 config_id（工作台模型下拉跨厂商切换）时优先；
     // 未指定才回退到集锁定配置，避免锁定配置与所选模型错配（如锁定 Seedance 却传 MiniMax 模型名）
     let configId: number | undefined = body.config_id
@@ -173,6 +199,7 @@ app.post('/', async (c) => {
         configId,
       })
       : await generateVideo({
+        forceNew: body.force_new === true,
         storyboardId: body.storyboard_id,
         dramaId: body.drama_id,
         prompt: videoPrompt,
@@ -232,6 +259,8 @@ app.get('/', async (c) => {
 // DELETE /tasks/:id
 app.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'))
+  const [task] = await db.select().from(schema.sysTask).where(eq(schema.sysTask.id, id))
+  if (task?.status === 'processing') return badRequest(c, '任务运行中，暂不能删除')
   await db.delete(schema.sysTask).where(eq(schema.sysTask.id, id))
   return success(c)
 })

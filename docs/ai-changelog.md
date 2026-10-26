@@ -29,6 +29,7 @@
 **测试基线**
 - `master` 上已有一批过期的结构测试一直失败（截至 2026-10-25：后端 `node --test tests/*.mjs` 失败 12 个，前端失败 25 个）。判断是否引入回归，看**失败数量和名单是否不变**，不要试图让它们全绿。
 - 后端类型检查：`cd backend && npm run typecheck`。前端没有装 vue-tsc，用 `npm run generate` 能否构建成功作为基本检查。
+- 后端还有一批 TypeScript 测试（`backend/tests/*.ts`，包括视频恢复、交付、中转站等），`node --test tests/*.mjs` 不会跑到它们。要用 `cd backend && npx tsx --test tests/*.ts` 单独跑，这批目前应全部通过。
 
 **依赖安装（云端沙箱）**
 - `package-lock.json` 里部分包的 resolved 地址是 `packages.aliyun.com`，沙箱网络访问不了。临时做法：把 lockfile 里 `https://packages.aliyun.com/69c39010f167bac7fd2502e3/npm/npm-registry/` 替换成 `https://registry.npmjs.org/` 后执行 `npm ci`，装完用 `git checkout` 还原 lockfile，**不要提交改过的 lockfile**。
@@ -67,6 +68,26 @@
 ---
 
 ## 变更条目
+
+### 2026-10-26 · `master` 合并到 `dev`
+- **分支**：`dev`，用 merge commit 合入 `master` 的 4 个新提交：
+  - 桌面版 4.0.9 发布和 macOS 打包修复
+  - README 改版（新增 `README.en.md`、按钮式入口）
+  - 视频生成恢复 / 交付改造：`sys_task` 新增 `config_id`、`config_base_url`、`stage`、`error_code` 列；新增 `services/video-download.ts`；`generation.ts` 大改
+  - 桌面版启动流程和默认对话模型选择修复
+- **冲突与处理**
+  - `backend/src/db/sqlite-schema.ts`：`master` 在 `initSqliteSchema` 里自己写了一段给 `sys_task` 补列的循环，和 `dev` 的 `ADDED_COLUMNS` 循环挨着冲突。两段都保留，原样不改（都是幂等的）。以后再加列，统一往 `ADDED_COLUMNS` 里加。
+  - `backend/src/services/generation.ts`：`getVideoAdapter(config.provider, config)` 保留 `dev` 传入的 `config`（中转站自定义适配器要用）；同时保留 `master` 新加的 `duration` 和「拿到 taskId 立即 `markPolling`」。`master` 的 MiniMax/Firemux 交付恢复那一行 `getVideoAdapter('minimax')` 没改，因为它是专门针对 Firemux 的 `/recover` 接口；恢复后的轮询走 `recoveryConfig` → `getConfigById`，已经带上了中转站的设置。
+  - `frontend/app/views/drama/episode.vue` 的 `genVid`：`master` 加了「可以恢复就先恢复 / 新建前先确认」，`dev` 有参考图超限提示。合并后的顺序是：先走恢复判断和确认，再显示超限提示，这样只在真正发起新生成时才提示。
+  - `README.md`：取 `master` 的中英对照版；Docker 镜像名沿用 `dev` 的 `lhf/huobao-drama`。`master` 新增的 `README.en.md` 也改成了同样的镜像名。
+- **注意事项**
+  - `desktop/` 目录合并后和 `master` 完全一致（`dev` 和功能分支都没改过它）。
+  - 批量生成视频时，`master` 的新逻辑对之前失败的镜头会逐个弹出 `window.confirm` 确认，这是 `master` 原有的行为，合并时没有改。
+- **验证**
+  - 结构测试：以合并前的 `dev` 和 `master` 为两个基线做三方对比，没有「合并后失败、但在两边都通过」的测试，失败数仍是 12 / 25。
+  - 后端 TypeScript 测试 21 项全部通过。
+  - 后端类型检查、前端构建通过。
+  - 7 组端到端测试全部重新跑过并通过：素材库、多级文件夹和选图、参考图优先级、别名合并造型（接口 + 界面）、前情摘要（接口 + 界面）。
 
 ### 2026-10-25 · 两个功能分支合并到 `dev`
 - **分支**：`dev`。先后合并了 `feature/asset-library` 和 `feature/character-consistency`，都用 merge commit。两个功能分支保留，没有删除，也没有合并到 `master`。

@@ -530,9 +530,9 @@
                   <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                   {{ videoPromptBatch.running ? t('episode.sb.promptProgress', { done: videoPromptBatch.completed, total: videoPromptBatch.total }) : (videoSelectMode && selectedVideoSbIds.length ? t('episode.sb.promptSelected', { n: selectedVideoSbIds.length }) : t('episode.sb.batchPrompts')) }}
                 </button>
-                <button v-if="videoTaskFailedCount" class="btn btn-sm video-retry-failed" @click="retryFailedVideos">
+                <button v-if="recoverableVideoCount" class="btn btn-sm video-retry-failed" @click="retryFailedVideos">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                  {{ t('episode.vid.retryFailed', { n: videoTaskFailedCount }) }}
+                  {{ t('episode.recovery.restoreFailed', { n: recoverableVideoCount }) }}
                 </button>
                 <button class="btn btn-sm" :class="{ 'is-on': videoSelectMode }" @click="toggleVideoSelectMode">
                   {{ videoSelectMode ? t('episode.vid.selectDone', { n: selectedVideoSbIds.length }) : t('episode.vid.select') }}
@@ -623,7 +623,11 @@
                       </template>
                     </div>
                     <div v-if="task.error" class="video-task-error" :title="task.error">
-                      {{ mapError(task.error) }}
+                      {{ videoErrorLabel(task.id, task.error) }}
+                      <div class="flex gap-2">
+                        <button class="btn btn-sm" @click.stop="copyVideoDiagnostics(task.id)">{{ t('episode.recovery.diagnostics') }}</button>
+                        <button v-if="canRecoverVideo(task.id)" class="btn btn-sm" @click.stop="genVid(task.storyboard, { forceNew: true })">{{ t('episode.recovery.newGeneration') }}</button>
+                      </div>
                       <div v-if="videoModerationHint(task.error)" class="video-task-error-hint">{{ videoModerationHint(task.error) }}</div>
                     </div>
                   </div>
@@ -733,15 +737,17 @@
                   <span v-if="selectedSb.duration" class="video-player-sub">{{ selectedSb.duration }}s</span>
                 </div>
                 <button
-                  v-if="previewVideoUrl"
+                  v-if="previewVideoUrl && !playerIsRemote"
                   class="btn btn-sm btn-primary"
                   @click="setAsMainVideo"
                 >
                   {{ t('episode.vid.setMain') }}
                 </button>
                 <a
-                  v-if="previewVideoUrl || hasVid(selectedSb)"
-                  :href="'/' + (previewVideoUrl || getVideoUrl(selectedSb))"
+                  v-if="playerVideoUrl"
+                  :href="playerVideoUrl"
+                  :target="playerIsRemote ? '_blank' : undefined"
+                  rel="noopener noreferrer"
                   download
                   class="btn btn-sm"
                 >
@@ -751,10 +757,11 @@
               </div>
               <div class="video-player-stage">
                 <video
-                  v-if="previewVideoUrl || hasVid(selectedSb)"
-                  :key="previewVideoUrl || getVideoUrl(selectedSb)"
-                  :src="'/' + (previewVideoUrl || getVideoUrl(selectedSb))"
-                  :poster="posterOf('/' + (previewVideoUrl || getVideoUrl(selectedSb))) || undefined"
+                  v-if="playerVideoUrl"
+                  :key="playerVideoUrl"
+                  :src="playerVideoUrl"
+                  :poster="playerIsRemote ? undefined : posterOf(playerVideoUrl) || undefined"
+                  @error="playerLoadFailed = true"
                   controls
                   preload="metadata"
                   playsinline
@@ -763,17 +770,23 @@
                 <div v-else class="video-player-empty">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
                   <div class="video-player-empty-copy">
-                    <div class="video-player-empty-title">{{ videoTaskState(selectedSb) === 'pending' ? t('episode.vid.emptyGenerating') : t('episode.vid.emptyNoVideo') }}</div>
-                    <div class="video-player-empty-desc">{{ videoTaskState(selectedSb) === 'pending' ? t('episode.vid.emptyGeneratingDesc') : t('episode.vid.emptyNoVideoDesc') }}</div>
+                    <div class="video-player-empty-title">{{ videoAwaitingDelivery(selectedSb) ? t('episode.recovery.awaitingDelivery') : videoTaskState(selectedSb) === 'pending' ? t('episode.vid.emptyGenerating') : t('episode.vid.emptyNoVideo') }}</div>
+                    <div class="video-player-empty-desc">{{ videoAwaitingDelivery(selectedSb) || canRecoverVideo(selectedSb?.id) ? t('episode.recovery.restoreHint') : videoTaskState(selectedSb) === 'pending' ? t('episode.vid.emptyGeneratingDesc') : t('episode.vid.emptyNoVideoDesc') }}</div>
                   </div>
                   <button
                     v-if="videoTaskState(selectedSb) !== 'pending'"
                     class="btn btn-primary btn-sm video-player-empty-action"
                     @click="genVid(selectedSb)"
                   >
-                    {{ t('episode.vid.generateVideo') }}
+                    {{ videoTaskActionLabel(selectedSb) }}
                   </button>
                 </div>
+              </div>
+              <div v-if="playerIsRemote" class="video-remote-source">
+                <span>{{ t('episode.recovery.remotePreview') }}</span>
+                <a :href="playerVideoUrl" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">{{ playerVideoUrl }}</a>
+                <span v-if="playerLoadFailed">{{ t('episode.recovery.remoteUnavailable') }}</span>
+                <button v-if="!previewVideoUrl && canRecoverVideo(selectedSb?.id)" class="btn btn-sm" @click="recoverVideo(selectedSb)">{{ t('episode.recovery.restoreDownload') }}</button>
               </div>
             </aside>
 
@@ -792,7 +805,7 @@
                   @click="previewHistoryVideo(h)"
                   @keydown.enter.prevent="previewHistoryVideo(h)"
                 >
-                  <video :src="'/' + taskVideoPath(h)" :poster="posterOf('/' + taskVideoPath(h)) || undefined" preload="none" muted playsinline tabindex="-1" />
+                  <video :src="videoSourceUrl(taskVideoPath(h))" :poster="posterOf(videoSourceUrl(taskVideoPath(h))) || undefined" preload="none" muted playsinline tabindex="-1" />
                   <span class="video-history-time">{{ formatHistoryTime(taskCreatedAt(h)) }}</span>
                   <span v-if="isCurrentVideo(h)" class="video-history-badge">{{ t('episode.vid.current') }}</span>
                   <button v-else type="button" class="video-history-del" :title="t('episode.vid.deleteRecord')" @click.stop="removeHistoryVideo(h)">×</button>
@@ -1111,6 +1124,10 @@
                 </div>
                 <div v-if="row.errorMsg" class="video-task-error" :title="row.errorMsg">
                   {{ mapError(row.errorMsg) }}
+                  <div v-if="row.kind === 'video'" class="flex gap-2">
+                    <button v-if="row.recoverable" class="btn btn-sm" @click.stop="recoverTask(row.id, row.storyboardId)">{{ t('episode.recovery.restore') }}</button>
+                    <button class="btn btn-sm" @click.stop="copyTaskDiagnostics(row.id)">{{ t('episode.recovery.diagnostics') }}</button>
+                  </div>
                   <div v-if="row.kind === 'video' && videoModerationHint(row.errorMsg)" class="video-task-error-hint">{{ videoModerationHint(row.errorMsg) }}</div>
                 </div>
               </div>
@@ -1515,6 +1532,7 @@ import { api, dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, propA
 import { startTour, autoTour } from '~/composables/useTour'
 import { resolveCharacterLook } from '~/composables/useCharacterIdentity'
 import { useAgent } from '~/composables/useAgent'
+import { resolveTextModelSelection } from '~/utils/text-model-selection'
 import { toastError, mapError, MODERATION_RE } from '~/composables/useToast'
 import LocaleSwitcher from '~/components/LocaleSwitcher.vue'
 
@@ -1669,9 +1687,9 @@ function toggleSidebar() {
       : localStorage.removeItem(SIDEBAR_COLLAPSED_KEY)
   } catch { /* 静默 */ }
 }
-/** 顶栏文本模型覆盖参数：未选择时为 undefined，后端回退到 Agent/文本配置默认 */
-function chatModelOverride() { return bareModelName(chatModel.value) || undefined }
-function chatConfigId() { return ownerConfigId(textModelOptions.value, chatModel.value) }
+/** 默认项也传出界面显示的模型和所属配置，覆盖 Agent 文件中的其他默认模型。 */
+function chatModelOverride() { return resolveTextModelSelection(textModelOptions.value, chatModel.value).model }
+function chatConfigId() { return resolveTextModelSelection(textModelOptions.value, chatModel.value).configId }
 const pendingCharImageIds = ref([])
 const pendingSceneImageIds = ref([])
 const pendingPropImageIds = ref([])
@@ -2036,15 +2054,72 @@ function videoTaskState(sb) {
   return 'ready'
 }
 
+function latestVideoTask(id) {
+  return genTasks.value.filter(task => task.type === 'video' && task.storyboard_id === id)
+    .sort((a, b) => b.id - a.id)[0]
+}
+const recoverableVideoCount = computed(() => sbs.value.filter(sb => canRecoverVideo(sb.id)).length)
+function canRecoverVideo(id) {
+  const task = latestVideoTask(id)
+  return !!task && task.status === 'failed' && task.error_code !== 'generation_failed'
+    && !!(task.task_id || task.result_url)
+}
+function videoAwaitingDelivery(sb) {
+  const task = latestVideoTask(sb?.id)
+  return !!task && (!!task.result_url || task.error_code === 'delivery_failed' || task.stage === 'transferring')
+}
+function videoErrorLabel(id, error) {
+  const task = latestVideoTask(id)
+  if (task?.error_code === 'delivery_failed' || (task?.result_url && task?.status === 'failed')) return t('episode.recovery.downloadFailed')
+  if (task?.error_code === 'submission_unknown') return t('episode.recovery.unknownSubmission')
+  return mapError(error)
+}
+async function copyVideoDiagnostics(id) {
+  const task = latestVideoTask(id)
+  if (task) await copyTaskDiagnostics(task.id)
+}
+async function copyTaskDiagnostics(taskId) {
+  try {
+    const info = await taskAPI.diagnostics(taskId)
+    await navigator.clipboard.writeText(JSON.stringify(info, null, 2))
+    toast.success(t('episode.recovery.copied'))
+  } catch (error) { toastError(error) }
+}
+async function recoverVideo(sb) {
+  const task = latestVideoTask(sb.id)
+  if (!task) return
+  return recoverTask(task.id, sb.id)
+}
+async function recoverTask(taskId, storyboardId) {
+  if (isPendingVideo(storyboardId)) return
+  if (storyboardId) pendingVideoIds.value.push(storyboardId)
+  try {
+    await taskAPI.recover(taskId)
+    delete failedVideoMessages.value[storyboardId]
+    await refresh()
+    pollVideoGeneration(taskId, storyboardId)
+  } catch (error) {
+    pendingVideoIds.value = pendingVideoIds.value.filter(id => id !== storyboardId)
+    toastError(error)
+  }
+}
+
 function videoTaskStatusLabel(sb) {
   const state = videoTaskState(sb)
   if (state === 'done') return t('episode.status.done')
-  if (state === 'pending') return t('episode.status.generating')
+  if (state === 'pending') {
+    const stage = latestVideoTask(sb.id)?.stage
+    return stage === 'downloading' ? t('episode.recovery.downloading')
+      : stage === 'transferring' ? t('episode.recovery.transferring') : t('episode.status.generating')
+  }
+  if (state === 'failed' && latestVideoTask(sb?.id)?.result_url) return t('episode.recovery.localDownloadFailed')
   if (state === 'failed') return t('episode.status.failed')
   return t('episode.status.todo')
 }
 
 function videoTaskActionLabel(sb) {
+  if (canRecoverVideo(sb?.id)) return t('episode.recovery.restore')
+  if (latestVideoTask(sb?.id)?.status === 'failed') return t('episode.recovery.newGeneration')
   const state = videoTaskState(sb)
   if (state === 'done') return t('episode.asset.regen')
   if (state === 'pending') return t('episode.asset.generating')
@@ -2229,8 +2304,8 @@ function batchVideos() {
     : sbs.value.filter(s => !hasVid(s))
   openBatchVideoConfirm(pool)
 }
-function retryFailedVideos() {
-  openBatchVideoConfirm(sbs.value.filter(s => videoTaskState(s) === 'failed'))
+async function retryFailedVideos() {
+  await Promise.allSettled(sbs.value.filter(sb => canRecoverVideo(sb.id)).map(recoverVideo))
 }
 function confirmBatchVideos() {
   const targets = [...batchVideoConfirm.value.targets]
@@ -2297,7 +2372,7 @@ async function loadGenTasks() {
       // 分镜已有视频(失败后重试成功)时不再报历史错误
       if (hasVid(sbs.value.find(s => s.id === sbId))) continue
       if (t.status === 'processing') pending.add(sbId)
-      else if (t.status === 'failed') failed[sbId] = t.error_msg || t('episode.status.failed')
+      else if (t.status === 'failed') failed[sbId] = t.error_msg || 'Task failed'
     }
     // 刚点击提交、任务记录尚未加载出来的本地状态保留,避免状态闪退
     for (const id of pendingVideoIds.value) if (!latestBySb.has(id)) pending.add(id)
@@ -2357,6 +2432,8 @@ const genTaskRows = computed(() => {
     model: t.model || '',
     status: t.status || 'processing',
     errorMsg: t.error_msg || '',
+    storyboardId: t.storyboard_id,
+    recoverable: t.type === 'video' && t.error_code !== 'generation_failed' && !!(t.task_id || t.result_url),
     previewUrl: t.local_path || t.result_url || '',
     prompt: t.prompt || '',
     createdAt: t.created_at || '',
@@ -2409,12 +2486,15 @@ function genTaskDuration(row) {
   return ms >= 60000 ? `${Math.floor(ms / 60000)}m${Math.round((ms % 60000) / 1000)}s` : `${Math.round(ms / 1000)}s`
 }
 
-// 抽屉打开且有进行中任务时,4s 轮询;关闭或全部结束时停止
-watch([taskDrawer, genTaskActiveCount], ([open, active]) => {
+// 后端任务在刷新/重启后仍可能运行，工作台持续同步，不依赖抽屉是否打开。
+let refreshingTasks = false
+watch(genTaskActiveCount, active => {
   stopGenTasksPolling()
-  if (open && active > 0) {
-    genTasksTimer = setInterval(loadGenTasks, 4000)
-  }
+  if (active > 0) genTasksTimer = setInterval(async () => {
+    if (refreshingTasks) return
+    refreshingTasks = true
+    try { await refresh() } finally { refreshingTasks = false }
+  }, 4000)
 })
 
 const productionBlockMessage = computed(() => {
@@ -3061,7 +3141,22 @@ function hasVid(s) { return !!getVideoUrl(s) }
 
 // ===== 分镜视频历史（一个分镜可能生成多个视频,sys_task 留存全部记录）=====
 const sbVideoHistory = ref([])
-const previewVideoUrl = ref('') // 正在预览的历史视频(相对路径);空 = 预览当前主视频
+const previewVideoUrl = ref('') // 空表示当前分镜；历史视频可以是本地路径或远程 URL
+const playerLoadFailed = ref(false)
+function videoSourceUrl(value) {
+  if (!value) return ''
+  return /^https?:\/\//i.test(value) ? value : '/' + value.replace(/^\/+/, '')
+}
+// 未保存完成的新结果先在线播放；下载完成后 refresh 回写的本地视频自动接替。
+// 不把临时签名 URL 写入分镜主视频，避免影响本地拼接导出。
+const playerVideoUrl = computed(() => {
+  if (previewVideoUrl.value) return videoSourceUrl(previewVideoUrl.value)
+  const task = latestVideoTask(selectedSb.value?.id)
+  const pendingResult = task && task.status !== 'completed' ? taskVideoPath(task) : ''
+  return videoSourceUrl(pendingResult || getVideoUrl(selectedSb.value))
+})
+const playerIsRemote = computed(() => /^https?:\/\//i.test(playerVideoUrl.value))
+watch(playerVideoUrl, () => { playerLoadFailed.value = false })
 
 // 注意:/tasks 返回原始行(camelCase),/episodes/:id/generation-tasks 返回 snake_case,两种命名都兼容
 function taskVideoPath(t) { return t?.local_path || t?.localPath || t?.result_url || t?.resultUrl || '' }
@@ -3087,7 +3182,7 @@ function previewHistoryVideo(t) {
 
 async function setAsMainVideo() {
   const sb = selectedSb.value
-  if (!sb || !previewVideoUrl.value) return
+  if (!sb || !previewVideoUrl.value || playerIsRemote.value) return
   try {
     await storyboardAPI.update(sb.id, { video_url: previewVideoUrl.value })
     sb.video_url = previewVideoUrl.value
@@ -3425,6 +3520,11 @@ async function applyLibraryImage({ image_url }) {
 }
 
 async function genVid(sb, opts = {}) {
+  if (!opts.forceNew && canRecoverVideo(sb.id)) return recoverVideo(sb)
+  const latest = latestVideoTask(sb.id)
+  const forceNew = opts.forceNew || latest?.status === 'failed'
+  if (forceNew && !window.confirm(t('episode.recovery.confirmNew'))) return
+  // 参考图超限提示放在恢复/确认之后：只在真正发起新生成时提示
   const { dropped } = collectShotReferences(sb)
   if (dropped.length && !opts.silent) {
     toast.warning(t('episode.ref.truncatedToast', { limit: refImageLimit.value, names: dropped.map(r => r.name).join(t('common.listJoin')) }), { duration: 6000 })
@@ -3449,7 +3549,7 @@ async function genVid(sb, opts = {}) {
   try {
     delete failedVideoMessages.value[sb.id]
     if (!isPendingVideo(sb.id)) pendingVideoIds.value.push(sb.id)
-    const generation = await taskAPI.generate({ type: 'video', ...params })
+    const generation = await taskAPI.generate({ type: 'video', ...params, force_new: !!forceNew })
     if (!opts.silent) toast.success(t('episode.vid.generating'))
     await refresh()
     pollVideoGeneration(generation?.id, sb.id)
@@ -3495,12 +3595,8 @@ async function pollVideoGeneration(generationId, storyboardId) {
       }
     } catch {}
   }
-  pendingVideoIds.value = pendingVideoIds.value.filter(item => item !== storyboardId)
-  failedVideoMessages.value = {
-    ...failedVideoMessages.value,
-    [storyboardId]: t('episode.vid.genTimeout'),
-  }
-  toast.error(t('episode.vid.genTimeout'))
+  // 页面等待结束不代表上游失败；后续由任务列表轮询继续跟踪。
+  await loadGenTasks()
 }
 async function doMerge(ids) {
   const storyboardIds = Array.isArray(ids) ? ids : undefined
@@ -4833,6 +4929,17 @@ onMounted(() => setTimeout(() => autoTour('episode', EPISODE_TOUR, t), 900))
   gap: 16px;
   align-items: start;
 }
+.video-remote-source {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.video-remote-source a { max-width: 100%; overflow-wrap: anywhere; color: var(--accent); }
+
 .video-player-history {
   min-height: 0;
   padding: 8px 12px 10px;

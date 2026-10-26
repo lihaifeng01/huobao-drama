@@ -454,6 +454,11 @@ export function initSqliteSchema(sqlite: Database.Database) {
   for (const statement of POST_COLUMN_STATEMENTS) {
     sqlite.exec(statement)
   }
+  // 兼容已安装的桌面版；仅增加任务恢复元数据，不改写历史生成结果。
+  const taskColumns = new Set((sqlite.prepare('PRAGMA table_info(sys_task)').all() as { name: string }[]).map(c => c.name))
+  for (const [name, type] of Object.entries({ config_id: 'INTEGER', config_base_url: 'TEXT', stage: 'TEXT', error_code: 'TEXT' })) {
+    if (!taskColumns.has(name)) sqlite.exec(`ALTER TABLE sys_task ADD COLUMN ${name} ${type}`)
+  }
   const insertSeed = sqlite.prepare(SEED_SQL)
   const upgradeSeed = sqlite.prepare(UPGRADE_SQL)
   const removeSeed = sqlite.prepare(REMOVE_SQL)

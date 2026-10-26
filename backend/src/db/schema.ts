@@ -222,6 +222,10 @@ export const stylePresets = sqliteTable('style_presets', {
 // 统一生成任务表：图片/视频生成共用，type 区分，生成参数存 params(JSON)
 export const sysTask = sqliteTable('sys_task', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  configId: integer('config_id'),
+  configBaseUrl: text('config_base_url'),
+  stage: text('stage'),
+  errorCode: text('error_code'),
   type: text('type').notNull(), // image | video
   storyboardId: integer('storyboard_id'),
   dramaId: integer('drama_id'),

@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![ダウンロード](https://img.shields.io/github/v/release/chatfire-AI/huobao-drama?style=flat&logo=github&label=%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89)](https://github.com/chatfire-AI/huobao-drama/releases/latest)
 
-[English](README.md) | [简体中文](README.zh-CN.md) | **日本語** | [한국어](README.ko.md)
+[中英双语](README.md) | [English](README.en.md) | [简体中文](README.zh-CN.md) | **日本語** | [한국어](README.ko.md)
 
 [機能](#-機能) • [クイックスタート](#-クイックスタート) • [チュートリアル](#-チュートリアル画像付き) • [デスクトップ版](#-デスクトップアプリ推奨) • [デプロイ](#-デプロイ)
 
@@ -20,7 +20,7 @@
 デプロイ後、「設定 → 火宝クイック設定」に Key を貼るだけで、3 つの推奨設定をワンクリックで書き込み
 
 <h3>📥 <a href="https://github.com/chatfire-AI/huobao-drama/releases/latest">デスクトップ版をダウンロード（macOS / Windows）</a></h3>
-<h3>🌐 <a href="https://www.chatfire.site">公式サイト</a></h3>
+<h3>🌐 <a href="https://www.firemux.cn">公式サイト</a></h3>
 
 </div>
 
@@ -619,22 +619,12 @@ cd ../frontend && npm run build
 
 ---
 
-## ☕ 寄付のお願い
-
-このプロジェクトが役に立ったら、QR コードで作者にコーヒーを一杯おごってください ☕。あなたの支援が継続的な更新の原動力です！
-
-<div align="center">
-  <img src="donate.png" alt="Alipay 寄付 QR コード" width="240" />
-</div>
-
----
-
 ## 💬 WeChat グループ
 
 QR コードをスキャンして WeChat グループに参加：
 
 <div align="center">
-  <img src="docs/images/wx-group.jpg" width="200" alt="WeChat グループ QR コード" />
+  <img src="docs/images/wx-group.png" width="200" alt="WeChat グループ QR コード" />
 </div>
 
 ---

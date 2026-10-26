@@ -5,6 +5,7 @@
 import { build } from 'esbuild'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import fs from 'node:fs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -22,3 +23,5 @@ await build({
   sourcemap: true,
   logLevel: 'info',
 })
+
+fs.copyFileSync(path.resolve(__dirname, '../assets/starting.html'), path.resolve(__dirname, '../dist/starting.html'))

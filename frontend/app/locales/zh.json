@@ -974,6 +974,24 @@
       "smooth": "流畅",
       "hd": "高清",
       "uhd": "超清"
+    },
+    "recovery": {
+      "remotePreview": "视频已生成，暂未保存到本地。可在线播放或打开下方链接，下载完成后自动切换本地视频。",
+      "remoteUnavailable": "在线预览无法加载，可尝试打开链接或恢复下载；链接可能已过期。",
+      "restoreDownload": "恢复下载",
+      "localDownloadFailed": "已生成 · 本地下载失败",
+      "restore": "恢复视频",
+      "newGeneration": "重新生成",
+      "downloadFailed": "视频已生成，交付或保存失败，请恢复视频",
+      "unknownSubmission": "提交结果待确认，请先核对上游记录",
+      "downloading": "视频已生成，下载中",
+      "diagnostics": "复制诊断信息",
+      "copied": "诊断信息已复制",
+      "confirmNew": "重新生成会提交新的任务，可能再次计费。确定继续吗？",
+      "restoreFailed": "恢复视频({n})",
+      "transferring": "视频已生成，转存中",
+      "awaitingDelivery": "视频已生成，等待交付",
+      "restoreHint": "恢复已有任务，避免重复生成"
     }
   },
   "looks": {

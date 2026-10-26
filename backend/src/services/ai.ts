@@ -11,6 +11,7 @@ import type { CustomOptions } from './adapters/types.js'
 export type ServiceType = 'text' | 'image' | 'video'
 
 export interface AIConfig {
+  id?: number
   provider: string
   baseUrl: string
   apiKey: string
@@ -94,6 +95,7 @@ export async function getActiveConfig(serviceType: ServiceType): Promise<AIConfi
     })
   }
   return {
+    id: active.id,
     provider: active.provider || '',
     baseUrl: active.baseUrl,
     apiKey: active.apiKey,
@@ -148,6 +150,7 @@ export async function getConfigById(id: number): Promise<AIConfig | null> {
     })
   }
   return {
+    id: row.id,
     provider: row.provider || '',
     baseUrl: row.baseUrl,
     apiKey: row.apiKey,
