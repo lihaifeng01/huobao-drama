@@ -38,7 +38,7 @@
 - Nuxt 会自动导入 `ref`、`computed` 等。**不要在 `.vue` 文件里把局部变量命名为 `ref` / `computed` / `watch` / `reactive`**：自动导入一旦检测到同名的本地声明，就会放弃给整个文件注入导入，页面运行时报 `ref is not defined`（2026-10-25 踩过）。
 - `components/` 下的组件自动注册，模板里直接用，无需 import。
 - vue-i18n 文案里的 `@` 要写成 `{'@'}`，否则整段文案编译失败（报 `SyntaxError: 10`），**所在组件整块不渲染**。`frontend/tests/character-looks-structure.test.mjs` 会扫描四个语言文件拦截这个问题。新增文案要同时加 zh / en / ja / ko 四个语言文件。
-- 在一个弹窗里再打开另一个弹窗（比如素材详情弹窗里的「合并角色」），第二个弹窗要用 `<Teleport to="body">`，否则会被第一个弹窗盖住、点不到。
+- 在一个弹窗里再打开另一个弹窗（确认框、素材库选择、合并角色等），第二个弹窗要同时满足两点：`<Teleport to="body">`，**并且**加上 `overlay-nested` 类（`z-index: var(--z-modal-nested)`，等于 130）。剧集工作台的素材详情弹窗是 `z-index: 118`，普通 `.overlay` 只有 100，光 Teleport 照样会被盖住。分层约定写在 `studio.css` 的注释里，`frontend/tests/nested-modal-layer.test.mjs` 会检查这一点。
 - 图片路径在库里存相对路径 `static/...`，展示时补前导 `/`；列表用 `thumbOf()` 取缩略图，加载失败时用 `thumbFallback` 回退原图。
 
 **后端**
@@ -68,6 +68,18 @@
 ---
 
 ## 变更条目
+
+### 2026-10-26 · 修复：弹窗内打开的确认框 / 选择器被遮挡
+- **分支**：`dev`
+- **现象**：在剧集工作台的角色详情弹窗里删除造型，点删除没反应。确认框其实已经打开了，但被详情弹窗盖住，点击落在了详情弹窗上。
+- **原因**：剧集工作台的 `.asset-detail-overlay` 是 `z-index: 118`，`ConfirmDialog` 用的是普通 `.overlay`（100）。虽然确认框 Teleport 到了 body，但层级更低，照样被盖住。项目详情页没有这个问题，因为那里的编辑弹窗在一个单独的层叠上下文里。从剧集工作台详情弹窗打开的「从素材库选择图片」用的也是 100，按同样的原因判断也被遮挡（修复前没有单独测量）。
+- **改动**
+  - `studio.css` 新增「叠加模态」层：`--z-modal-nested: 130`，高于所有普通模态（100–120），低于菜单（1000），以及 `.overlay.overlay-nested`。
+  - `ConfirmDialog`、`LibraryPicker`、项目详情页的合并角色弹窗都加上了 `overlay-nested`。确认框始终在最上层。
+- **验证**
+  - 用 Playwright 的 `elementFromPoint` 检查：剧集工作台和项目详情页里的删除造型确认框、素材库选择器，以及合并角色弹窗，都在最上层；剧集工作台里真正点击确认后，造型确实被删除了。
+  - 素材库页面（25 项）和别名 / 合并 / 造型（13 项）的端到端测试回归通过。
+  - 新增 `frontend/tests/nested-modal-layer.test.mjs`。前端结构测试失败数仍是 25。
 
 ### 2026-10-26 · 硅基流动请求体对照官方文档校正
 - **分支**：`dev`

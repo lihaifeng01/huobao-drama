@@ -138,7 +138,9 @@
   --accent-purple-text: #4f46e5;
   --accent-purple-bg: rgba(99,102,241,0.10);
 
-  /* z-index 分层：页面内部 1–40；模态 .overlay 100–120；菜单 1000；全屏阻塞 2000 */
+  /* z-index 分层：页面内部 1–40；模态 .overlay 100–120；叠加模态 130；菜单 1000；全屏阻塞 2000
+     叠加模态：会在其他弹窗之上打开的弹窗（确认框、素材库选择、合并角色），须高于所有普通模态 */
+  --z-modal-nested: 130;
   --z-menu: 1000;
   --z-blocking: 2000;
 }
@@ -499,6 +501,8 @@ select.input { appearance: auto; cursor: pointer; padding-right: 14px; }
   -webkit-backdrop-filter: blur(8px);
   animation: fadeIn 0.18s var(--ease-out);
 }
+/* 叠加模态：在其他弹窗（如 z-index 118 的素材详情）之上打开时使用，见 --z-modal-nested */
+.overlay.overlay-nested { z-index: var(--z-modal-nested); }
 
 .page-enter { animation: fadeUp 0.24s var(--ease-out) both; }
 .stagger-1 { animation-delay: 0.04s; }

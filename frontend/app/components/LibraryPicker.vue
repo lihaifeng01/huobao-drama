@@ -1,6 +1,7 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="overlay" @click.self="emit('close')">
+    <!-- 叠加模态：常从素材详情弹窗内打开 -->
+    <div v-if="open" class="overlay overlay-nested" @click.self="emit('close')">
       <div class="dialog picker-dialog" role="dialog" aria-modal="true" :aria-label="dialogTitle">
         <div class="picker-head">
           <div class="picker-head-copy">

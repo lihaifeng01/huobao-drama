@@ -589,7 +589,7 @@
     />
     <!-- 合并重复角色：选中的角色并入当前角色（Teleport 到 body，叠在素材详情弹窗之上） -->
     <Teleport to="body">
-    <div v-if="mergeDialog.open" class="overlay" @click.self="mergeDialog.open = false">
+    <div v-if="mergeDialog.open" class="overlay overlay-nested" @click.self="mergeDialog.open = false">
       <div class="dialog merge-dialog" role="dialog" aria-modal="true">
         <div class="dialog-head">
           <div class="merge-head-copy">
