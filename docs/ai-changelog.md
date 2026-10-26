@@ -69,6 +69,25 @@
 
 ## 变更条目
 
+### 2026-10-26 · 硅基流动请求体对照官方文档校正
+- **分支**：`dev`
+- **依据**：硅基流动官方 API 文档 https://api-docs.siliconflow.cn/docs/api/images-generations-post （用户在环境里放行了 `api-docs.siliconflow.cn` 后已读到原文；`api.siliconflow.cn` 本身仍不在白名单，所以没能实际调用接口）。
+- **文档要点**
+  - 接口：`POST /v1/images/generations`，JSON 请求体。
+  - `image`：参考图，base64（`data:image/png;base64,...`）或网址都可以。
+  - `image2` / `image3`：**仅 Qwen/Qwen-Image-Edit-2509 支持**。
+  - `image_size`（`"宽x高"`）：**Qwen-Image-Edit / Edit-2509 不支持这个字段，其他模型都必填**。文档强烈建议使用推荐值，并列出了 Kolors 和 Qwen-Image 的推荐分辨率。
+  - 文档里没有 `size` / `n` / `response_format`。
+  - 响应：`{ images: [{ url }], timings, seed }`，图片网址 1 小时内有效。
+  - 默认会给生成的图片加「AI 生成」明水印，可以用请求头 `X-Enable-Watermark: 0` 关闭，但关闭后开发者有法定义务自己加明水印。**这里没有改**，保持默认加水印。
+- **改动**（`backend/src/services/adapters/openai-image.ts`）
+  - 硅基流动单独组请求体 `buildSiliconFlowRequest`，只包含 `model`、`prompt`、`image_size`（按模型决定是否带）和参考图字段，不再发 OpenAI 的 `size` / `n` / `response_format`。
+  - `siliconFlowImageSize(model, size)`：Qwen-Image-Edit 系列返回 null（不带这个字段）；Kolors / Qwen-Image 取宽高比最接近的推荐值，比如 Qwen-Image 的 1920x1080 → 1664x928；其他模型原样使用。
+  - Edit-2509 有多张参考图时，依次填入 `image2` / `image3`。
+- **修正了上一条的判断**：上一条认为「沿用 `size` 不改，避免影响已有尺寸」是错的。按文档，`image_size` 对非 Edit 模型是**必填**，原来只发 `size`，Z-Image-Turbo 这类模型的文生图请求本身就可能失败。
+- **仍未核实**：FLUX Kontext 的 `input_image` 不在这个官方 API 页上（来自硅基流动的模型发布博客），保留原映射。
+- **验证**：`backend/tests/image-reference-fallback.test.ts` 新增 2 项，按文档逐条断言请求体字段和尺寸映射，共 10 项通过；后端 TypeScript 测试共 31 项通过。
+
 ### 2026-10-26 · 图片参考图兼容：识别硅基流动；不支持参考图时降级为纯文字生成并提示
 - **分支**：`dev`
 - **背景**：用户在本地用硅基流动（`provider: openai`，`base_url` 为 `https://api.siliconflow.cn`，模型 `Tongyi-MAI/Z-Image-Turbo`）生成角色造型时报 `API error 404`。原因是 OpenAI 适配器只要带参考图，就把请求改发到 `/v1/images/edits`，而硅基流动没有这个端点。
@@ -86,10 +105,9 @@
   - 降级而不是直接失败：至少能出图，同时明确提示人脸可能对不上。
   - 硅基流动的纯文生图模型（如 Z-Image-Turbo）可能会**悄悄忽略** `image` 字段，靠报错发现不了，所以按模型名提前判断并提示。
 - **注意事项 / 未核实**
-  - 云端环境没能访问硅基流动官方文档（`api-docs.siliconflow.cn` 被网络策略拦截，用户在会话中途加的权限没有生效，可能要新会话才生效）。字段规则依据的是搜索到的官方文档摘要和硅基流动博客：图生图示例用 `image`（网址或 base64），Qwen-Image-Edit 用带 base64 前缀的 `image`，FLUX Kontext 用 `input_image`。
+  - 当时没能访问硅基流动官方文档，字段规则来自搜索到的摘要和博客。→ 已对照官方文档核实并校正，见 2026-10-26「硅基流动请求体对照官方文档校正」条目。
   - **按模型名判断是启发式的**：名字里没有 edit / kolors / kontext、但其实支持参考图的模型，会被当成纯文生图（会提示，不会报错）。要扩充的话改 `siliconFlowReferenceField` 即可。
-  - `image2` / `image3` 这类多图字段没有确认，暂时只发一张参考图。
-  - 硅基流动文档里的尺寸参数是 `image_size`，这里仍然沿用原来的 `size`（原有的文生图请求就是这样发的），这次没改，避免对已有的尺寸取值造成影响。
+  - `image2` / `image3` 和 `image_size` 的处理已在后一条校正（`image_size` 对非 Edit 模型是必填，这里原来的「沿用 `size`」是错的）。
   - 降级提示目前只在造型面板里显示。其他带参考图的生图入口（`POST /tasks` 的 `reference_images`）同样会降级，但只记日志和任务参数，界面上不提示。
 - **验证**
   - `backend/tests/image-reference-fallback.test.ts`（8 项，在进程内拦截 fetch，走真实的 `generateImage` → 任务 → 回写流程）：硅基流动的 Edit / Kontext / 纯文生图三种模型、`images` 响应解析、OpenAI 兼容中转 edits 404 后降级、401 不降级、不带参考图时行为不变。

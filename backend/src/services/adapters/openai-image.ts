@@ -4,9 +4,13 @@
  * 参考生图端点: /v1/images/edits (multipart/form-data, image[] 文件上传)
  * 响应格式: { data: [{ url: "..." }] } 或 { data: [{ b64_json: "..." }] }
  *
- * 硅基流动（OpenAI 兼容地址）没有 /v1/images/edits：参考图作为 generations 请求体的 JSON 字段
- * （图生图/改图模型用 image，FLUX Kontext 用 input_image，值为 URL 或 base64 data URL），
- * 响应为 { images: [{ url }] }。纯文生图模型不支持参考图，此时不发参考图并标记 referenceDropped。
+ * 硅基流动（OpenAI 兼容地址）没有 /v1/images/edits，按其官方文档单独组请求体
+ * （https://api-docs.siliconflow.cn/docs/api/images-generations-post）：
+ * - 参考图：image（base64 data URL 或 URL）；image2 / image3 仅 Qwen/Qwen-Image-Edit-2509 支持；
+ *   FLUX Kontext 用 input_image（来自其模型发布说明，官方 API 页未列出）
+ * - 尺寸：image_size（"宽x高"），Qwen-Image-Edit / Edit-2509 不支持此字段，其他模型必填；按模型推荐值就近取
+ * - 不发 OpenAI 的 size / n / response_format；响应为 { images: [{ url }] }
+ * 纯文生图模型不支持参考图，此时不发参考图并标记 referenceDropped。
  */
 import type {
   ImageProviderAdapter,
@@ -38,6 +42,34 @@ export function siliconFlowReferenceField(model: string): 'image' | 'input_image
   return null
 }
 
+/** Qwen-Image-Edit 系列：不接受 image_size；其中 Edit-2509 额外支持 image2 / image3 */
+function isQwenImageEdit(model: string): boolean {
+  return /qwen-image-edit/i.test(model)
+}
+
+// 硅基流动官方文档给出的推荐分辨率
+const KOLORS_SIZES = ['1024x1024', '960x1280', '768x1024', '720x1440', '720x1280']
+const QWEN_IMAGE_SIZES = ['1328x1328', '1664x928', '928x1664', '1472x1140', '1140x1472', '1584x1056', '1056x1584']
+
+/**
+ * 硅基流动 image_size：Kolors / Qwen-Image 取宽高比最接近的推荐值（文档强烈建议用推荐值），
+ * 其他模型原样使用「宽x高」。返回 null 表示该模型不接受 image_size。
+ */
+export function siliconFlowImageSize(model: string, size: string | null | undefined): string | null {
+  if (isQwenImageEdit(model)) return null
+  const [w, h] = String(size || '1024x1024').toLowerCase().split('x').map(Number)
+  const width = w > 0 ? w : 1024
+  const height = h > 0 ? h : 1024
+  const candidates = /kolors/i.test(model) ? KOLORS_SIZES : /qwen-image/i.test(model) ? QWEN_IMAGE_SIZES : null
+  if (!candidates) return `${width}x${height}`
+  const target = Math.log(width / height)
+  return candidates.reduce((best, cur) => {
+    const [cw, ch] = cur.split('x').map(Number)
+    const [bw, bh] = best.split('x').map(Number)
+    return Math.abs(Math.log(cw / ch) - target) < Math.abs(Math.log(bw / bh) - target) ? cur : best
+  })
+}
+
 export class OpenAIImageAdapter implements ImageProviderAdapter {
   provider = 'openai'
 
@@ -52,10 +84,12 @@ export class OpenAIImageAdapter implements ImageProviderAdapter {
       : record.size || '1024x1024'
 
     // 有参考图 → 走 edits（multipart 上传图片文件）；无参考图 → 纯文生图 generations
-    // 硅基流动例外：没有 edits 端点，参考图放进 generations 的 JSON 字段（见文件头）
+    // 硅基流动例外：没有 edits 端点，按其文档单独组请求体（见文件头）
     const refs = this.parseReferenceImages(record.referenceImages)
-    const siliconFlow = isSiliconFlow(config.baseUrl)
-    if (refs.length && !siliconFlow) {
+    if (isSiliconFlow(config.baseUrl)) {
+      return this.buildSiliconFlowRequest(config, model, record.prompt, record.size, refs)
+    }
+    if (refs.length) {
       return this.buildEditsRequest(config, model, record.prompt, size, refs)
     }
 
@@ -70,12 +104,42 @@ export class OpenAIImageAdapter implements ImageProviderAdapter {
       body.response_format = 'url'
     }
 
+    return {
+      url: joinProviderUrl(config.baseUrl, '/v1', '/images/generations'),
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiKey}`,
+      },
+      body,
+    }
+  }
+
+  /** 硅基流动 /v1/images/generations：字段按其官方文档（见文件头），参考图为 JSON 字段而非 multipart */
+  private buildSiliconFlowRequest(
+    config: AIConfig,
+    model: string,
+    prompt: string | null | undefined,
+    size: string | null | undefined,
+    refs: string[],
+  ): ProviderRequest {
+    const body: Record<string, unknown> = { model, prompt: prompt || '' }
+    const imageSize = siliconFlowImageSize(model, size)
+    if (imageSize) body.image_size = imageSize
+
     let referenceDropped: ProviderRequest['referenceDropped']
-    if (refs.length && siliconFlow) {
+    if (refs.length) {
       const field = siliconFlowReferenceField(model)
-      // 只传第一张：参考生图场景（如角色造型）只有一张参考图；多图字段（image2/image3）各模型支持不一，暂不发送
-      if (field) body[field] = refs[0]
-      else referenceDropped = 'model_unsupported'
+      if (!field) {
+        referenceDropped = 'model_unsupported'
+      } else {
+        body[field] = refs[0]
+        // 多参考图：仅 Qwen/Qwen-Image-Edit-2509 支持 image2 / image3
+        if (/qwen-image-edit-2509/i.test(model)) {
+          if (refs[1]) body.image2 = refs[1]
+          if (refs[2]) body.image3 = refs[2]
+        }
+      }
     }
 
     return {

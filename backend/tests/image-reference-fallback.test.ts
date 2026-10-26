@@ -14,7 +14,7 @@ process.env.STORAGE_PATH = path.join(root, 'static')
 process.env.MYSQL_AUTO_IMPORT = 'false'
 const { db, schema } = await import('../src/db/index.ts')
 const { generateImage } = await import('../src/services/generation.ts')
-const { OpenAIImageAdapter, isSiliconFlow, siliconFlowReferenceField } = await import('../src/services/adapters/openai-image.ts')
+const { OpenAIImageAdapter, isSiliconFlow, siliconFlowReferenceField, siliconFlowImageSize } = await import('../src/services/adapters/openai-image.ts')
 
 // 参考图（角色默认形象）落在 static/uploads 下，与真实上传路径一致
 const png = await sharp({ create: { width: 32, height: 32, channels: 3, background: '#c0392b' } }).png().toBuffer()
@@ -78,6 +78,34 @@ test('SiliconFlow host and per-model reference field are recognised', () => {
   assert.equal(siliconFlowReferenceField('Kwai-Kolors/Kolors'), 'image')
   assert.equal(siliconFlowReferenceField('black-forest-labs/FLUX.1-Kontext-pro'), 'input_image')
   assert.equal(siliconFlowReferenceField('Tongyi-MAI/Z-Image-Turbo'), null)
+})
+
+// 规则来自硅基流动官方 API 文档 https://api-docs.siliconflow.cn/docs/api/images-generations-post
+test('SiliconFlow image_size: omitted for Qwen-Image-Edit, nearest recommended size for Kolors/Qwen-Image, as-is otherwise', () => {
+  assert.equal(siliconFlowImageSize('Qwen/Qwen-Image-Edit-2509', '1920x1080'), null)
+  assert.equal(siliconFlowImageSize('Qwen/Qwen-Image-Edit', '1920x1080'), null)
+  assert.equal(siliconFlowImageSize('Qwen/Qwen-Image', '1920x1080'), '1664x928')
+  assert.equal(siliconFlowImageSize('Qwen/Qwen-Image', '1080x1920'), '928x1664')
+  assert.equal(siliconFlowImageSize('Kwai-Kolors/Kolors', '1080x1920'), '720x1280')
+  assert.equal(siliconFlowImageSize('Kwai-Kolors/Kolors', '1024x1024'), '1024x1024')
+  assert.equal(siliconFlowImageSize('Tongyi-MAI/Z-Image-Turbo', '1920x1080'), '1920x1080')
+  assert.equal(siliconFlowImageSize('Tongyi-MAI/Z-Image-Turbo', undefined), '1024x1024')
+})
+
+test('SiliconFlow request body follows the docs: no OpenAI size/n/response_format; image2/image3 only for Edit-2509', () => {
+  const adapter = new OpenAIImageAdapter()
+  const cfg: any = { provider: 'openai', baseUrl: 'https://api.siliconflow.cn', apiKey: 'k', model: 'x' }
+  const refs = JSON.stringify(['data:image/png;base64,A', 'data:image/png;base64,B', 'data:image/png;base64,C'])
+  const edit2509 = adapter.buildGenerateRequest(cfg, { id: 1, model: 'Qwen/Qwen-Image-Edit-2509', prompt: 'p', size: '1920x1080', referenceImages: refs } as any)
+  assert.deepEqual(Object.keys(edit2509.body).sort(), ['image', 'image2', 'image3', 'model', 'prompt'])
+  assert.match(edit2509.url, /\/v1\/images\/generations$/)
+  const edit = adapter.buildGenerateRequest(cfg, { id: 1, model: 'Qwen/Qwen-Image-Edit', prompt: 'p', size: '1920x1080', referenceImages: refs } as any)
+  assert.deepEqual(Object.keys(edit.body).sort(), ['image', 'model', 'prompt'])
+  const kolors = adapter.buildGenerateRequest(cfg, { id: 1, model: 'Kwai-Kolors/Kolors', prompt: 'p', size: '1920x1080', referenceImages: refs } as any)
+  assert.deepEqual(Object.keys(kolors.body).sort(), ['image', 'image_size', 'model', 'prompt'])
+  const t2i = adapter.buildGenerateRequest(cfg, { id: 1, model: 'Tongyi-MAI/Z-Image-Turbo', prompt: 'p', size: '1920x1080', referenceImages: null } as any)
+  assert.deepEqual(t2i.body, { model: 'Tongyi-MAI/Z-Image-Turbo', prompt: 'p', image_size: '1920x1080' })
+  assert.equal(t2i.referenceDropped, undefined)
 })
 
 test('SiliconFlow parses { images: [{ url }] } responses', () => {
