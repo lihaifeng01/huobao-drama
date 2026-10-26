@@ -3,6 +3,10 @@
  * 文生图端点: /v1/images/generations (注意 /v1 前缀)
  * 参考生图端点: /v1/images/edits (multipart/form-data, image[] 文件上传)
  * 响应格式: { data: [{ url: "..." }] } 或 { data: [{ b64_json: "..." }] }
+ *
+ * 硅基流动（OpenAI 兼容地址）没有 /v1/images/edits：参考图作为 generations 请求体的 JSON 字段
+ * （图生图/改图模型用 image，FLUX Kontext 用 input_image，值为 URL 或 base64 data URL），
+ * 响应为 { images: [{ url }] }。纯文生图模型不支持参考图，此时不发参考图并标记 referenceDropped。
  */
 import type {
   ImageProviderAdapter,
@@ -14,6 +18,25 @@ import type {
 } from './types'
 import { joinProviderUrl } from './url'
 import { parseDataUrl } from '../../utils/storage.js'
+
+/** 是否硅基流动（按服务地址的域名判断） */
+export function isSiliconFlow(baseUrl: string | null | undefined): boolean {
+  try {
+    return /(^|\.)siliconflow\.(cn|com)$/i.test(new URL(baseUrl || '').hostname)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * 硅基流动按模型决定参考图字段；null = 该模型是纯文生图、不接受参考图。
+ * 依据硅基流动文档与模型发布说明：Qwen-Image-Edit / Kolors 等图生图模型用 image，FLUX.1 Kontext 用 input_image。
+ */
+export function siliconFlowReferenceField(model: string): 'image' | 'input_image' | null {
+  if (/kontext/i.test(model)) return 'input_image'
+  if (/edit|kolors/i.test(model)) return 'image'
+  return null
+}
 
 export class OpenAIImageAdapter implements ImageProviderAdapter {
   provider = 'openai'
@@ -29,8 +52,10 @@ export class OpenAIImageAdapter implements ImageProviderAdapter {
       : record.size || '1024x1024'
 
     // 有参考图 → 走 edits（multipart 上传图片文件）；无参考图 → 纯文生图 generations
+    // 硅基流动例外：没有 edits 端点，参考图放进 generations 的 JSON 字段（见文件头）
     const refs = this.parseReferenceImages(record.referenceImages)
-    if (refs.length) {
+    const siliconFlow = isSiliconFlow(config.baseUrl)
+    if (refs.length && !siliconFlow) {
       return this.buildEditsRequest(config, model, record.prompt, size, refs)
     }
 
@@ -45,6 +70,14 @@ export class OpenAIImageAdapter implements ImageProviderAdapter {
       body.response_format = 'url'
     }
 
+    let referenceDropped: ProviderRequest['referenceDropped']
+    if (refs.length && siliconFlow) {
+      const field = siliconFlowReferenceField(model)
+      // 只传第一张：参考生图场景（如角色造型）只有一张参考图；多图字段（image2/image3）各模型支持不一，暂不发送
+      if (field) body[field] = refs[0]
+      else referenceDropped = 'model_unsupported'
+    }
+
     return {
       url: joinProviderUrl(config.baseUrl, '/v1', '/images/generations'),
       method: 'POST',
@@ -53,6 +86,7 @@ export class OpenAIImageAdapter implements ImageProviderAdapter {
         'Authorization': `Bearer ${config.apiKey}`,
       },
       body,
+      ...(referenceDropped ? { referenceDropped } : {}),
     }
   }
 
@@ -141,7 +175,8 @@ export class OpenAIImageAdapter implements ImageProviderAdapter {
     if (result.task_id || result.id) {
       return { isAsync: true, taskId: result.task_id || result.id }
     }
-    const imageUrl = result.data?.[0]?.url || result.url
+    // 硅基流动返回 { images: [{ url }] }
+    const imageUrl = result.data?.[0]?.url || result.images?.[0]?.url || result.url
     if (imageUrl) {
       return { isAsync: false, imageUrl }
     }
@@ -179,7 +214,7 @@ export class OpenAIImageAdapter implements ImageProviderAdapter {
   }
 
   extractImageUrl(result: any): string | null {
-    return result.data?.[0]?.url || result.image_url || null
+    return result.data?.[0]?.url || result.images?.[0]?.url || result.image_url || null
   }
 
   extractImageBase64(result: any): { data: string; mimeType: string } | null {

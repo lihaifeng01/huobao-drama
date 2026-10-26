@@ -69,6 +69,33 @@
 
 ## 变更条目
 
+### 2026-10-26 · 图片参考图兼容：识别硅基流动；不支持参考图时降级为纯文字生成并提示
+- **分支**：`dev`
+- **背景**：用户在本地用硅基流动（`provider: openai`，`base_url` 为 `https://api.siliconflow.cn`，模型 `Tongyi-MAI/Z-Image-Turbo`）生成角色造型时报 `API error 404`。原因是 OpenAI 适配器只要带参考图，就把请求改发到 `/v1/images/edits`，而硅基流动没有这个端点。
+- **改动**
+  - `backend/src/services/adapters/openai-image.ts`：
+    - `isSiliconFlow(baseUrl)`：按域名识别硅基流动（`siliconflow.cn` / `siliconflow.com`）。
+    - 硅基流动带参考图时，不再走 edits，而是在 generations 的 JSON 请求体里加参考图字段。字段名由 `siliconFlowReferenceField(model)` 决定：名字里含 Kontext 的模型用 `input_image`，含 Edit 或 Kolors 的用 `image`，其余视为纯文生图模型，不发参考图，并在返回的请求上标记 `referenceDropped: 'model_unsupported'`。只发第一张参考图。
+    - 响应解析兼容硅基流动的 `{ images: [{ url }] }`。
+  - `backend/src/services/generation.ts`：
+    - 带参考图的图片请求如果被拒（400 / 404 / 405 / 415 / 422），自动去掉参考图按纯文字重试一次，原因记为 `request_rejected`。401 / 403 / 429 / 5xx 不降级，照常失败。
+    - 降级原因写入任务 `params.referenceFallback`，并打 `reference-fallback` 警告日志。
+    - 请求日志里的 base64 图片折叠成 `[data URL, N chars]`。
+  - 前端 `CharacterLooksPanel.vue`：造型图生成完成时，如果任务带有 `referenceFallback`，弹出警告「人脸可能与原角色不一致」，分模型不支持和服务拒绝两种文案。造型面板的说明文字也写明了支持参考图的模型。
+- **设计取舍**
+  - 降级而不是直接失败：至少能出图，同时明确提示人脸可能对不上。
+  - 硅基流动的纯文生图模型（如 Z-Image-Turbo）可能会**悄悄忽略** `image` 字段，靠报错发现不了，所以按模型名提前判断并提示。
+- **注意事项 / 未核实**
+  - 云端环境没能访问硅基流动官方文档（`api-docs.siliconflow.cn` 被网络策略拦截，用户在会话中途加的权限没有生效，可能要新会话才生效）。字段规则依据的是搜索到的官方文档摘要和硅基流动博客：图生图示例用 `image`（网址或 base64），Qwen-Image-Edit 用带 base64 前缀的 `image`，FLUX Kontext 用 `input_image`。
+  - **按模型名判断是启发式的**：名字里没有 edit / kolors / kontext、但其实支持参考图的模型，会被当成纯文生图（会提示，不会报错）。要扩充的话改 `siliconFlowReferenceField` 即可。
+  - `image2` / `image3` 这类多图字段没有确认，暂时只发一张参考图。
+  - 硅基流动文档里的尺寸参数是 `image_size`，这里仍然沿用原来的 `size`（原有的文生图请求就是这样发的），这次没改，避免对已有的尺寸取值造成影响。
+  - 降级提示目前只在造型面板里显示。其他带参考图的生图入口（`POST /tasks` 的 `reference_images`）同样会降级，但只记日志和任务参数，界面上不提示。
+- **验证**
+  - `backend/tests/image-reference-fallback.test.ts`（8 项，在进程内拦截 fetch，走真实的 `generateImage` → 任务 → 回写流程）：硅基流动的 Edit / Kontext / 纯文生图三种模型、`images` 响应解析、OpenAI 兼容中转 edits 404 后降级、401 不降级、不带参考图时行为不变。
+  - Playwright：模拟一个 edits 返回 404 的中转服务，界面上弹出降级提示，造型图正常生成。
+  - 原有的 OpenAI edits 路径（造型生图的接口测试）不受影响。后端 TypeScript 测试 29 项全部通过，结构测试失败数仍是 12 / 25。
+
 ### 2026-10-26 · `master` 合并到 `dev`
 - **分支**：`dev`，用 merge commit 合入 `master` 的 4 个新提交：
   - 桌面版 4.0.9 发布和 macOS 打包修复

@@ -185,6 +185,11 @@ function setPending(id, on) {
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
+function parseTaskParams(raw) {
+  if (!raw) return {}
+  if (typeof raw === 'object') return raw
+  try { return JSON.parse(raw) || {} } catch { return {} }
+}
 async function generate(look) {
   setPending(look.id, true)
   try {
@@ -196,6 +201,9 @@ async function generate(look) {
       const task = await taskAPI.get(taskId)
       if (task?.status === 'completed') {
         toast.success(t('looks.generated', { name: look.name }))
+        // 服务/模型不支持参考图时后端已降级为纯文字生成（params.referenceFallback），提示人脸可能不一致
+        const fallback = parseTaskParams(task.params).referenceFallback
+        if (fallback) toast.warning(t(`looks.referenceFallback.${fallback === 'model_unsupported' ? 'model' : 'service'}`), { duration: 8000 })
         break
       }
       if (task?.status === 'failed') {

@@ -996,7 +996,7 @@
   },
   "looks": {
     "title": "造型",
-    "hintWithRef": "生成造型图时以默认形象为参考图，保持同一张脸（参考图需图片模型支持：OpenAI / Gemini）",
+    "hintWithRef": "生成造型图时以默认形象为参考图，保持同一张脸（需图片模型支持参考图，如 OpenAI gpt-image、Gemini、硅基流动的 Qwen-Image-Edit；不支持时会降级为纯文字生成并提示）",
     "hintNoRef": "角色还没有默认形象，造型图将无法参考人脸，建议先生成默认形象",
     "noImage": "未生成",
     "noImageShort": "无图",
@@ -1023,7 +1023,11 @@
     "addShort": "+ 造型",
     "shotTitle": "本镜头造型",
     "followEpisode": "跟随本集（{name}）",
-    "fallbackHint": "所选造型还没有图片，暂用默认形象作为参考图"
+    "fallbackHint": "所选造型还没有图片，暂用默认形象作为参考图",
+    "referenceFallback": {
+      "model": "当前图片模型不支持参考图，已按纯文字生成，人脸可能与原角色不一致。可在设置中换用支持参考图的模型（如 Qwen-Image-Edit）。",
+      "service": "当前图片服务拒绝了参考图，已去掉参考图按纯文字重新生成，人脸可能与原角色不一致。"
+    }
   },
   "identity": {
     "aliases": "别名 / 称呼",

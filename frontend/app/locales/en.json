@@ -996,7 +996,7 @@
   },
   "looks": {
     "title": "Looks",
-    "hintWithRef": "Look images use the default portrait as a reference to keep the same face (requires an image model that supports references: OpenAI / Gemini)",
+    "hintWithRef": "Look images use the default portrait as a reference to keep the same face (needs an image model that accepts references, e.g. OpenAI gpt-image, Gemini, or SiliconFlow Qwen-Image-Edit; otherwise it falls back to text-only generation with a notice)",
     "hintNoRef": "This character has no default portrait yet, so looks cannot reference the face. Generate the default portrait first",
     "noImage": "Not generated",
     "noImageShort": "no image",
@@ -1023,7 +1023,11 @@
     "addShort": "+ Look",
     "shotTitle": "Looks in this shot",
     "followEpisode": "Follow episode ({name})",
-    "fallbackHint": "The selected look has no image yet; the default portrait is used as the reference"
+    "fallbackHint": "The selected look has no image yet; the default portrait is used as the reference",
+    "referenceFallback": {
+      "model": "The current image model does not accept reference images, so this look was generated from text only and the face may not match. Switch to a model that supports references (e.g. Qwen-Image-Edit) in Settings.",
+      "service": "The image service rejected the reference image, so it was regenerated from text only and the face may not match."
+    }
   },
   "identity": {
     "aliases": "Aliases",

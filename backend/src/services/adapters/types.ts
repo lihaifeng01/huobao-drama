@@ -71,6 +71,11 @@ export interface ProviderRequest {
    * 此时 headers 不要设置 Content-Type，边界由 fetch 自动生成。
    */
   body: any
+  /**
+   * 构建请求时已放弃参考图（如硅基流动的纯文生图模型不支持参考图），生成会按纯文字进行；
+   * generation.ts 据此在任务 params 记 referenceFallback，前端提示人脸可能不一致
+   */
+  referenceDropped?: 'model_unsupported'
 }
 
 export interface AIConfig {
