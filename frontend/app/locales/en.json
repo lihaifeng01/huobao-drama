@@ -1227,6 +1227,41 @@
       "stateDone": "Done",
       "stateFailed": "Failed",
       "deleteConfirm": "Delete job \"{name}\"?"
+    },
+    "merge": {
+      "name": "Merge videos",
+      "desc": "Upload several videos and join them in order",
+      "clips": "Clips",
+      "clipStat": "{n} · {dur} total",
+      "clear": "Clear",
+      "addVideos": "Add videos",
+      "uploading": "Uploading {done}/{total} · {pct}%",
+      "added": "Added {n} video(s)",
+      "dropTitle": "Add or drop several videos",
+      "dropDesc": "mp4 / mov / m4v / webm / mkv / avi, up to 500MB each. Drag to reorder",
+      "noAudio": "Silent",
+      "noAudioHint": "This video has no audio track; silence is added for it",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "outputSize": "Output size",
+      "sizeFirst": "{w}×{h} (video 1)",
+      "sizeClip": "{w}×{h} (video {n})",
+      "start": "Merge in order ({n})",
+      "hint": "Videos with a different size or ratio are scaled and letterboxed; everything is converted to 30fps, and silent clips get a silent audio track",
+      "jobs": "History",
+      "noJobs": "Nothing merged yet",
+      "preview": "Preview",
+      "reuse": "Edit these clips again",
+      "jobMeta": "{n} clips · {w}×{h} · {dur}",
+      "started": "Merging started",
+      "done": "Video merged",
+      "failed": "Merge failed",
+      "deleteConfirm": "Delete \"{name}\"?",
+      "status": {
+        "merging": "Merging",
+        "done": "Done",
+        "failed": "Failed"
+      }
     }
   }
 }

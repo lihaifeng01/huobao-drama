@@ -6,38 +6,32 @@
  */
 import fs from 'fs'
 import path from 'path'
-import { Readable } from 'stream'
-import { pipeline } from 'stream/promises'
 import { v4 as uuid } from 'uuid'
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
 import { db, getInsertId, schema } from '../db/index.js'
 import { now } from '../utils/response.js'
 import { getAbsolutePath } from '../utils/storage.js'
-import { STORAGE_ROOT } from '../utils/paths.js'
 import { extractVideoPoster } from '../utils/video-poster.js'
 import { cuesToSrt, decodeSubtitleFile, parseSrt } from '../utils/srt.js'
 import { cuesToAss, defaultSubtitleStyle, normalizeSubtitleStyle, type SubtitleStyle } from '../utils/ass.js'
 import { toSnakeCase } from '../utils/transform.js'
 import { logTaskError, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
 import {
-  ensureFfmpeg, getSubtitleConfig, probeVideo, runFfmpeg, subtitleFont, transcribeVideoCues, type SubtitleSelection,
+  ensureFfmpeg, getSubtitleConfig, runFfmpeg, subtitleFont, transcribeVideoCues, type SubtitleSelection,
 } from './subtitle.js'
+import { ToolError, extOf, saveToolVideo, toolDir } from './tool-media.js'
+
+export { ToolError }
 
 type Job = typeof schema.subtitleToolJobs.$inferSelect
 
 const LABEL = 'SubtitleTool'
 const SUB_DIR = 'tool-subtitles'
-const VIDEO_EXT = new Set(['.mp4', '.mov', '.m4v', '.webm', '.mkv', '.avi'])
-export const VIDEO_MAX_BYTES = 500 * 1024 * 1024
 const SUBTITLE_EXT = new Set(['.srt', '.vtt'])
 const SUBTITLE_MAX_BYTES = 5 * 1024 * 1024
 
-export class ToolError extends Error {}
-
 function storageDir() {
-  const dir = path.join(STORAGE_ROOT, SUB_DIR)
-  fs.mkdirSync(dir, { recursive: true })
-  return dir
+  return toolDir(SUB_DIR)
 }
 
 function jobStyle(job: Job): SubtitleStyle {
@@ -75,37 +69,17 @@ async function update(id: number, values: Partial<Job>) {
   await db.update(schema.subtitleToolJobs).set({ ...values, updatedAt: now() }).where(eq(schema.subtitleToolJobs.id, id))
 }
 
-function extOf(name: string) {
-  return path.extname(name || '').toLowerCase()
-}
-
-/** 上传视频建任务：流式写盘（大文件不再整块复制一份），读取分辨率/时长/是否有音轨 */
+/** 上传视频建任务 */
 export async function createJob(file: File): Promise<Job> {
-  const ext = extOf(file.name)
-  if (!VIDEO_EXT.has(ext)) throw new ToolError(`仅支持 ${[...VIDEO_EXT].join('/')} 格式的视频`)
-  if (file.size > VIDEO_MAX_BYTES) throw new ToolError(`视频大小不能超过 ${VIDEO_MAX_BYTES / 1024 / 1024}MB`)
-  await ensureFfmpeg()
-
-  const filename = `${uuid()}${ext}`
-  const abs = path.join(storageDir(), filename)
-  await pipeline(Readable.fromWeb(file.stream() as any), fs.createWriteStream(abs))
-  const videoUrl = `static/${SUB_DIR}/${filename}`
-
-  const info = await probeVideo(abs).catch(() => null)
-  if (!info?.width || !info?.height) {
-    fs.rmSync(abs, { force: true })
-    throw new ToolError('无法读取视频画面，请确认文件是完整的视频')
-  }
-  await extractVideoPoster(videoUrl)
-
+  const video = await saveToolVideo(file, SUB_DIR)
   const ts = now()
   const res = await db.insert(schema.subtitleToolJobs).values({
-    name: path.basename(file.name).slice(0, 200) || filename,
-    videoUrl,
-    width: info.width,
-    height: info.height,
-    duration: info.duration,
-    hasAudio: info.hasAudio,
+    name: path.basename(file.name).slice(0, 200) || path.basename(video.url),
+    videoUrl: video.url,
+    width: video.width,
+    height: video.height,
+    duration: video.duration,
+    hasAudio: video.hasAudio,
     status: 'idle',
     createdAt: ts,
     updatedAt: ts,

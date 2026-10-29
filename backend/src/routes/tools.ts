@@ -3,6 +3,7 @@ import { success, badRequest, notFound } from '../utils/response.js'
 import {
   ToolError, createJob, deleteJob, getJob, listJobs, serializeJob, startBurn, startTranscribe, uploadSubtitle,
 } from '../services/subtitle-tool.js'
+import * as mergeTool from '../services/merge-tool.js'
 
 const app = new Hono()
 
@@ -58,6 +59,25 @@ app.post('/subtitle-jobs/:id/burn', (c) => handle(c, async () => {
 app.delete('/subtitle-jobs/:id', (c) => handle(c, async () => {
   await getJob(Number(c.req.param('id')))
   await deleteJob(Number(c.req.param('id')))
+  return null
+}))
+
+// ===== 视频合成 =====
+
+// POST /tools/merge-clips — 上传一个片段（multipart file），返回画面信息
+app.post('/merge-clips', (c) => handle(c, async () => mergeTool.uploadClip(await fileField(c))))
+
+// GET /tools/merge-jobs — 合成记录（新的在前）
+app.get('/merge-jobs', async (c) => success(c, (await mergeTool.listJobs()).map(mergeTool.serializeJob)))
+
+app.get('/merge-jobs/:id', (c) => handle(c, async () => mergeTool.serializeJob(await mergeTool.getJob(Number(c.req.param('id'))))))
+
+// POST /tools/merge-jobs — 按顺序合成，body: { clips: [{ url, name }], width?, height?, name? }
+app.post('/merge-jobs', (c) => handle(c, async () => mergeTool.serializeJob(await mergeTool.startMerge(await c.req.json().catch(() => ({}))))))
+
+// DELETE /tools/merge-jobs/:id — 软删除
+app.delete('/merge-jobs/:id', (c) => handle(c, async () => {
+  await mergeTool.deleteJob(Number(c.req.param('id')))
   return null
 }))
 

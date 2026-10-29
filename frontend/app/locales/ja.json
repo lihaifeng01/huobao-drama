@@ -1227,6 +1227,41 @@
       "stateDone": "合成済み",
       "stateFailed": "失敗",
       "deleteConfirm": "タスク「{name}」を削除しますか？"
+    },
+    "merge": {
+      "name": "動画結合",
+      "desc": "複数の動画をアップロードし、順番どおりに 1 本に結合",
+      "clips": "クリップ",
+      "clipStat": "{n} 本 · 合計 {dur}",
+      "clear": "クリア",
+      "addVideos": "動画を追加",
+      "uploading": "アップロード中 {done}/{total} · {pct}%",
+      "added": "{n} 本の動画を追加しました",
+      "dropTitle": "複数の動画を追加またはドロップ",
+      "dropDesc": "mp4 / mov / m4v / webm / mkv / avi、1 本最大 500MB。ドラッグで順番を変更できます",
+      "noAudio": "無音",
+      "noAudioHint": "この動画には音声トラックがないため、結合時は無音になります",
+      "moveUp": "上へ",
+      "moveDown": "下へ",
+      "outputSize": "出力サイズ",
+      "sizeFirst": "{w}×{h}（1 本目）",
+      "sizeClip": "{w}×{h}（{n} 本目）",
+      "start": "順番どおりに結合（{n} 本）",
+      "hint": "サイズや比率が異なる動画は等比で縮小し黒帯を付けます。30fps に統一し、音声のないクリップには無音を入れます",
+      "jobs": "結合履歴",
+      "noJobs": "まだ結合履歴はありません",
+      "preview": "プレビュー",
+      "reuse": "このクリップで再編集",
+      "jobMeta": "クリップ {n} 本 · {w}×{h} · {dur}",
+      "started": "結合を開始しました",
+      "done": "動画の結合が完了しました",
+      "failed": "動画の結合に失敗しました",
+      "deleteConfirm": "「{name}」を削除しますか？",
+      "status": {
+        "merging": "結合中",
+        "done": "完了",
+        "failed": "失敗"
+      }
     }
   }
 }

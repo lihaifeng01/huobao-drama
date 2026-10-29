@@ -1227,6 +1227,41 @@
       "stateDone": "已合成",
       "stateFailed": "失败",
       "deleteConfirm": "删除任务「{name}」？"
+    },
+    "merge": {
+      "name": "视频合成",
+      "desc": "上传多个视频，按顺序拼接成一个",
+      "clips": "片段",
+      "clipStat": "{n} 个 · 共 {dur}",
+      "clear": "清空",
+      "addVideos": "添加视频",
+      "uploading": "上传中 {done}/{total} · {pct}%",
+      "added": "已添加 {n} 个视频",
+      "dropTitle": "添加或拖入多个视频",
+      "dropDesc": "支持 mp4 / mov / m4v / webm / mkv / avi，单个最大 500MB；可拖动调整顺序",
+      "noAudio": "无声",
+      "noAudioHint": "这个视频没有音轨，合成时这段补静音",
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "outputSize": "输出尺寸",
+      "sizeFirst": "{w}×{h}（第 1 个视频）",
+      "sizeClip": "{w}×{h}（第 {n} 个视频）",
+      "start": "按顺序合成（{n} 个）",
+      "hint": "尺寸或比例不同的视频会等比缩放并补黑边；统一为 30fps，没有声音的片段补静音",
+      "jobs": "合成记录",
+      "noJobs": "还没有合成记录",
+      "preview": "预览",
+      "reuse": "用这次的片段重新编辑",
+      "jobMeta": "{n} 个片段 · {w}×{h} · {dur}",
+      "started": "已开始合成",
+      "done": "视频合成完成",
+      "failed": "视频合成失败",
+      "deleteConfirm": "删除合成记录「{name}」？",
+      "status": {
+        "merging": "合成中",
+        "done": "已完成",
+        "failed": "失败"
+      }
     }
   }
 }
