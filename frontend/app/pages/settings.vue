@@ -177,7 +177,7 @@
                   </div>
                   <div class="config-sub mono truncate">{{ c.base_url || t('settings.ai.noBaseUrl') }}</div>
                 </div>
-                <button v-if="st.type === 'text'" class="btn btn-ghost btn-sm" @click="testExistingCfg(c)">{{ t('settings.ai.test') }}</button>
+                <button v-if="st.type === 'text' || st.type === 'subtitle'" class="btn btn-ghost btn-sm" @click="testExistingCfg(c)">{{ t('settings.ai.test') }}</button>
                 <label class="config-switch">
                   <input type="checkbox" class="sr-only" :checked="c.is_active" @change="toggleCfg(c)">
                   <span class="switch" :class="{ on: c.is_active }"></span>
@@ -520,7 +520,7 @@
           </label>
           <label class="field"><span class="field-label">API Key</span><input v-model="cfgForm.api_key" class="input" type="password" placeholder="sk-..." /></label>
           <label class="field"><span class="field-label">Base URL</span><input v-model="cfgForm.base_url" class="input" placeholder="https://..." /></label>
-          <div class="field">
+          <div v-if="cfgForm.service_type !== 'subtitle'" class="field">
             <span class="field-label">{{ t('settings.cfg.urlMode') }}</span>
             <div class="lang-picker url-mode-picker">
               <button type="button" :class="['lang-option', { on: cfgForm.url_mode === 'auto' }]" @click="cfgForm.url_mode = 'auto'">{{ t('settings.cfg.urlModeAuto') }}</button>
@@ -556,7 +556,8 @@
             <input v-model="cfgForm.temperature" class="input" type="number" step="0.1" min="0" max="2" :placeholder="t('settings.cfg.tempPlaceholder')" />
             <span class="field-hint">{{ t('settings.cfg.tempNote') }}</span>
           </label>
-          <div class="custom-block">
+          <p v-if="cfgForm.service_type === 'subtitle'" class="field-hint">{{ t('settings.cfg.subtitleHint') }}</p>
+          <div v-if="cfgForm.service_type !== 'subtitle'" class="custom-block">
             <button type="button" class="custom-toggle" @click="customOpen = !customOpen">
               <ChevronDown :size="13" :style="{ transform: customOpen ? 'rotate(180deg)' : '', transition: '0.2s' }" />
               {{ t('settings.cfg.custom.title') }}
@@ -890,13 +891,15 @@ const serviceTypes = computed(() => [
   { type: 'text', label: t('common.serviceType.text') },
   { type: 'image', label: t('common.serviceType.image') },
   { type: 'video', label: t('common.serviceType.video') },
+  { type: 'subtitle', label: t('common.serviceType.subtitle') },
 ])
 const providers = ['gemini', 'openai', 'volcengine', 'minimax', 'aliyun']
-const providerSelectOptions = computed(() => providers.map(p => ({ label: p, value: p })))
+const providerSelectOptions = computed(() => (cfgForm.service_type === 'subtitle' ? ['aliyun'] : providers).map(p => ({ label: p, value: p })))
 const serviceMeta = computed(() => ({
   text: { label: t('common.serviceType.text'), desc: t('settings.ai.meta.text') },
   image: { label: t('common.serviceType.image'), desc: t('settings.ai.meta.image') },
   video: { label: t('common.serviceType.video'), desc: t('settings.ai.meta.video') },
+  subtitle: { label: t('common.serviceType.subtitle'), desc: t('settings.ai.meta.subtitle') },
 }))
 const providerPresets = {
   text: {
@@ -911,6 +914,10 @@ const providerPresets = {
     aliyun: { label: '阿里云百炼 Wan 3.0', baseUrl: 'https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com', models: ['wan3.0-video', 'wan3.0-video-prime'] },
     volcengine: { label: 'Seedance 2.0 官方', baseUrl: 'https://ark.cn-beijing.volces.com', models: ['doubao-seedance-2-0-mini-260615', 'doubao-seedance-2-0-fast-260128', 'doubao-seedance-2-0-260128'] },
     minimax: { label: 'MiniMax H3 官方', baseUrl: 'https://api.minimaxi.com', models: ['MiniMax-H3'] },
+  },
+  // 录音文件识别：本地音频经百炼临时上传（oss://），需用 dashscope 公共域名；新加坡地域改 dashscope-intl
+  subtitle: {
+    aliyun: { label: '阿里云百炼 录音文件识别', baseUrl: 'https://dashscope.aliyuncs.com', models: ['qwen-audio-3.0-asr-flash-filetrans', 'qwen3-asr-flash-filetrans'] },
   },
 }
 const huobaoQuickConfigs = computed(() => {

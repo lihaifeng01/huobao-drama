@@ -18,12 +18,18 @@ function toAbsPath(relativePath: string): string {
   return path.join(STORAGE_ROOT, relativePath)
 }
 
+/** 字幕版视频：仅当字幕依据的正是当前镜头视频时使用（视频重新生成后字幕版过期） */
+function subtitledUrlOf(sb: typeof schema.storyboards.$inferSelect) {
+  return sb.subtitledVideoUrl && sb.subtitleSourceVideo === sb.videoUrl ? sb.subtitledVideoUrl : null
+}
+
 /**
  * 拼接一集的镜头视频。
+ * withSubtitles 为 true 时，已制作字幕的镜头使用压制了字幕的版本。
  * 优先使用视频生成产物，兼容历史的 composedVideoUrl 数据。
  * 传入 storyboardIds 时只拼接所选镜头（仍按镜号顺序）。
  */
-export async function mergeEpisodeVideos(episodeId: number, dramaId: number, storyboardIds?: number[]): Promise<number> {
+export async function mergeEpisodeVideos(episodeId: number, dramaId: number, storyboardIds?: number[], withSubtitles = true): Promise<number> {
   let storyboards = await db.select().from(schema.storyboards)
     .where(eq(schema.storyboards.episodeId, episodeId))
     .orderBy(schema.storyboards.storyboardNumber)
@@ -35,7 +41,7 @@ export async function mergeEpisodeVideos(episodeId: number, dramaId: number, sto
 
   // 允许部分拼接:按镜号顺序拼接已生成的镜头,未生成的跳过
   const clips = storyboards
-    .map(sb => ({ sb, url: sb.videoUrl || sb.composedVideoUrl }))
+    .map(sb => ({ sb, url: (withSubtitles && subtitledUrlOf(sb)) || sb.videoUrl || sb.composedVideoUrl }))
     .filter(c => Boolean(c.url)) as { sb: typeof storyboards[number]; url: string }[]
 
   if (clips.length === 0) throw new Error('所选镜头还没有可拼接的视频')
@@ -66,7 +72,7 @@ export async function mergeEpisodeVideos(episodeId: number, dramaId: number, sto
     dramaId,
     title: `Episode ${episodeId} Merge`,
     provider: 'ffmpeg',
-    model: 'ffmpeg-concat-h264-aac',
+    model: withSubtitles && clips.some(c => c.url === subtitledUrlOf(c.sb)) ? 'ffmpeg-concat-h264-aac+subtitles' : 'ffmpeg-concat-h264-aac',
     status: 'processing',
     scenes: JSON.stringify(videos),
     createdAt: ts,

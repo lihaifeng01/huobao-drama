@@ -73,8 +73,8 @@ test('settings page offers official default model IDs', () => {
   assert.doesNotMatch(settingsPage, /speech-2\.8-hd/)
 })
 
-test('only text service configs expose the connection test button', () => {
-  assert.match(settingsPage, /v-if="st\.type === 'text'" class="btn btn-ghost btn-sm" @click="testExistingCfg\(c\)">\{\{ t\('settings\.ai\.test'\) \}\}/)
+test('only text and subtitle service configs expose the connection test button', () => {
+  assert.match(settingsPage, /v-if="st\.type === 'text' \|\| st\.type === 'subtitle'" class="btn btn-ghost btn-sm" @click="testExistingCfg\(c\)">\{\{ t\('settings\.ai\.test'\) \}\}/)
 })
 
 test('settings page offers the supported official provider presets', () => {

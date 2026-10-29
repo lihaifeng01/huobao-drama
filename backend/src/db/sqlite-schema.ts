@@ -436,6 +436,11 @@ const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   // 用户手动编辑过的摘要不被自动重新生成覆盖
   { table: 'episodes', column: 'summary_edited', ddl: 'ALTER TABLE episodes ADD COLUMN summary_edited INTEGER DEFAULT 0' },
   { table: 'episodes', column: 'summary_updated_at', ddl: 'ALTER TABLE episodes ADD COLUMN summary_updated_at TEXT' },
+  // 字幕制作：状态（processing/completed/no_speech/failed）、失败原因、压制后的视频、生成字幕时依据的原视频
+  { table: 'storyboards', column: 'subtitle_status', ddl: 'ALTER TABLE storyboards ADD COLUMN subtitle_status TEXT' },
+  { table: 'storyboards', column: 'subtitle_error', ddl: 'ALTER TABLE storyboards ADD COLUMN subtitle_error TEXT' },
+  { table: 'storyboards', column: 'subtitled_video_url', ddl: 'ALTER TABLE storyboards ADD COLUMN subtitled_video_url TEXT' },
+  { table: 'storyboards', column: 'subtitle_source_video', ddl: 'ALTER TABLE storyboards ADD COLUMN subtitle_source_video TEXT' },
 ]
 
 /** 依赖增量列的索引，须在补列之后建 */

@@ -28,7 +28,8 @@
     "serviceType": {
       "text": "Text",
       "image": "Image",
-      "video": "Video"
+      "video": "Video",
+      "subtitle": "Subtitle"
     }
   },
   "layout": {
@@ -367,7 +368,8 @@
       "meta": {
         "text": "Text capabilities: script rewriting, asset extraction, storyboard breaking",
         "image": "Static image generation: characters, scenes and shots",
-        "video": "Direct video generation, Seedance 2.0 by default"
+        "video": "Direct video generation, Seedance 2.0 by default",
+        "subtitle": "Transcribes dialogue in shot videos into subtitles. Default: Alibaba Cloud Model Studio qwen-audio-3.0-asr-flash-filetrans"
       }
     },
     "styles": {
@@ -515,7 +517,8 @@
       "urlMode": "URL mode",
       "urlModeAuto": "Auto-complete",
       "urlModeBase": "Use Base URL as-is",
-      "urlModeHint": "Auto-complete: append the provider's official path to the Base URL (e.g. /v1, /api/v3). As-is: the Base URL is the full request URL and nothing is appended; the poll URL is Base URL plus / plus task ID; request parameters still follow the provider's official format."
+      "urlModeHint": "Auto-complete: append the provider's official path to the Base URL (e.g. /v1, /api/v3). As-is: the Base URL is the full request URL and nothing is appended; the poll URL is Base URL plus / plus task ID; request parameters still follow the provider's official format.",
+      "subtitleHint": "Subtitles use Alibaba Cloud Model Studio file transcription. Set Base URL to https://dashscope.aliyuncs.com (Singapore: https://dashscope-intl.aliyuncs.com). Local audio is uploaded to Model Studio temporary storage (valid 48 hours), so no public URL is needed."
     },
     "styleDialog": {
       "editTitle": "Edit Style Preset",
@@ -597,7 +600,8 @@
       "prodStage": "Production · {step}",
       "exportDone": "Export · done",
       "exportWaiting": "Export · waiting to merge",
-      "workbench": "Workbench"
+      "workbench": "Workbench",
+      "subtitlesDesc": "Speech recognition and burn-in"
     },
     "script": {
       "raw": "Raw Content",
@@ -631,7 +635,8 @@
       "emptyDesc": "Characters, scenes and props will appear here after extraction. Extract each type separately or all at once in parallel.",
       "startExtract": "Start Extraction",
       "scriptFirst": "Please finish the script first",
-      "goBack": "Go back"
+      "goBack": "Go back",
+      "subtitles": "Subtitles"
     },
     "asset": {
       "fallbackType": "Asset",
@@ -932,7 +937,10 @@
       "markedDone": "Done",
       "markDoneTitle": "Manually mark this episode's export as done (click again to undo)",
       "markedDoneToast": "Marked as done",
-      "unmarkDoneToast": "Done mark removed"
+      "unmarkDoneToast": "Done mark removed",
+      "withSubtitles": "With subtitles",
+      "withoutSubtitles": "Without subtitles",
+      "withSubtitlesTitle": "When merging, use the subtitled video for shots that have subtitles"
     },
     "image": {
       "generatingChar": "Character image generating",
@@ -992,6 +1000,43 @@
       "transferring": "Video generated; transferring",
       "awaitingDelivery": "Video generated; awaiting delivery",
       "restoreHint": "Recover the existing task instead of generating again"
+    },
+    "sub": {
+      "stat": "{done}/{total} done",
+      "modelTitle": "Current subtitle model",
+      "batchAll": "Subtitle all",
+      "batchSelected": "Subtitle selected ({n})",
+      "selectMissing": "Select unfinished",
+      "downloadEpisode": "Episode SRT",
+      "downloadEpisodeTitle": "Download the full-episode SRT aligned to the merged film",
+      "downloadSrt": "Download SRT file",
+      "downloadVideo": "Download subtitled video",
+      "noConfig": "No subtitle service is enabled. Add one in Settings first.",
+      "gotoSettings": "Open Settings",
+      "emptyTitle": "No videos to subtitle yet",
+      "emptyDesc": "Generate shot videos in Video Production first, then come back here",
+      "gotoVideos": "Go to Video Production",
+      "generate": "Generate",
+      "regenerate": "Regenerate",
+      "clear": "Clear subtitles",
+      "previewSubtitled": "Subtitled",
+      "previewOriginal": "Original",
+      "cues": "Subtitle lines",
+      "noCues": "No subtitles",
+      "staleHint": "The shot video was regenerated, so these subtitles are out of date. Generate them again.",
+      "started": "Subtitle jobs submitted for {n} shot(s)",
+      "nothingQueued": "The selected shots are already being processed",
+      "failed": "Subtitle generation failed",
+      "finished": "Subtitles finished",
+      "finishedWithFailed": "Subtitles finished, {n} shot(s) failed",
+      "state": {
+        "none": "Not started",
+        "processing": "Transcribing",
+        "done": "Done",
+        "no_speech": "No speech",
+        "failed": "Failed",
+        "stale": "Outdated"
+      }
     }
   },
   "looks": {

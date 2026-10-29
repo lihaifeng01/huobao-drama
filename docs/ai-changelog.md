@@ -69,6 +69,32 @@
 
 ## 变更条目
 
+### 2026-10-29 · 新增：字幕制作（语音识别 → SRT → 压制字幕版）
+- **分支**：`feat/video-subtitles`（从 `dev` 拉出，未合并）
+- **改动**
+  - 设置 → AI 服务新增「字幕」服务类型（`service_type: 'subtitle'`，仅 `aliyun`），预设阿里云百炼录音文件识别，默认模型 `qwen-audio-3.0-asr-flash-filetrans`，也可选 `qwen3-asr-flash-filetrans`。「测试」走 `GET /api/v1/uploads?action=getPolicy`，不产生计费任务。
+  - 剧集工作台「制作」下新增「字幕制作」子步骤（视频制作之后），主流程跑马灯变为五段。支持单镜头生成 / 重新生成、选择模式批量、全部生成；每个镜头可下载 SRT 和字幕版视频；「整集字幕」下载与成片时间轴对齐的 SRT。
+  - 导出页拼接时默认使用字幕版镜头，可用「使用字幕版 / 不用字幕版」切换（`POST /merge/episodes/:id/merge` 新增 `with_subtitles`，默认 true）。
+- **关键文件**：`backend/src/services/adapters/aliyun-asr.ts`（百炼接口）、`backend/src/services/subtitle.ts`（抽音频、队列、压制、整集 SRT）、`backend/src/utils/srt.ts`（切句与 SRT）、`backend/src/routes/subtitles.ts`、`frontend/app/views/drama/episode.vue`（`prodTab === 'subtitles'`）、`frontend/app/pages/settings.vue`。
+- **流程**：ffmpeg 抽 16kHz 单声道 mp3 → `getPolicy` 拿临时上传凭证 → 表单上传到 `upload_host`，得到 `oss://` 地址（48 小时有效）→ `POST /api/v1/services/audio/asr/transcription`（`X-DashScope-Async: enable` + `X-DashScope-OssResourceResolve: enable`）→ 每 3 秒轮询 `/api/v1/tasks/{id}`，最长 15 分钟 → 下载 `transcription_url` 的 JSON → 切句写 SRT → `subtitles` 滤镜压制（`-c:a copy`）。
+- **设计取舍**
+  - 走百炼临时存储而不是 `PUBLIC_BASE_URL`：桌面版没有公网地址也能用。代价是 Base URL 必须是 `dashscope.aliyuncs.com` / `dashscope-intl.aliyuncs.com`，文档只在这两个域名上提供上传凭证接口（业务空间专属域名是否支持未验证）。上传和识别用的 model 必须一致。
+  - 请求体按模型区分：`qwen-audio-*` 用 `input.file_urls`（数组），`qwen3-asr-*` 用 `input.file_url` 并开 `enable_words`。`parameters` 必须传，省略会导致任务失败。查询结果兼容 `output.results[]` 与 `output.result` 两种形态。
+  - 状态直接存在 `storyboards` 上（新增 `subtitle_status / subtitle_error / subtitled_video_url / subtitle_source_video`，复用原本闲置的 `subtitle_url`），没进 `sys_task`。`subtitle_source_video` 记录生成时的 `video_url`，镜头视频重新生成后两者不一致即视为「已过期」，拼接和整集 SRT 都会忽略过期字幕。
+  - 进程内队列，最多同时处理 2 个镜头。服务重启时 `resetInterruptedSubtitles` 把 `processing` 标为失败，需用户重试（不做断点恢复）。
+  - 长句切分：有字级时间戳按字切，没有就按标点切再按字数分配时长；句末逗号句号去掉、问号叹号保留。每行宽度横屏 18、竖屏 12（全角算 1，ASCII 算 0.5）。
+  - 压制直接 `spawn` ffmpeg，`cwd` 设为 SRT 所在目录、滤镜里只写文件名，避开 Windows 盘符冒号在滤镜参数里的转义问题。字体按平台选：macOS `PingFang SC`、Windows `Microsoft YaHei`、Linux `Noto Sans CJK SC`。
+- **注意事项**
+  - `backend/tests/remove-audio-tts-structure.test.mjs` 断言 `services/ai.ts` 里不能出现 `audio` 字样，所以 ai.ts 的注释里没写完整模型名。
+  - 前端两个结构测试做了收窄而非删除：「测试」按钮允许 text 和 subtitle；禁止 `dashscope.aliyuncs.com` 的断言只作用于视频预设。
+  - 视频没有音轨、或识别结果为空时状态为 `no_speech`，算作完成，不生成字幕版视频。
+  - 字幕样式（字号、描边、位置）目前写死在 `burnSubtitles`，没有 UI。
+  - **没有用真实百炼接口验证过**（没有可用的 Key），接口细节按官方文档实现：https://help.aliyun.com/zh/model-studio/qwen-audio-asr-filetrans-http-api 、https://help.aliyun.com/zh/model-studio/get-temporary-file-url 。
+- **验证**
+  - `backend/tests/subtitle.test.ts`（3 项）：切句与 SRT、请求体按模型区分、端到端（模拟百炼 → 抽音频、上传、识别、压制、无音轨、整集 SRT 偏移、拼接取字幕版 / 过期回退 / 关闭开关）。后端 TS 测试共 34 项通过；`.mjs` 结构测试仍是 12 个失败，前端结构测试仍是 25 个失败。
+  - 本地端到端：临时数据目录 + 本地模拟百炼服务，在设置页和剧集工作台实际操作批量生成、预览字幕版、整集 SRT 下载、导出页开关。抽帧确认横屏和 720x1280 竖屏的中文字幕都正常渲染（macOS，内置 ffmpeg-static 带 libass）。
+  - 注意本机默认 Node 是 v20，而 `better-sqlite3` 按 Node 22 编译。跑测试前要切到 v22（`~/.nvm/versions/node/v22.23.1/bin`）。
+
 ### 2026-10-26 · 记录：角色别名匹配的现状（未改代码）
 - **分支**：`dev`，仅文档。用户决定先维持现状，有问题再改。下面描述的是当前代码的实际行为，已对照代码核实。
 - **自动匹配（提取角色时）**：`save_dedup_characters` 调 `findCharacterByName`（`backend/src/services/character-identity.ts`），任一步命中就复用已有角色、不新建：

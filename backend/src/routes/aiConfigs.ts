@@ -7,6 +7,7 @@ import { joinProviderUrl } from '../services/adapters/url.js'
 import { isOfficialProvider, parseConfigTemperature } from '../services/ai.js'
 import { applyCustomHeaders, normalizeCustomOptions, normalizeUrlMode, parseCustomOptions, parseUrlMode, withUrlMode } from '../services/adapters/custom.js'
 import type { CustomOptions } from '../services/adapters/types.js'
+import { buildAsrProbe } from '../services/adapters/aliyun-asr.js'
 import { redactUrl, logTaskError, logTaskProgress, logTaskSuccess } from '../utils/task-logger.js'
 
 const app = new Hono()
@@ -51,6 +52,8 @@ function geminiHeaders(apiKey?: string, withJson = false) {
 function buildProbe(serviceType: string, provider: string, baseUrl: string, model?: string, apiKey?: string) {
   const p = provider.toLowerCase()
   const m = model || ''
+
+  if (serviceType === 'subtitle') return buildAsrProbe(baseUrl, m, apiKey)
 
   if (p === 'gemini') {
     // 探针统一走 generateContent:文本运行时(AI SDK)走的就是它,官方与中转站都支持;

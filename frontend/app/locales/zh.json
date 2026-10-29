@@ -28,7 +28,8 @@
     "serviceType": {
       "text": "文本",
       "image": "图片",
-      "video": "视频"
+      "video": "视频",
+      "subtitle": "字幕"
     }
   },
   "layout": {
@@ -367,7 +368,8 @@
       "meta": {
         "text": "剧本改写、角色场景提取、分镜拆解等 Agent 文本能力",
         "image": "角色图、场景图与镜头图等静态图像生成",
-        "video": "镜头视频直出生成，默认 Seedance 2.0"
+        "video": "镜头视频直出生成，默认 Seedance 2.0",
+        "subtitle": "识别镜头视频中的对白生成字幕，默认阿里云百炼 qwen-audio-3.0-asr-flash-filetrans"
       }
     },
     "styles": {
@@ -515,7 +517,8 @@
       "urlMode": "URL 模式",
       "urlModeAuto": "自动补全",
       "urlModeBase": "原样使用 Base URL",
-      "urlModeHint": "自动补全：按服务商官方规则在 Base URL 后追加路径（如 /v1、/api/v3）。原样使用：Base URL 即完整请求地址，不追加任何路径，轮询地址为 Base URL 加 / 加任务 ID，请求参数仍沿用服务商官方格式。"
+      "urlModeHint": "自动补全：按服务商官方规则在 Base URL 后追加路径（如 /v1、/api/v3）。原样使用：Base URL 即完整请求地址，不追加任何路径，轮询地址为 Base URL 加 / 加任务 ID，请求参数仍沿用服务商官方格式。",
+      "subtitleHint": "字幕服务使用阿里云百炼录音文件识别。Base URL 填 https://dashscope.aliyuncs.com（新加坡地域填 https://dashscope-intl.aliyuncs.com）；本地音频会经百炼临时存储上传（48 小时有效），不需要公网地址。"
     },
     "styleDialog": {
       "editTitle": "编辑风格预设",
@@ -597,7 +600,8 @@
       "prodStage": "制作阶段 · {step}",
       "exportDone": "导出阶段 · 已完成",
       "exportWaiting": "导出阶段 · 等待拼接",
-      "workbench": "工作台"
+      "workbench": "工作台",
+      "subtitlesDesc": "语音识别与字幕压制"
     },
     "script": {
       "raw": "原始内容",
@@ -631,7 +635,8 @@
       "emptyDesc": "角色、场景和道具会在提取后显示在这里，可分别单独提取，也可一键并行提取全部。",
       "startExtract": "开始提取",
       "scriptFirst": "请先完成剧本编写",
-      "goBack": "返回处理"
+      "goBack": "返回处理",
+      "subtitles": "字幕制作"
     },
     "asset": {
       "fallbackType": "资产",
@@ -932,7 +937,10 @@
       "markedDone": "已完成",
       "markDoneTitle": "手动标记本集导出完成（可再次点击取消）",
       "markedDoneToast": "已标记为完成",
-      "unmarkDoneToast": "已取消完成标记"
+      "unmarkDoneToast": "已取消完成标记",
+      "withSubtitles": "使用字幕版",
+      "withoutSubtitles": "不用字幕版",
+      "withSubtitlesTitle": "拼接时，已制作字幕的镜头使用压制了字幕的视频"
     },
     "image": {
       "generatingChar": "角色图片生成中",
@@ -992,6 +1000,43 @@
       "transferring": "视频已生成，转存中",
       "awaitingDelivery": "视频已生成，等待交付",
       "restoreHint": "恢复已有任务，避免重复生成"
+    },
+    "sub": {
+      "stat": "{done}/{total} 已完成",
+      "modelTitle": "当前字幕服务模型",
+      "batchAll": "全部生成字幕",
+      "batchSelected": "为所选生成 ({n})",
+      "selectMissing": "选择未完成",
+      "downloadEpisode": "整集字幕",
+      "downloadEpisodeTitle": "下载与成片时间轴对齐的整集 SRT 字幕",
+      "downloadSrt": "下载 SRT 字幕文件",
+      "downloadVideo": "下载字幕版视频",
+      "noConfig": "还没有启用字幕服务，请先在设置中添加。",
+      "gotoSettings": "前往设置",
+      "emptyTitle": "还没有可加字幕的视频",
+      "emptyDesc": "先在「视频制作」中生成镜头视频，再回来制作字幕",
+      "gotoVideos": "前往视频制作",
+      "generate": "生成字幕",
+      "regenerate": "重新生成",
+      "clear": "清除字幕",
+      "previewSubtitled": "字幕版",
+      "previewOriginal": "原视频",
+      "cues": "字幕内容",
+      "noCues": "暂无字幕",
+      "staleHint": "镜头视频已重新生成，字幕已过期，请重新生成",
+      "started": "已提交 {n} 个镜头的字幕任务",
+      "nothingQueued": "所选镜头已在处理中",
+      "failed": "字幕生成失败",
+      "finished": "字幕制作完成",
+      "finishedWithFailed": "字幕制作结束，{n} 个镜头失败",
+      "state": {
+        "none": "未生成",
+        "processing": "识别中",
+        "done": "已完成",
+        "no_speech": "无语音",
+        "failed": "失败",
+        "stale": "已过期"
+      }
     }
   },
   "looks": {
