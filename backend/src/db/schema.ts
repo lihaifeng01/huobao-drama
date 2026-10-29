@@ -274,6 +274,22 @@ export const subtitleToolJobs = sqliteTable('subtitle_tool_jobs', {
   deletedAt: text('deleted_at'),
 })
 
+// 视频合成工具：status = merging / done / failed；clips 为 JSON [{ url, name, width, height, duration, has_audio }]（按合成顺序）
+export const mergeToolJobs = sqliteTable('merge_tool_jobs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  clips: text('clips').notNull(),
+  width: integer('width').default(0),
+  height: integer('height').default(0),
+  duration: real('duration').default(0),
+  status: text('status').notNull().default('merging'),
+  errorMsg: text('error_msg'),
+  outputUrl: text('output_url'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+})
+
 export const videoMerges = sqliteTable('video_merges', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   episodeId: integer('episode_id'),

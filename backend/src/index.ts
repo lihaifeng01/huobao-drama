@@ -31,6 +31,7 @@ import { requestLogger, errorHandler } from './middleware/logger.js'
 import { resumeInterruptedTasks } from './services/generation.js'
 import { resetInterruptedSubtitles } from './services/subtitle.js'
 import { resetInterruptedToolJobs } from './services/subtitle-tool.js'
+import { resetInterruptedMergeJobs } from './services/merge-tool.js'
 import { DATA_ROOT } from './utils/paths.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -99,5 +100,6 @@ console.log(`🚀 Huobao Drama TS server on http://localhost:${port}`)
 await resumeInterruptedTasks()
 await resetInterruptedSubtitles()
 await resetInterruptedToolJobs()
+await resetInterruptedMergeJobs()
 
 serve({ fetch: app.fetch, port })

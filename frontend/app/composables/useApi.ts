@@ -172,6 +172,14 @@ export const subtitleToolAPI = {
   del: (id: number) => api.del(`/tools/subtitle-jobs/${id}`),
 }
 
+// 视频合成工具：先逐个上传片段，再按顺序提交合成
+export const mergeToolAPI = {
+  uploadClip: (file: File, onProgress?: (ratio: number) => void) => uploadWithProgress('/tools/merge-clips', file, onProgress),
+  list: () => api.get<any[]>('/tools/merge-jobs'),
+  merge: (body: { clips: { url: string; name: string }[]; width?: number; height?: number }) => api.post('/tools/merge-jobs', body),
+  del: (id: number) => api.del(`/tools/merge-jobs/${id}`),
+}
+
 export const uploadAPI = {
   image: (f: File) => uploadReq<{ url: string; path: string }>('/upload/image', f),
   video: (f: File) => uploadReq<{ url: string; path: string }>('/upload/video', f),

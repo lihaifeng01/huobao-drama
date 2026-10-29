@@ -246,6 +246,22 @@ export const sqliteSchemaStatements = [
     deleted_at TEXT
   )`,
 
+  // 视频合成工具：按顺序把多个上传的视频拼成一个，一次合成 = 一条记录
+  `CREATE TABLE IF NOT EXISTS merge_tool_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    clips TEXT NOT NULL,
+    width INTEGER DEFAULT 0,
+    height INTEGER DEFAULT 0,
+    duration REAL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'merging',
+    error_msg TEXT,
+    output_url TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  )`,
+
   `CREATE TABLE IF NOT EXISTS video_merges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     episode_id INTEGER,

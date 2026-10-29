@@ -1227,6 +1227,41 @@
       "stateDone": "합성 완료",
       "stateFailed": "실패",
       "deleteConfirm": "작업 「{name}」을(를) 삭제할까요?"
+    },
+    "merge": {
+      "name": "영상 합치기",
+      "desc": "여러 영상을 올려 순서대로 하나로 합치기",
+      "clips": "클립",
+      "clipStat": "{n}개 · 총 {dur}",
+      "clear": "비우기",
+      "addVideos": "영상 추가",
+      "uploading": "업로드 중 {done}/{total} · {pct}%",
+      "added": "영상 {n}개를 추가했습니다",
+      "dropTitle": "여러 영상을 추가하거나 끌어다 놓기",
+      "dropDesc": "mp4 / mov / m4v / webm / mkv / avi, 개당 최대 500MB. 끌어서 순서 변경",
+      "noAudio": "무음",
+      "noAudioHint": "이 영상에는 오디오 트랙이 없어 합칠 때 무음으로 채웁니다",
+      "moveUp": "위로",
+      "moveDown": "아래로",
+      "outputSize": "출력 크기",
+      "sizeFirst": "{w}×{h} (1번째 영상)",
+      "sizeClip": "{w}×{h} ({n}번째 영상)",
+      "start": "순서대로 합치기 ({n}개)",
+      "hint": "크기나 비율이 다른 영상은 비율을 유지해 축소하고 검은 여백을 넣습니다. 30fps로 통일하고, 소리가 없는 클립에는 무음을 넣습니다",
+      "jobs": "합치기 기록",
+      "noJobs": "아직 기록이 없습니다",
+      "preview": "미리보기",
+      "reuse": "이 클립으로 다시 편집",
+      "jobMeta": "클립 {n}개 · {w}×{h} · {dur}",
+      "started": "합치기를 시작했습니다",
+      "done": "영상 합치기 완료",
+      "failed": "영상 합치기 실패",
+      "deleteConfirm": "「{name}」을(를) 삭제할까요?",
+      "status": {
+        "merging": "합치는 중",
+        "done": "완료",
+        "failed": "실패"
+      }
     }
   }
 }
