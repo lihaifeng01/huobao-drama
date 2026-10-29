@@ -54,11 +54,12 @@ ENV NODE_ENV=production \
     FRONTEND_DIST=/app/frontend-dist
 
 # ffprobe-static 不包含 Linux ARM64 二进制；两个架构统一使用系统媒体工具。
+# 字幕压制（libass）需要中日韩字体，slim 镜像默认没有，装体积较小的文泉驿微米黑。
 RUN if [ -n "$APT_MIRROR" ]; then \
     sed -i "s|deb.debian.org|${APT_MIRROR}|g; s|security.debian.org|${APT_MIRROR}|g" /etc/apt/sources.list.d/debian.sources; \
   fi \
   && apt-get -o Acquire::Retries=5 update \
-  && apt-get -o Acquire::Retries=5 install -y --no-install-recommends ffmpeg \
+  && apt-get -o Acquire::Retries=5 install -y --no-install-recommends ffmpeg fonts-wqy-microhei \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

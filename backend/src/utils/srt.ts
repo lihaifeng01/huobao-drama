@@ -43,6 +43,12 @@ function splitByWords(words: AsrWord[], maxWidth: number): SrtCue[] {
     if (width >= maxWidth || (atPunct && width >= maxWidth * 0.4)) flush()
   }
   flush()
+  // 末尾只剩一两个字时并回上一条（允许略超上限），不单独闪一下
+  const last = cues[cues.length - 1]
+  const prev = cues[cues.length - 2]
+  if (last && prev && displayWidth(last.text) < maxWidth * 0.3 && displayWidth(prev.text + last.text) <= maxWidth * 1.3) {
+    cues.splice(-2, 2, { start: prev.start, end: last.end, text: prev.text + last.text })
+  }
   return cues
 }
 
@@ -50,13 +56,16 @@ function splitByText(s: AsrSentence, maxWidth: number): SrtCue[] {
   // 先按标点断开，再把超长片段硬切
   const pieces: string[] = []
   for (const part of s.text.split(/(?<=[，。！？；、,.!?;…])/)) {
+    // 超长片段均分成几行，避免按上限硬切后剩下一两个字的尾巴
+    const lines = Math.ceil(displayWidth(part) / maxWidth)
+    const target = displayWidth(part) / lines
     let rest = part
-    while (displayWidth(rest) > maxWidth) {
+    for (let n = lines; n > 1; n--) {
       let cut = 0
       let w = 0
       for (const ch of rest) {
+        if (w + displayWidth(ch) > target + 0.25) break
         w += displayWidth(ch)
-        if (w > maxWidth) break
         cut += ch.length
       }
       pieces.push(rest.slice(0, cut))

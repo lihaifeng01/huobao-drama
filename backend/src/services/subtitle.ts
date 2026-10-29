@@ -200,7 +200,8 @@ function runFfmpeg(args: string[], cwd?: string): Promise<void> {
 function subtitleFont() {
   if (process.platform === 'darwin') return 'PingFang SC'
   if (process.platform === 'win32') return 'Microsoft YaHei'
-  return 'Noto Sans CJK SC'
+  // Docker 镜像内装的是文泉驿微米黑；其他 Linux 上找不到时 fontconfig 会回退到已装的中文字体
+  return 'WenQuanYi Micro Hei'
 }
 
 function burnSubtitles(videoAbs: string, srtAbs: string, outAbs: string, portrait: boolean) {

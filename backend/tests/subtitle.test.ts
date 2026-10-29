@@ -28,8 +28,13 @@ test('SRT 时间格式与长句切分', () => {
   // 有字级时间戳时按字切，时间取首尾字
   const words = '今天天气很好我们一起去公园散步吧'.split('').map((ch, i) => ({ begin_time: i * 100, end_time: i * 100 + 90, text: ch, punctuation: i === 5 ? '，' : '' }))
   const cues = sentencesToCues([{ begin_time: 0, end_time: 1600, text: '今天天气很好，我们一起去公园散步吧', words }], 8)
-  assert.deepEqual(cues.map(c => c.text), ['今天天气很好', '我们一起去公园散', '步吧'])
+  // 末尾两个字并回上一条，不单独成行
+  assert.deepEqual(cues.map(c => c.text), ['今天天气很好', '我们一起去公园散步吧'])
   assert.equal(cues[1].start, 600)
+  assert.equal(cues[1].end, 1590)
+  // 无字级时间戳的超长片段均分，不留一两个字的尾巴（竖屏每行 12）
+  const balanced = sentencesToCues([{ begin_time: 1300, end_time: 3800, text: '我等了你整整三年，今天无论如何都要把话说清楚！' }], 12)
+  assert.deepEqual(balanced.map(c => c.text), ['我等了你整整三年', '今天无论如何都', '要把话说清楚！'])
   // 无字级时间戳时按标点切，并按字数分配时长
   const byText = sentencesToCues([{ begin_time: 0, end_time: 2000, text: '这是第一句话，这是第二句话' }], 8)
   assert.deepEqual(byText.map(c => c.text), ['这是第一句话', '这是第二句话'])

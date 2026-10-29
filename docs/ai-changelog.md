@@ -90,6 +90,8 @@
   - 前端两个结构测试做了收窄而非删除：「测试」按钮允许 text 和 subtitle；禁止 `dashscope.aliyuncs.com` 的断言只作用于视频预设。
   - 视频没有音轨、或识别结果为空时状态为 `no_speech`，算作完成，不生成字幕版视频。
   - 字幕样式（字号、描边、位置）目前写死在 `burnSubtitles`，没有 UI。
+  - **Docker**：运行时镜像用的是 Debian 的系统 ffmpeg（带 libass），但 slim 镜像没有中文字体，压出来的中文会是空白方块。所以 `Dockerfile` 加装了 `fonts-wqy-microhei`，Linux 下的字体名也相应改成 `WenQuanYi Micro Hei`。已用 `docker build` 在 arm64 上构建，并在容器内实际跑通识别和压制，截帧确认中文正常。
+  - 切句后来又修过一次：原来超长片段按上限硬切，竖屏时会剩下「楚！」这种一两个字、只显示 0.2 秒的尾巴。现在无字级时间戳时按行数均分；有字级时间戳时，末尾过短的一条并回上一条，允许超出上限 30%。
   - **没有用真实百炼接口验证过**（没有可用的 Key），接口细节按官方文档实现：https://help.aliyun.com/zh/model-studio/qwen-audio-asr-filetrans-http-api 、https://help.aliyun.com/zh/model-studio/get-temporary-file-url 。
 - **验证**
   - `backend/tests/subtitle.test.ts`（3 项）：切句与 SRT、请求体按模型区分、端到端（模拟百炼 → 抽音频、上传、识别、压制、无音轨、整集 SRT 偏移、拼接取字幕版 / 过期回退 / 关闭开关）。后端 TS 测试共 34 项通过；`.mjs` 结构测试仍是 12 个失败，前端结构测试仍是 25 个失败。
