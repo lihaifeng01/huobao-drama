@@ -28,12 +28,15 @@
     "serviceType": {
       "text": "Text",
       "image": "Image",
-      "video": "Video"
+      "video": "Video",
+      "subtitle": "Subtitle"
     }
   },
   "layout": {
     "nav": {
       "projects": "Projects",
+      "library": "Assets",
+      "tools": "Tools",
       "settings": "Settings"
     },
     "banner": {
@@ -151,6 +154,82 @@
       "minutesAgo": "{n} min ago",
       "hoursAgo": "{n} h ago",
       "daysAgo": "{n} d ago"
+    }
+  },
+  "library": {
+    "title": "Assets",
+    "sub": "Characters and scenes across all projects",
+    "category": {
+      "character": "Characters",
+      "scene": "Scenes"
+    },
+    "newFolder": "New folder",
+    "upload": "Upload",
+    "uploading": "Uploading {done}/{total}",
+    "searchPlaceholder": "Search folders or files",
+    "root": "All",
+    "sections": {
+      "myFolders": "My folders",
+      "projectFolders": "Project folders",
+      "files": "Files",
+      "subFolders": "Folders"
+    },
+    "projectTag": "Project",
+    "projectHint": "Created automatically for each project and kept in sync",
+    "fileCount": "{n} files",
+    "folderStats": "{folders} folders · {files} files",
+    "itemCount": "{n} items",
+    "openProject": "Open project",
+    "readonlyHint": "Project assets are read-only here — edit them inside the project",
+    "noImage": "No image yet",
+    "empty": {
+      "files": "No {category} uploaded yet",
+      "filesDesc": "Click \"Upload\" or drop images here",
+      "folder": "This folder is empty",
+      "folderDesc": "Click \"Upload\" or drop images here",
+      "project": "This project has no {category} yet",
+      "projectDesc": "They appear here once extracted or added in the project",
+      "search": "No matching assets"
+    },
+    "actions": {
+      "rename": "Rename",
+      "move": "Move to…",
+      "delete": "Delete",
+      "preview": "Preview"
+    },
+    "dialogs": {
+      "newFolderTitle": "New folder",
+      "renameFolderTitle": "Rename folder",
+      "renameFileTitle": "Rename file",
+      "folderNamePlaceholder": "Folder name",
+      "fileNamePlaceholder": "File name",
+      "moveTitle": "Move file",
+      "moveTarget": "Destination",
+      "rootFolder": "Root (no folder)",
+      "deleteFolderTitle": "Delete folder",
+      "deleteFolderMessage": "Delete folder \"{name}\"? Its {n} files will be deleted too.",
+      "deleteFileTitle": "Delete file",
+      "deleteFileMessage": "Delete \"{name}\"?",
+      "moveFolderTitle": "Move folder",
+      "deleteFolderNestedMessage": "Delete folder \"{name}\"? All of its subfolders and {n} files will be deleted too."
+    },
+    "toast": {
+      "folderCreated": "Folder created",
+      "renamed": "Renamed",
+      "moved": "Moved",
+      "deleted": "Deleted",
+      "uploaded": "Uploaded {n} files",
+      "uploadSkipped": "Skipped {n} non-image files"
+    },
+    "dropHint": "Drop to upload to \"{target}\"",
+    "picker": {
+      "button": "Choose from asset library",
+      "short": "Library",
+      "title": "Choose a {category} image from the library",
+      "hint": "Pick from your folders or other projects — click an image to apply it",
+      "use": "Use",
+      "empty": "Nothing here yet",
+      "applied": "Library image applied"
     }
   },
   "detail": {
@@ -290,7 +369,8 @@
       "meta": {
         "text": "Text capabilities: script rewriting, asset extraction, storyboard breaking",
         "image": "Static image generation: characters, scenes and shots",
-        "video": "Direct video generation, Seedance 2.0 by default"
+        "video": "Direct video generation, Seedance 2.0 by default",
+        "subtitle": "Transcribes dialogue in shot videos into subtitles. Default: Alibaba Cloud Model Studio qwen-audio-3.0-asr-flash-filetrans"
       }
     },
     "styles": {
@@ -405,7 +485,41 @@
       "reachable": "Endpoint responded",
       "unreachable": "Endpoint failed the test",
       "providerRequired": "Select a provider",
-      "tempInvalid": "Temperature must be a number between 0 and 2"
+      "tempInvalid": "Temperature must be a number between 0 and 2",
+      "custom": {
+        "title": "Custom config (relay / non-official endpoint)",
+        "desc": "When set, your URL is used as-is (no official path is appended), and you can rewrite auth headers, request body and response parsing. Leave empty to follow the official protocol of the selected provider.",
+        "generateUrl": "Submit URL",
+        "generateUrlHint": "Full request URL, used verbatim. For text services it is passed to the SDK as the Base URL.",
+        "pollUrl": "Poll URL",
+        "pollUrlHint": "Leave empty for \"Submit URL + / + task ID\"; use this placeholder to control the position:",
+        "authScheme": "Auth scheme",
+        "authDefault": "Official default",
+        "authBearer": "Authorization: Bearer key",
+        "authRaw": "Authorization: key (no Bearer)",
+        "authXApiKey": "x-api-key: key",
+        "authNone": "No auth",
+        "headers": "Extra headers (JSON)",
+        "extraBody": "Extra body fields (JSON)",
+        "extraBodyHint": "Shallow-merged into the official body; set a value to null to remove the field.",
+        "bodyTemplate": "Body template (JSON, video only)",
+        "bodyTemplateHint": "Replaces the official body entirely (Submit URL required). Fields with empty values are omitted; append a default after the variable (see example below). Variables:",
+        "responseTitle": "Response parsing (video only, auto-detected when empty)",
+        "taskIdPath": "Task ID path",
+        "statusPath": "Status path",
+        "videoUrlPath": "Video URL path",
+        "errorPath": "Error message path",
+        "doneValues": "Success values (comma separated)",
+        "failedValues": "Failure values (comma separated)",
+        "pathHint": "Dot path such as data.video.url; separate alternatives with commas",
+        "example": "Fill GPT Router example",
+        "invalidJson": "{field} is not a valid JSON object"
+      },
+      "urlMode": "URL mode",
+      "urlModeAuto": "Auto-complete",
+      "urlModeBase": "Use Base URL as-is",
+      "urlModeHint": "Auto-complete: append the provider's official path to the Base URL (e.g. /v1, /api/v3). As-is: the Base URL is the full request URL and nothing is appended; the poll URL is Base URL plus / plus task ID; request parameters still follow the provider's official format.",
+      "subtitleHint": "Subtitles use Alibaba Cloud Model Studio file transcription. Set Base URL to https://dashscope.aliyuncs.com (Singapore: https://dashscope-intl.aliyuncs.com). Local audio is uploaded to Model Studio temporary storage (valid 48 hours), so no public URL is needed."
     },
     "styleDialog": {
       "editTitle": "Edit Style Preset",
@@ -487,7 +601,8 @@
       "prodStage": "Production · {step}",
       "exportDone": "Export · done",
       "exportWaiting": "Export · waiting to merge",
-      "workbench": "Workbench"
+      "workbench": "Workbench",
+      "subtitlesDesc": "Speech recognition and burn-in"
     },
     "script": {
       "raw": "Raw Content",
@@ -503,7 +618,15 @@
       "rewriting": "Rewriting the script...",
       "scriptPlaceholder": "Formatted script content...",
       "rawRequired": "Please fill in the raw content first",
-      "skipDone": "AI rewrite skipped; the raw content will be used directly"
+      "skipDone": "AI rewrite skipped; the raw content will be used directly",
+      "saving": "Saving…",
+      "unsaved": "Unsaved",
+      "autoSaved": "Saved automatically",
+      "rewriteConfirmTitle": "Rewrite the script again?",
+      "rewriteConfirmMsg": "AI will regenerate the script from the original content and replace the current script, including your manual edits.",
+      "skipConfirmTitle": "Skip AI rewriting?",
+      "skipConfirmMsg": "The original content will be used as the script as-is, without AI rewriting.",
+      "skipConfirmOverwrite": "The current script, including your manual edits, will be replaced with the original content."
     },
     "prod": {
       "assets": "Asset Production",
@@ -521,7 +644,8 @@
       "emptyDesc": "Characters, scenes and props will appear here after extraction. Extract each type separately or all at once in parallel.",
       "startExtract": "Start Extraction",
       "scriptFirst": "Please finish the script first",
-      "goBack": "Go back"
+      "goBack": "Go back",
+      "subtitles": "Subtitles"
     },
     "asset": {
       "fallbackType": "Asset",
@@ -706,7 +830,12 @@
       "notReady": "Not generated",
       "unbound": "Unbound",
       "gotoGenerate": "Go generate →",
-      "empty": "No scenes, characters or props in this episode yet. Extract assets in “Assets” first, then bind them here."
+      "empty": "No scenes, characters or props in this episode yet. Extract assets in “Assets” first, then bind them here.",
+      "dropped": "Skipped",
+      "droppedTitle": "\"{name}\" exceeds the reference image limit and will not be sent",
+      "truncatedHint": "References exceed the model limit ({limit}). Character images are kept first; these will not be sent: {names}",
+      "truncatedToast": "References exceed the limit ({limit}); not sent: {names}",
+      "truncatedBatchToast": "{n} shots exceed the reference limit ({limit}). Character images were kept first; extra scenes/props were not sent"
     },
     "vid": {
       "shotCount": "{n} shots",
@@ -817,7 +946,10 @@
       "markedDone": "Done",
       "markDoneTitle": "Manually mark this episode's export as done (click again to undo)",
       "markedDoneToast": "Marked as done",
-      "unmarkDoneToast": "Done mark removed"
+      "unmarkDoneToast": "Done mark removed",
+      "withSubtitles": "With subtitles",
+      "withoutSubtitles": "Without subtitles",
+      "withSubtitlesTitle": "When merging, use the subtitled video for shots that have subtitles"
     },
     "image": {
       "generatingChar": "Character image generating",
@@ -877,7 +1009,117 @@
       "transferring": "Video generated; transferring",
       "awaitingDelivery": "Video generated; awaiting delivery",
       "restoreHint": "Recover the existing task instead of generating again"
+    },
+    "sub": {
+      "stat": "{done}/{total} done",
+      "modelTitle": "Current subtitle model",
+      "batchAll": "Subtitle all",
+      "batchSelected": "Subtitle selected ({n})",
+      "selectMissing": "Select unfinished",
+      "downloadEpisode": "Episode SRT",
+      "downloadEpisodeTitle": "Download the full-episode SRT aligned to the merged film",
+      "downloadSrt": "Download SRT file",
+      "downloadVideo": "Download subtitled video",
+      "noConfig": "No subtitle service is enabled. Add one in Settings first.",
+      "gotoSettings": "Open Settings",
+      "emptyTitle": "No videos to subtitle yet",
+      "emptyDesc": "Generate shot videos in Video Production first, then come back here",
+      "gotoVideos": "Go to Video Production",
+      "generate": "Generate",
+      "regenerate": "Regenerate",
+      "clear": "Clear subtitles",
+      "previewSubtitled": "Subtitled",
+      "previewOriginal": "Original",
+      "cues": "Subtitle lines",
+      "noCues": "No subtitles",
+      "staleHint": "The shot video was regenerated, so these subtitles are out of date. Generate them again.",
+      "started": "Subtitle jobs submitted for {n} shot(s)",
+      "nothingQueued": "The selected shots are already being processed",
+      "failed": "Subtitle generation failed",
+      "finished": "Subtitles finished",
+      "finishedWithFailed": "Subtitles finished, {n} shot(s) failed",
+      "state": {
+        "none": "Not started",
+        "processing": "Transcribing",
+        "done": "Done",
+        "no_speech": "No speech",
+        "failed": "Failed",
+        "stale": "Outdated"
+      }
     }
+  },
+  "looks": {
+    "title": "Looks",
+    "hintWithRef": "Look images use the default portrait as a reference to keep the same face (needs an image model that accepts references, e.g. OpenAI gpt-image, Gemini, or SiliconFlow Qwen-Image-Edit; otherwise it falls back to text-only generation with a notice)",
+    "hintNoRef": "This character has no default portrait yet, so looks cannot reference the face. Generate the default portrait first",
+    "noImage": "Not generated",
+    "noImageShort": "no image",
+    "default": "Default",
+    "defaultName": "Default look",
+    "defaultDesc": "Character portrait",
+    "generating": "Generating…",
+    "noDesc": "No look description",
+    "generate": "Generate",
+    "regenerate": "Redraw",
+    "upload": "Upload look image",
+    "edit": "Edit",
+    "namePlaceholder": "Look name, e.g. \"Wedding dress\"",
+    "descPlaceholder": "Outfit, hairstyle, makeup, accessories…",
+    "create": "Create",
+    "add": "Add look",
+    "deleteTitle": "Delete look",
+    "deleteMessage": "Delete look \"{name}\"? Episodes and shots using it will fall back to the default look.",
+    "generated": "Look \"{name}\" generated",
+    "generateFailed": "Look image generation failed",
+    "episodeLookTitle": "Look used in this episode",
+    "chip": "Look · {name}",
+    "manage": "Manage looks…",
+    "addShort": "+ Look",
+    "shotTitle": "Looks in this shot",
+    "followEpisode": "Follow episode ({name})",
+    "fallbackHint": "The selected look has no image yet; the default portrait is used as the reference",
+    "referenceFallback": {
+      "model": "The current image model does not accept reference images, so this look was generated from text only and the face may not match. Switch to a model that supports references (e.g. Qwen-Image-Edit) in Settings.",
+      "service": "The image service rejected the reference image, so it was regenerated from text only and the face may not match."
+    }
+  },
+  "identity": {
+    "aliases": "Aliases",
+    "aliasesPlaceholder": "e.g. nickname, title (separate with commas)",
+    "aliasesHint": "When the script uses these names for the same person, extraction reuses this character instead of creating a new one",
+    "mergeButton": "Merge duplicates…",
+    "mergeTitle": "Merge into \"{name}\"",
+    "mergeDesc": "Selected characters are merged into this one: episode and shot links, looks and generation history move over, their names become aliases, {'@'}name mentions in video prompts are rewritten, and the merged characters are deleted.",
+    "merging": "Merging…",
+    "mergeConfirm": "Merge {n} characters",
+    "merged": "Merged {names} into \"{name}\""
+  },
+  "recap": {
+    "button": "Recap",
+    "title": "Previously on",
+    "desc": "When rewriting the script, extracting assets or breaking down storyboards, summaries of the previous {n} episodes are given to the AI as a recap to keep names, relationships, injuries, outfits and plot consistent. Missing or outdated summaries are generated automatically; hand-edited ones are never overwritten automatically.",
+    "previous": "Previous episodes",
+    "current": "This episode",
+    "currentHint": "Used by later episodes",
+    "firstEpisode": "This is the first episode — nothing to recap.",
+    "episodeTitle": "Episode {n}: {title}",
+    "state": {
+      "fresh": "Generated",
+      "edited": "Edited",
+      "stale": "Script changed",
+      "missing": "Not generated",
+      "none": "No script"
+    },
+    "outOfRange": "Outside the recap window, not sent to the AI",
+    "edit": "Edit",
+    "generate": "Generate",
+    "regenerate": "Regenerate",
+    "generating": "Generating…",
+    "generated": "Episode {n} summary generated",
+    "notGenerated": "Not generated yet — it will be generated automatically when the AI runs on a later episode",
+    "noScript": "This episode has no script yet",
+    "placeholder": "Plot…\nCharacter states: name: state\nOpen threads…\nEnding…",
+    "staleEditedHint": "The script changed after you edited this summary, so it may be outdated. Hand-edited summaries are not regenerated automatically."
   },
   "errors": {
     "network": "Cannot reach the server. Check your network or that the service is running.",
@@ -939,6 +1181,94 @@
       "help": {
         "title": "Replay anytime",
         "desc": "Click this \"?\" button to replay this page's guide. Happy creating!"
+      }
+    }
+  },
+  "tools": {
+    "title": "Tools",
+    "sub": "Standalone utilities outside the episode workflow",
+    "subtitle": {
+      "name": "Subtitles",
+      "desc": "Upload a video, transcribe or import subtitles, adjust the style and burn them in",
+      "jobs": "Jobs",
+      "uploadVideo": "Upload video",
+      "uploading": "Uploading {pct}%",
+      "uploaded": "Video uploaded",
+      "emptyJobs": "No jobs yet. Upload a video to start",
+      "dropTitle": "Upload or drop a video",
+      "dropDesc": "mp4 / mov / m4v / webm / mkv / avi, up to 500MB",
+      "notVideo": "Please drop a video file",
+      "previewEdit": "Style preview",
+      "previewOutput": "Result",
+      "previewHint": "Click a subtitle line on the right to jump to it. Subtitles on the video are a simulated preview of the current style",
+      "stepSubtitle": "Subtitles",
+      "model": "Model",
+      "autoTranscribe": "Transcribe",
+      "transcribing": "Transcribing…",
+      "uploadSubtitle": "Upload subtitle file",
+      "subtitleUploaded": "Subtitles imported",
+      "noAudio": "The video has no audio track, so it cannot be transcribed. Upload a subtitle file instead",
+      "sourceAsr": "Transcribed",
+      "sourceUpload": "Uploaded",
+      "cueCount": "{n} lines",
+      "noSubtitleYet": "No subtitles yet. Transcribe, or upload an .srt / .vtt file (UTF-8 or GBK)",
+      "stepStyle": "Style",
+      "resetStyle": "Reset",
+      "fontSize": "Font size",
+      "position": "From bottom",
+      "positionHint": "Distance from the bottom of the frame to the subtitle",
+      "posBottom": "Bottom",
+      "posMiddle": "Middle",
+      "posTop": "Top",
+      "fontDefault": "Uses the default system CJK font, white text with black outline",
+      "stepBurn": "Burn in",
+      "burn": "Burn in",
+      "reburn": "Burn in again",
+      "burning": "Burning…",
+      "downloadVideo": "Download video",
+      "needSubtitle": "Transcribe or upload subtitles first",
+      "styleChanged": "Style changed. Burn in again to apply it",
+      "transcribeDone": "Transcription finished",
+      "burnDone": "Video ready",
+      "stateNew": "New",
+      "stateReady": "Has subtitles",
+      "stateDone": "Done",
+      "stateFailed": "Failed",
+      "deleteConfirm": "Delete job \"{name}\"?"
+    },
+    "merge": {
+      "name": "Merge videos",
+      "desc": "Upload several videos and join them in order",
+      "clips": "Clips",
+      "clipStat": "{n} · {dur} total",
+      "clear": "Clear",
+      "addVideos": "Add videos",
+      "uploading": "Uploading {done}/{total} · {pct}%",
+      "added": "Added {n} video(s)",
+      "dropTitle": "Add or drop several videos",
+      "dropDesc": "mp4 / mov / m4v / webm / mkv / avi, up to 500MB each. Drag to reorder",
+      "noAudio": "Silent",
+      "noAudioHint": "This video has no audio track; silence is added for it",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "outputSize": "Output size",
+      "sizeFirst": "{w}×{h} (video 1)",
+      "sizeClip": "{w}×{h} (video {n})",
+      "start": "Merge in order ({n})",
+      "hint": "Videos with a different size or ratio are scaled and letterboxed; everything is converted to 30fps, and silent clips get a silent audio track",
+      "jobs": "History",
+      "noJobs": "Nothing merged yet",
+      "preview": "Preview",
+      "reuse": "Edit these clips again",
+      "jobMeta": "{n} clips · {w}×{h} · {dur}",
+      "started": "Merging started",
+      "done": "Video merged",
+      "failed": "Merge failed",
+      "deleteConfirm": "Delete \"{name}\"?",
+      "status": {
+        "merging": "Merging",
+        "done": "Done",
+        "failed": "Failed"
       }
     }
   }

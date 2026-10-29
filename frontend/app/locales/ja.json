@@ -28,12 +28,15 @@
     "serviceType": {
       "text": "テキスト",
       "image": "画像",
-      "video": "動画"
+      "video": "動画",
+      "subtitle": "字幕"
     }
   },
   "layout": {
     "nav": {
       "projects": "プロジェクト",
+      "library": "素材",
+      "tools": "ツール",
       "settings": "設定"
     },
     "banner": {
@@ -151,6 +154,82 @@
       "minutesAgo": "{n} 分前",
       "hoursAgo": "{n} 時間前",
       "daysAgo": "{n} 日前"
+    }
+  },
+  "library": {
+    "title": "素材",
+    "sub": "全プロジェクトのキャラクターとシーン素材",
+    "category": {
+      "character": "キャラクター",
+      "scene": "シーン"
+    },
+    "newFolder": "新規フォルダ",
+    "upload": "アップロード",
+    "uploading": "アップロード中 {done}/{total}",
+    "searchPlaceholder": "フォルダやファイルを検索",
+    "root": "すべて",
+    "sections": {
+      "myFolders": "マイフォルダ",
+      "projectFolders": "プロジェクトフォルダ",
+      "files": "ファイル",
+      "subFolders": "サブフォルダ"
+    },
+    "projectTag": "プロジェクト",
+    "projectHint": "プロジェクトごとに自動作成され、内容は同期されます",
+    "fileCount": "{n} ファイル",
+    "folderStats": "{folders} フォルダ · {files} ファイル",
+    "itemCount": "{n} 件",
+    "openProject": "プロジェクトを開く",
+    "readonlyHint": "プロジェクト素材は読み取り専用です。プロジェクト内で編集してください",
+    "noImage": "画像なし",
+    "empty": {
+      "files": "{category}素材はまだありません",
+      "filesDesc": "「アップロード」をクリックするか画像をドロップしてください",
+      "folder": "フォルダは空です",
+      "folderDesc": "「アップロード」をクリックするか画像をドロップしてください",
+      "project": "このプロジェクトには{category}がありません",
+      "projectDesc": "プロジェクトで抽出・追加すると自動的に表示されます",
+      "search": "一致する素材がありません"
+    },
+    "actions": {
+      "rename": "名前を変更",
+      "move": "移動…",
+      "delete": "削除",
+      "preview": "プレビュー"
+    },
+    "dialogs": {
+      "newFolderTitle": "新規フォルダ",
+      "renameFolderTitle": "フォルダ名を変更",
+      "renameFileTitle": "ファイル名を変更",
+      "folderNamePlaceholder": "フォルダ名を入力",
+      "fileNamePlaceholder": "ファイル名を入力",
+      "moveTitle": "ファイルを移動",
+      "moveTarget": "移動先",
+      "rootFolder": "ルート（フォルダなし）",
+      "deleteFolderTitle": "フォルダを削除",
+      "deleteFolderMessage": "フォルダ「{name}」を削除しますか？中の {n} 個のファイルも削除されます。",
+      "deleteFileTitle": "ファイルを削除",
+      "deleteFileMessage": "「{name}」を削除しますか？",
+      "moveFolderTitle": "フォルダを移動",
+      "deleteFolderNestedMessage": "フォルダ「{name}」を削除しますか？すべてのサブフォルダと {n} 個のファイルも削除されます。"
+    },
+    "toast": {
+      "folderCreated": "フォルダを作成しました",
+      "renamed": "名前を変更しました",
+      "moved": "移動しました",
+      "deleted": "削除しました",
+      "uploaded": "{n} 個のファイルをアップロードしました",
+      "uploadSkipped": "画像以外の {n} 個のファイルをスキップしました"
+    },
+    "dropHint": "ドロップして「{target}」にアップロード",
+    "picker": {
+      "button": "素材ライブラリから選択",
+      "short": "素材",
+      "title": "素材ライブラリから{category}画像を選択",
+      "hint": "マイフォルダや他のプロジェクトから選べます。画像をクリックすると適用されます",
+      "use": "使用",
+      "empty": "まだ素材がありません",
+      "applied": "素材ライブラリの画像を適用しました"
     }
   },
   "detail": {
@@ -290,7 +369,8 @@
       "meta": {
         "text": "脚本リライト、キャラクター・シーン抽出、分镜分解などの Agent テキスト能力",
         "image": "キャラクター図、シーン図、ショット図などの静止画生成",
-        "video": "ショット動画の直接生成（デフォルト Seedance 2.0）"
+        "video": "ショット動画の直接生成（デフォルト Seedance 2.0）",
+        "subtitle": "ショット動画のセリフを認識して字幕を作成します。既定は Alibaba Cloud Model Studio の qwen-audio-3.0-asr-flash-filetrans"
       }
     },
     "styles": {
@@ -405,7 +485,41 @@
       "reachable": "エンドポイントが応答しました",
       "unreachable": "エンドポイントのテストに失敗しました",
       "providerRequired": "プロバイダーを選択してください",
-      "tempInvalid": "Temperature は 0〜2 の数値で入力してください"
+      "tempInvalid": "Temperature は 0〜2 の数値で入力してください",
+      "custom": {
+        "title": "カスタム設定（中継サービス / 非公式エンドポイント）",
+        "desc": "設定すると指定した URL をそのまま使用し（公式パスは追加されません）、認証ヘッダー・リクエストボディ・レスポンス解析を調整できます。空欄の場合は選択したプロバイダーの公式プロトコルに従います。",
+        "generateUrl": "送信 URL",
+        "generateUrlHint": "完全なリクエスト URL をそのまま使用します。テキストサービスでは Base URL として SDK に渡されます。",
+        "pollUrl": "ポーリング URL",
+        "pollUrlHint": "空欄の場合は「送信 URL + / + タスク ID」。位置を指定するには次のプレースホルダーを使用：",
+        "authScheme": "認証方式",
+        "authDefault": "公式のまま",
+        "authBearer": "Authorization: Bearer キー",
+        "authRaw": "Authorization: キー（Bearer なし）",
+        "authXApiKey": "x-api-key: キー",
+        "authNone": "認証なし",
+        "headers": "追加ヘッダー（JSON）",
+        "extraBody": "追加ボディフィールド（JSON）",
+        "extraBodyHint": "公式ボディに浅くマージします。値を null にするとそのフィールドを削除します。",
+        "bodyTemplate": "ボディテンプレート（JSON、動画のみ）",
+        "bodyTemplateHint": "公式ボディを丸ごと置き換えます（送信 URL が必須）。値が空のフィールドは省略され、変数の後ろにデフォルト値を付けられます（下の例を参照）。利用可能な変数：",
+        "responseTitle": "レスポンス解析（動画のみ、空欄で自動判別）",
+        "taskIdPath": "タスク ID パス",
+        "statusPath": "ステータスパス",
+        "videoUrlPath": "動画 URL パス",
+        "errorPath": "エラーメッセージパス",
+        "doneValues": "成功ステータス値（カンマ区切り）",
+        "failedValues": "失敗ステータス値（カンマ区切り）",
+        "pathHint": "data.video.url のようなドットパス。候補はカンマ区切り",
+        "example": "GPT Router の例を入力",
+        "invalidJson": "{field} は有効な JSON オブジェクトではありません"
+      },
+      "urlMode": "URL モード",
+      "urlModeAuto": "自動補完",
+      "urlModeBase": "Base URL をそのまま使用",
+      "urlModeHint": "自動補完：プロバイダー公式のルールで Base URL にパスを追加します（例：/v1、/api/v3）。そのまま使用：Base URL を完全なリクエスト URL として扱い、パスは追加しません。ポーリング URL は Base URL に / とタスク ID を付けたもので、リクエストパラメーターは公式形式のままです。",
+      "subtitleHint": "字幕サービスは Alibaba Cloud Model Studio の録音ファイル認識を使用します。Base URL は https://dashscope.aliyuncs.com（シンガポールは https://dashscope-intl.aliyuncs.com）。ローカル音声は Model Studio の一時ストレージ（48 時間有効）にアップロードされるため、公開 URL は不要です。"
     },
     "styleDialog": {
       "editTitle": "スタイルプリセットを編集",
@@ -487,7 +601,8 @@
       "prodStage": "制作段階 · {step}",
       "exportDone": "書き出し段階 · 完了",
       "exportWaiting": "書き出し段階 · 結合待ち",
-      "workbench": "ワークベンチ"
+      "workbench": "ワークベンチ",
+      "subtitlesDesc": "音声認識と字幕焼き込み"
     },
     "script": {
       "raw": "原文",
@@ -503,7 +618,15 @@
       "rewriting": "脚本をリライト中...",
       "scriptPlaceholder": "書式付き脚本の内容...",
       "rawRequired": "先に原文を入力してください",
-      "skipDone": "AI リライトをスキップしました。原文をそのまま使用します"
+      "skipDone": "AI リライトをスキップしました。原文をそのまま使用します",
+      "saving": "保存中…",
+      "unsaved": "未保存",
+      "autoSaved": "自動保存済み",
+      "rewriteConfirmTitle": "脚本を書き直しますか？",
+      "rewriteConfirmMsg": "AI が元の内容から脚本を再生成し、手動で行った修正を含む現在の脚本を上書きします。",
+      "skipConfirmTitle": "AI 書き直しをスキップしますか？",
+      "skipConfirmMsg": "元の内容を AI で書き直さずにそのまま脚本として使用します。",
+      "skipConfirmOverwrite": "手動で行った修正を含む現在の脚本を、元の内容で上書きします。"
     },
     "prod": {
       "assets": "アセット制作",
@@ -521,7 +644,8 @@
       "emptyDesc": "キャラクター、シーン、小道具は抽出後ここに表示されます。個別に抽出するか、一括で並行抽出できます。",
       "startExtract": "抽出を開始",
       "scriptFirst": "先に脚本を完成させてください",
-      "goBack": "処理に戻る"
+      "goBack": "処理に戻る",
+      "subtitles": "字幕制作"
     },
     "asset": {
       "fallbackType": "資産",
@@ -706,7 +830,12 @@
       "notReady": "未生成",
       "unbound": "未紐付け",
       "gotoGenerate": "生成へ →",
-      "empty": "この話にはシーン、キャラクター、小道具がまだありません。先に「資産」で素材を抽出すると紐付けできます。"
+      "empty": "この話にはシーン、キャラクター、小道具がまだありません。先に「資産」で素材を抽出すると紐付けできます。",
+      "dropped": "未送信",
+      "droppedTitle": "「{name}」は参照画像の上限を超えるため送信されません",
+      "truncatedHint": "参照画像がモデルの上限（{limit} 枚）を超えています。キャラクター画像を優先し、次の素材は送信されません：{names}",
+      "truncatedToast": "参照画像が上限（{limit} 枚）を超えました。未送信：{names}",
+      "truncatedBatchToast": "{n} 件のショットで参照画像が上限（{limit} 枚）を超えました。キャラクター画像を優先し、超過したシーン／小道具は送信されません"
     },
     "vid": {
       "shotCount": "{n} ショット",
@@ -817,7 +946,10 @@
       "markedDone": "完了",
       "markDoneTitle": "このエピソードの書き出しを手動で完了にします（再クリックで解除）",
       "markedDoneToast": "完了としてマークしました",
-      "unmarkDoneToast": "完了マークを解除しました"
+      "unmarkDoneToast": "完了マークを解除しました",
+      "withSubtitles": "字幕版を使用",
+      "withoutSubtitles": "字幕版を使わない",
+      "withSubtitlesTitle": "結合時、字幕を作成したショットは字幕焼き込み済みの動画を使用します"
     },
     "image": {
       "generatingChar": "キャラクター画像を生成中",
@@ -877,7 +1009,117 @@
       "transferring": "動画生成済み・転送中",
       "awaitingDelivery": "動画生成済み・配信待ち",
       "restoreHint": "既存のタスクを復旧し、重複生成を避けます"
+    },
+    "sub": {
+      "stat": "{done}/{total} 完了",
+      "modelTitle": "現在の字幕モデル",
+      "batchAll": "すべてに字幕",
+      "batchSelected": "選択に字幕 ({n})",
+      "selectMissing": "未完了を選択",
+      "downloadEpisode": "全話字幕",
+      "downloadEpisodeTitle": "完成動画のタイムラインに合わせた全話 SRT をダウンロード",
+      "downloadSrt": "SRT ファイルをダウンロード",
+      "downloadVideo": "字幕版動画をダウンロード",
+      "noConfig": "字幕サービスが有効になっていません。先に設定で追加してください。",
+      "gotoSettings": "設定へ",
+      "emptyTitle": "字幕を付けられる動画がありません",
+      "emptyDesc": "先に「動画制作」でショット動画を生成してください",
+      "gotoVideos": "動画制作へ",
+      "generate": "字幕を生成",
+      "regenerate": "再生成",
+      "clear": "字幕を削除",
+      "previewSubtitled": "字幕版",
+      "previewOriginal": "元動画",
+      "cues": "字幕内容",
+      "noCues": "字幕なし",
+      "staleHint": "ショット動画が再生成されたため字幕が古くなっています。再生成してください。",
+      "started": "{n} 件のショットの字幕タスクを送信しました",
+      "nothingQueued": "選択したショットはすでに処理中です",
+      "failed": "字幕生成に失敗しました",
+      "finished": "字幕制作が完了しました",
+      "finishedWithFailed": "字幕制作が終了しました（{n} 件失敗）",
+      "state": {
+        "none": "未生成",
+        "processing": "認識中",
+        "done": "完了",
+        "no_speech": "音声なし",
+        "failed": "失敗",
+        "stale": "期限切れ"
+      }
     }
+  },
+  "looks": {
+    "title": "衣装",
+    "hintWithRef": "衣装画像はデフォルト立ち絵を参照画像にして同じ顔を保ちます（参照画像対応の画像モデルが必要：OpenAI gpt-image、Gemini、SiliconFlow の Qwen-Image-Edit など。非対応の場合はテキストのみの生成に切り替えて通知します）",
+    "hintNoRef": "デフォルト立ち絵がまだないため、衣装画像は顔を参照できません。先にデフォルト立ち絵を生成してください",
+    "noImage": "未生成",
+    "noImageShort": "画像なし",
+    "default": "デフォルト",
+    "defaultName": "デフォルト衣装",
+    "defaultDesc": "キャラクター立ち絵",
+    "generating": "生成中…",
+    "noDesc": "衣装の説明なし",
+    "generate": "生成",
+    "regenerate": "再生成",
+    "upload": "衣装画像をアップロード",
+    "edit": "編集",
+    "namePlaceholder": "衣装名（例：ウェディングドレス）",
+    "descPlaceholder": "服装・髪型・メイク・アクセサリー…",
+    "create": "作成",
+    "add": "衣装を追加",
+    "deleteTitle": "衣装を削除",
+    "deleteMessage": "衣装「{name}」を削除しますか？使用中の話とショットはデフォルト衣装に戻ります。",
+    "generated": "衣装「{name}」を生成しました",
+    "generateFailed": "衣装画像の生成に失敗しました",
+    "episodeLookTitle": "この話で使う衣装",
+    "chip": "衣装 · {name}",
+    "manage": "衣装を管理…",
+    "addShort": "+ 衣装",
+    "shotTitle": "このショットの衣装",
+    "followEpisode": "話に従う（{name}）",
+    "fallbackHint": "選択した衣装に画像がないため、デフォルト立ち絵を参照画像として使用します",
+    "referenceFallback": {
+      "model": "現在の画像モデルは参照画像に対応していないため、テキストのみで生成しました。顔が元のキャラクターと一致しない可能性があります。設定で参照画像対応モデル（例：Qwen-Image-Edit）に切り替えてください。",
+      "service": "画像サービスが参照画像を受け付けなかったため、参照画像なしで再生成しました。顔が元のキャラクターと一致しない可能性があります。"
+    }
+  },
+  "identity": {
+    "aliases": "別名・呼び名",
+    "aliasesPlaceholder": "例：愛称、肩書き（読点またはカンマ区切り）",
+    "aliasesHint": "脚本がこれらの呼び名で同一人物を指す場合、抽出時に新規作成せずこのキャラクターを再利用します",
+    "mergeButton": "重複キャラクターを統合…",
+    "mergeTitle": "「{name}」に統合",
+    "mergeDesc": "選択したキャラクターを統合します：話・ショットの関連、衣装、生成履歴を移し、名前は別名になり、動画プロンプト内の {'@'}名前 も書き換えた後、統合元は削除されます。",
+    "merging": "統合中…",
+    "mergeConfirm": "{n} 件を統合",
+    "merged": "{names} を「{name}」に統合しました"
+  },
+  "recap": {
+    "button": "あらすじ",
+    "title": "前回までのあらすじ",
+    "desc": "脚本の書き直し・素材抽出・絵コンテ分割の際、直前 {n} 話のあらすじを AI に渡し、呼び名・関係・怪我・衣装・物語の連続性を保ちます。未生成や脚本変更後のあらすじは実行時に自動生成され、手動編集したものは自動で上書きされません。",
+    "previous": "前の話",
+    "current": "この話のあらすじ",
+    "currentHint": "以降の話で使われます",
+    "firstEpisode": "第1話のため、前回までのあらすじはありません。",
+    "episodeTitle": "第{n}話「{title}」",
+    "state": {
+      "fresh": "生成済み",
+      "edited": "手動編集",
+      "stale": "脚本が変更済み",
+      "missing": "未生成",
+      "none": "脚本なし"
+    },
+    "outOfRange": "範囲外のため AI には渡されません",
+    "edit": "編集",
+    "generate": "生成",
+    "regenerate": "再生成",
+    "generating": "生成中…",
+    "generated": "第{n}話のあらすじを生成しました",
+    "notGenerated": "未生成です。以降の話で AI を実行すると自動生成されます",
+    "noScript": "この話にはまだ脚本がありません",
+    "placeholder": "【あらすじ】…\n【人物の状態】名前：状態\n【未解決】…\n【結末】…",
+    "staleEditedHint": "編集後に脚本が変更されたため、内容が古い可能性があります。手動編集したあらすじは自動再生成されません。"
   },
   "errors": {
     "network": "サーバーに接続できません。ネットワークまたはサービスの起動状態を確認してください",
@@ -939,6 +1181,94 @@
       "help": {
         "title": "いつでも再再生",
         "desc": "この「?」ボタンでこのページのガイドを再表示できます。良い制作を！"
+      }
+    }
+  },
+  "tools": {
+    "title": "ツール",
+    "sub": "エピソード制作フローとは独立したツール",
+    "subtitle": {
+      "name": "字幕生成",
+      "desc": "動画をアップロードし、自動認識または字幕を読み込んで、スタイルを調整して合成",
+      "jobs": "タスク",
+      "uploadVideo": "動画をアップロード",
+      "uploading": "アップロード中 {pct}%",
+      "uploaded": "動画をアップロードしました",
+      "emptyJobs": "タスクはまだありません。動画をアップロードして開始",
+      "dropTitle": "動画をアップロードまたはドロップ",
+      "dropDesc": "mp4 / mov / m4v / webm / mkv / avi、最大 500MB",
+      "notVideo": "動画ファイルをドロップしてください",
+      "previewEdit": "スタイルプレビュー",
+      "previewOutput": "合成結果",
+      "previewHint": "右の字幕行をクリックすると該当位置へ移動します。画面上の字幕は現在のスタイルのプレビューです",
+      "stepSubtitle": "字幕",
+      "model": "認識モデル",
+      "autoTranscribe": "自動認識",
+      "transcribing": "認識中…",
+      "uploadSubtitle": "字幕ファイルをアップロード",
+      "subtitleUploaded": "字幕を読み込みました",
+      "noAudio": "動画に音声トラックがないため自動認識できません。字幕ファイルをアップロードしてください",
+      "sourceAsr": "自動認識",
+      "sourceUpload": "アップロード",
+      "cueCount": "{n} 行",
+      "noSubtitleYet": "字幕はまだありません。自動認識するか、.srt / .vtt ファイル（UTF-8 / GBK）をアップロードしてください",
+      "stepStyle": "スタイル",
+      "resetStyle": "既定に戻す",
+      "fontSize": "文字サイズ",
+      "position": "下からの位置",
+      "positionHint": "画面下端から字幕までの高さ",
+      "posBottom": "下",
+      "posMiddle": "中央",
+      "posTop": "上",
+      "fontDefault": "フォントはシステム既定の CJK フォント、白文字に黒縁",
+      "stepBurn": "合成",
+      "burn": "動画を合成",
+      "reburn": "再合成",
+      "burning": "合成中…",
+      "downloadVideo": "動画をダウンロード",
+      "needSubtitle": "先に字幕を作成またはアップロードしてください",
+      "styleChanged": "スタイルが変更されました。再合成すると反映されます",
+      "transcribeDone": "字幕認識が完了しました",
+      "burnDone": "動画の合成が完了しました",
+      "stateNew": "未処理",
+      "stateReady": "字幕あり",
+      "stateDone": "合成済み",
+      "stateFailed": "失敗",
+      "deleteConfirm": "タスク「{name}」を削除しますか？"
+    },
+    "merge": {
+      "name": "動画結合",
+      "desc": "複数の動画をアップロードし、順番どおりに 1 本に結合",
+      "clips": "クリップ",
+      "clipStat": "{n} 本 · 合計 {dur}",
+      "clear": "クリア",
+      "addVideos": "動画を追加",
+      "uploading": "アップロード中 {done}/{total} · {pct}%",
+      "added": "{n} 本の動画を追加しました",
+      "dropTitle": "複数の動画を追加またはドロップ",
+      "dropDesc": "mp4 / mov / m4v / webm / mkv / avi、1 本最大 500MB。ドラッグで順番を変更できます",
+      "noAudio": "無音",
+      "noAudioHint": "この動画には音声トラックがないため、結合時は無音になります",
+      "moveUp": "上へ",
+      "moveDown": "下へ",
+      "outputSize": "出力サイズ",
+      "sizeFirst": "{w}×{h}（1 本目）",
+      "sizeClip": "{w}×{h}（{n} 本目）",
+      "start": "順番どおりに結合（{n} 本）",
+      "hint": "サイズや比率が異なる動画は等比で縮小し黒帯を付けます。30fps に統一し、音声のないクリップには無音を入れます",
+      "jobs": "結合履歴",
+      "noJobs": "まだ結合履歴はありません",
+      "preview": "プレビュー",
+      "reuse": "このクリップで再編集",
+      "jobMeta": "クリップ {n} 本 · {w}×{h} · {dur}",
+      "started": "結合を開始しました",
+      "done": "動画の結合が完了しました",
+      "failed": "動画の結合に失敗しました",
+      "deleteConfirm": "「{name}」を削除しますか？",
+      "status": {
+        "merging": "結合中",
+        "done": "完了",
+        "failed": "失敗"
       }
     }
   }

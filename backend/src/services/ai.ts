@@ -5,8 +5,10 @@ import { db, schema } from '../db/index.js'
 import { eq } from 'drizzle-orm'
 import { logTaskProgress, logTaskWarn } from '../utils/task-logger.js'
 import { joinProviderUrl } from './adapters/url.js'
+import { parseCustomOptions, parseUrlMode, withUrlMode } from './adapters/custom.js'
+import type { CustomOptions } from './adapters/types.js'
 
-export type ServiceType = 'text' | 'image' | 'video'
+export type ServiceType = 'text' | 'image' | 'video' | 'subtitle'
 
 export interface AIConfig {
   id?: number
@@ -16,6 +18,8 @@ export interface AIConfig {
   model: string
   /** 采样温度，null 表示不设置（跟随服务商默认）。存于 ai_service_configs.settings JSON */
   temperature?: number | null
+  /** 自定义端点/请求结构覆盖，存于 ai_service_configs.settings.custom */
+  custom?: CustomOptions | null
 }
 
 /** 从 settings JSON 解析 temperature；非法值一律视为未设置 */
@@ -33,6 +37,8 @@ export const officialProviders: Record<ServiceType, readonly string[]> = {
   text: ['openai', 'gemini', 'volcengine'],
   image: ['openai', 'gemini', 'volcengine'],
   video: ['volcengine', 'minimax', 'aliyun'],
+  // 字幕：阿里云百炼录音文件识别（Filetrans 系列 ASR 模型）
+  subtitle: ['aliyun'],
 }
 
 export function isOfficialProvider(serviceType?: string | null, provider?: string | null): boolean {
@@ -41,6 +47,9 @@ export function isOfficialProvider(serviceType?: string | null, provider?: strin
 }
 
 export function getTextProviderBaseUrl(config: AIConfig) {
+  // 自定义地址原样使用，不追加 /v1 等前缀
+  if (config.custom?.generate_url) return config.custom.generate_url
+
   const provider = config.provider.toLowerCase()
 
   if (provider === 'openai') {
@@ -94,6 +103,7 @@ export async function getActiveConfig(serviceType: ServiceType): Promise<AIConfi
     apiKey: active.apiKey,
     model: models[0] || '',
     temperature: parseConfigTemperature(active.settings),
+    custom: withUrlMode(parseCustomOptions(active.settings), parseUrlMode(active.settings), active.baseUrl),
   }
 }
 
@@ -148,5 +158,6 @@ export async function getConfigById(id: number): Promise<AIConfig | null> {
     apiKey: row.apiKey,
     model: models[0] || '',
     temperature: parseConfigTemperature(row.settings),
+    custom: withUrlMode(parseCustomOptions(row.settings), parseUrlMode(row.settings), row.baseUrl),
   }
 }

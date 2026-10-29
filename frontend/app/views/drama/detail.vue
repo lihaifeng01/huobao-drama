@@ -251,6 +251,9 @@
                         <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         {{ t('episode.asset.upload') }}
                       </button>
+                      <button class="btn btn-icon btn-sm library-pick-btn" type="button" :title="t('library.picker.button')" :disabled="isUploading(m)" @click.stop="openLibraryPicker(m)">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 22H4a2 2 0 0 1-2-2V6"/><path d="m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18"/><circle cx="12" cy="8" r="2"/><rect width="16" height="16" x="6" y="2" rx="2"/></svg>
+                      </button>
                     </div>
                   </div>
                   <div class="asset-final-prompt" :title="m.finalPrompt || ''">
@@ -307,6 +310,9 @@
                     <span v-if="isUploading(m)" class="ring-spinner sm"></span>
                     <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                     {{ t('episode.asset.upload') }}
+                  </button>
+                  <button v-if="g.kindKey === 'scene'" class="btn btn-icon btn-sm library-pick-btn" type="button" :title="t('library.picker.button')" :disabled="isUploading(m)" @click.stop="openLibraryPicker(m)">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 22H4a2 2 0 0 1-2-2V6"/><path d="m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18"/><circle cx="12" cy="8" r="2"/><rect width="16" height="16" x="6" y="2" rx="2"/></svg>
                   </button>
                   <button class="btn btn-sm" type="button" :disabled="isPending(m)" @click.stop="generateMaterial(m)">
                     <span v-if="isPending(m)" class="ring-spinner sm"></span>
@@ -419,6 +425,11 @@
                     <input v-model="editDraft.role" class="input" :placeholder="t('episode.create.rolePlaceholder')" />
                   </label>
                   <label class="mat-detail-edit-field">
+                    <span>{{ t('identity.aliases') }}</span>
+                    <input v-model="editDraft.aliases" class="input mat-detail-aliases" :placeholder="t('identity.aliasesPlaceholder')" />
+                    <em class="mat-detail-field-hint">{{ t('identity.aliasesHint') }}</em>
+                  </label>
+                  <label class="mat-detail-edit-field">
                     <span>{{ t('episode.asset.appearanceField') }}</span>
                     <textarea v-model="editDraft.appearance" class="textarea mat-detail-textarea" rows="5" :placeholder="t('episode.asset.appearanceFieldPlaceholder')" />
                   </label>
@@ -454,6 +465,11 @@
               </section>
             </div>
 
+            <!-- 角色造型：同一角色的多套服装/妆发 -->
+            <section v-if="editTarget.kindKey === 'character'" class="mat-detail-looks-panel">
+              <CharacterLooksPanel :character="editTarget" :config-id="firstEpisodeImageConfigId" />
+            </section>
+
             <!-- 最终提示词：可生成 / 重新生成 / 手动编辑 -->
             <section class="mat-detail-prompt-panel">
               <div class="mat-detail-section-title">
@@ -481,6 +497,11 @@
           <footer class="dialog-foot mat-detail-foot">
             <div class="mat-detail-secondary-actions">
               <button class="btn" @click="closeEdit">{{ t('common.close') }}</button>
+              <button
+                v-if="editTarget.kindKey === 'character' && mergeCandidates.length"
+                class="btn mat-detail-merge-btn"
+                @click="openMerge(editTarget)"
+              >{{ t('identity.mergeButton') }}</button>
             </div>
             <div class="mat-detail-primary-actions">
               <button
@@ -491,6 +512,15 @@
                 <span v-if="isUploading(editTarget)" class="ring-spinner sm"></span>
                 <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 {{ t('episode.asset.uploadImage') }}
+              </button>
+              <button
+                v-if="editTarget.kindKey !== 'prop'"
+                class="btn library-pick-btn"
+                :disabled="isUploading(editTarget)"
+                @click="openLibraryPicker(editTarget)"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 22H4a2 2 0 0 1-2-2V6"/><path d="m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18"/><circle cx="12" cy="8" r="2"/><rect width="16" height="16" x="6" y="2" rx="2"/></svg>
+                {{ t('library.picker.button') }}
               </button>
               <button
                 class="btn"
@@ -550,6 +580,49 @@
         </div>
       </div>
     </div>
+    <LibraryPicker
+      :open="!!libraryPickTarget"
+      :category="libraryPickTarget?.kindKey === 'scene' ? 'scene' : 'character'"
+      :applying="libraryApplying"
+      @close="libraryPickTarget = null"
+      @select="applyLibraryImage"
+    />
+    <!-- 合并重复角色：选中的角色并入当前角色（Teleport 到 body，叠在素材详情弹窗之上） -->
+    <Teleport to="body">
+    <div v-if="mergeDialog.open" class="overlay overlay-nested" @click.self="mergeDialog.open = false">
+      <div class="dialog merge-dialog" role="dialog" aria-modal="true">
+        <div class="dialog-head">
+          <div class="merge-head-copy">
+            <h2 class="dialog-title">{{ t('identity.mergeTitle', { name: mergeDialog.target?.name }) }}</h2>
+            <p class="merge-desc">{{ t('identity.mergeDesc') }}</p>
+          </div>
+        </div>
+        <div class="dialog-body merge-body">
+          <label
+            v-for="c in mergeCandidates"
+            :key="c.id"
+            class="merge-option"
+            :class="{ on: mergeDialog.selected.includes(c.id) }"
+          >
+            <input v-model="mergeDialog.selected" type="checkbox" :value="c.id" />
+            <span class="merge-thumb">
+              <img v-if="matHasImage(c)" :src="thumbOf(assetSrc(c))" alt="" @error="thumbFallback($event, assetSrc(c))" />
+            </span>
+            <span class="merge-copy">
+              <strong>{{ c.name }}</strong>
+              <small class="dim">{{ [c.role, ...parseAliases(c.aliases)].filter(Boolean).join(' · ') || t('common.role') }}</small>
+            </span>
+          </label>
+        </div>
+        <div class="dialog-foot">
+          <button type="button" class="btn" @click="mergeDialog.open = false">{{ t('common.cancel') }}</button>
+          <button type="button" class="btn btn-primary" :disabled="!mergeDialog.selected.length || mergeDialog.saving" @click="confirmMerge">
+            {{ mergeDialog.saving ? t('identity.merging') : t('identity.mergeConfirm', { n: mergeDialog.selected.length }) }}
+          </button>
+        </div>
+      </div>
+    </div>
+    </Teleport>
     <ConfirmDialog
       :open="!!episodeToDelete"
       :title="t('detail.ep.deleteTitle')"
@@ -566,6 +639,7 @@ import { toast } from 'vue-sonner'
 import { toastError } from '~/composables/useToast'
 import { useI18n } from 'vue-i18n'
 import { dramaAPI, episodeAPI, characterAPI, sceneAPI, propAPI, uploadAPI } from '~/composables/useApi'
+import { parseAliases } from '~/composables/useCharacterIdentity'
 import BaseSelect from '~/components/BaseSelect.vue'
 
 const { t, locale } = useI18n()
@@ -807,17 +881,8 @@ function uploadMaterial(m) {
     uploadingMaterials.value = new Set(uploadingMaterials.value).add(key)
     try {
       const res = await uploadAPI.image(file)
-      // 与生图回写保持一致：存相对路径（static/...），展示时补前导斜杠
-      const payload = { image_url: res.path, local_path: res.path }
-      if (m.kindKey === 'character') await characterAPI.update(m.id, payload)
-      else if (m.kindKey === 'scene') await sceneAPI.update(m.id, payload)
-      else await propAPI.update(m.id, payload)
+      await setMaterialImage(m, res.path)
       toast.success(t('detail.mat.uploaded', { kind: m.kind, name: m.name }))
-      await load()
-      // 详情弹窗打开时同步刷新预览
-      if (editTarget.value && editTarget.value.kindKey === m.kindKey && editTarget.value.id === m.id) {
-        editTarget.value = { ...editTarget.value, image_url: res.path, local_path: res.path }
-      }
     } catch (e) {
       toastError(e)
     } finally {
@@ -825,6 +890,41 @@ function uploadMaterial(m) {
     }
   }
   input.click()
+}
+
+// 写回素材图片：与生图回写保持一致，存相对路径（static/...），展示时补前导斜杠
+async function setMaterialImage(m, path) {
+  const payload = { image_url: path, local_path: path }
+  if (m.kindKey === 'character') await characterAPI.update(m.id, payload)
+  else if (m.kindKey === 'scene') await sceneAPI.update(m.id, payload)
+  else await propAPI.update(m.id, payload)
+  await load()
+  // 详情弹窗打开时同步刷新预览
+  if (editTarget.value && editTarget.value.kindKey === m.kindKey && editTarget.value.id === m.id) {
+    editTarget.value = { ...editTarget.value, image_url: path, local_path: path }
+  }
+}
+
+/* ===== 从全局素材库选择图片（角色 / 场景） ===== */
+const libraryPickTarget = ref(null)
+const libraryApplying = ref(false)
+function openLibraryPicker(m) { libraryPickTarget.value = m }
+async function applyLibraryImage({ image_url }) {
+  const m = libraryPickTarget.value
+  if (!m || libraryApplying.value) return
+  const key = pendingKey(m)
+  libraryApplying.value = true
+  uploadingMaterials.value = new Set(uploadingMaterials.value).add(key)
+  try {
+    await setMaterialImage(m, image_url)
+    toast.success(t('library.picker.applied'))
+    libraryPickTarget.value = null
+  } catch (e) {
+    toastError(e)
+  } finally {
+    libraryApplying.value = false
+    uploadingMaterials.value = new Set([...uploadingMaterials.value].filter(k => k !== key))
+  }
 }
 
 function openAssetViewer(m) {
@@ -852,7 +952,7 @@ function openEdit(m) {
   // 按类型初始化 draft
   Object.keys(editDraft).forEach(k => delete editDraft[k])
   if (m.kindKey === 'character') {
-    Object.assign(editDraft, { name: m.name || '', role: m.role || '', appearance: m.appearance || '', description: m.description || '', styling: m.styling || '' })
+    Object.assign(editDraft, { name: m.name || '', role: m.role || '', aliases: parseAliases(m.aliases).join('、'), appearance: m.appearance || '', description: m.description || '', styling: m.styling || '' })
   } else if (m.kindKey === 'scene') {
     Object.assign(editDraft, { location: m.location || '', time: m.time || '', prompt: m.prompt || '', lighting: m.lighting || '' })
   } else {
@@ -891,6 +991,39 @@ function closeEdit() {
   editTarget.value = null
 }
 
+// 造型生图沿用项目首集锁定的图片配置（无集时由后端回退到当前启用配置）
+const firstEpisodeImageConfigId = computed(() => {
+  const ep = drama.value?.episodes?.[0]
+  return ep?.image_config_id || ep?.imageConfigId || null
+})
+
+/* ===== 合并重复角色 ===== */
+const mergeDialog = ref({ open: false, target: null, selected: [], saving: false })
+const mergeCandidates = computed(() => {
+  const target = mergeDialog.value.open ? mergeDialog.value.target : editTarget.value
+  if (!target || target.kindKey !== 'character') return []
+  return materials.value.filter(m => m.kindKey === 'character' && m.id !== target.id)
+})
+function openMerge(target) {
+  mergeDialog.value = { open: true, target, selected: [], saving: false }
+}
+async function confirmMerge() {
+  const d = mergeDialog.value
+  if (!d.target || !d.selected.length || d.saving) return
+  d.saving = true
+  try {
+    const res = await characterAPI.merge(d.target.id, d.selected)
+    toast.success(t('identity.merged', { names: (res?.merged || []).join(t('common.listJoin')), name: d.target.name }))
+    d.open = false
+    closeEdit()
+    await load()
+  } catch (e) {
+    toastError(e)
+  } finally {
+    d.saving = false
+  }
+}
+
 async function saveEdit() {
   const target = editTarget.value
   if (!target) return
@@ -901,7 +1034,7 @@ async function saveEdit() {
   editSaving.value = true
   try {
     const fp = editDraft.finalPrompt || null
-    if (target.kindKey === 'character') await characterAPI.update(target.id, { name: editDraft.name, role: editDraft.role, appearance: editDraft.appearance, description: editDraft.description, styling: editDraft.styling, finalPrompt: fp })
+    if (target.kindKey === 'character') await characterAPI.update(target.id, { name: editDraft.name, role: editDraft.role, aliases: editDraft.aliases, appearance: editDraft.appearance, description: editDraft.description, styling: editDraft.styling, finalPrompt: fp })
     else if (target.kindKey === 'scene') await sceneAPI.update(target.id, { location: editDraft.location, time: editDraft.time, prompt: editDraft.prompt, lighting: editDraft.lighting, finalPrompt: fp })
     else await propAPI.update(target.id, { name: editDraft.name, type: editDraft.type, description: editDraft.description, finalPrompt: fp })
     toast.success(t('common.saved'))
@@ -918,6 +1051,14 @@ onMounted(load)
 </script>
 
 <style scoped>
+/* 卡片内「从素材库选择」：图标按钮，与 btn-sm 等高 */
+.btn-icon.btn-sm.library-pick-btn {
+  width: var(--button-height-sm);
+  min-width: var(--button-height-sm);
+  height: var(--button-height-sm);
+  min-height: var(--button-height-sm);
+  flex-shrink: 0;
+}
 .page {
   padding: 20px 28px 40px;
   overflow-y: auto;
@@ -1512,6 +1653,27 @@ onMounted(load)
 }
 
 /* 最终提示词面板 */
+.mat-detail-looks-panel {
+  margin-top: 18px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+.mat-detail-field-hint { font-style: normal; font-size: 11px; color: var(--text-3); line-height: 1.5; }
+.merge-dialog { width: 520px; max-width: calc(100vw - 32px); }
+.merge-head-copy { display: flex; flex-direction: column; gap: 4px; }
+.merge-desc { font-size: 12px; color: var(--text-3); line-height: 1.6; }
+.merge-body { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }
+.merge-option {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+  cursor: pointer; transition: border-color 0.15s var(--ease-out);
+}
+.merge-option.on { border-color: var(--accent); background: var(--accent-bg); }
+.merge-thumb { width: 44px; height: 44px; flex-shrink: 0; border-radius: 8px; overflow: hidden; background: var(--bg-2); }
+.merge-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.merge-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.merge-copy strong { font-size: 13px; color: var(--text-0); }
+.merge-copy small { font-size: 11px; }
 .mat-detail-prompt-panel {
   margin-top: 18px;
   border-top: 1px solid var(--border);

@@ -11,8 +11,9 @@ import { getActiveConfig, getConfigById } from './ai.js'
 import { now } from '../utils/response.js'
 import { downloadFile, fetchImageAsCompressedDataUrl, generateImageThumb, readImageAsCompressedDataUrl, readImageAsDataUrl, saveBase64Image } from '../utils/storage.js'
 import { extractVideoPoster } from '../utils/video-poster.js'
+import { withNoSubtitleDirective } from './video-prompt-guard.js'
 import { getImageAdapter, getVideoAdapter } from './adapters/registry'
-import type { AIConfig } from './adapters/types'
+import type { AIConfig, ProviderRequest } from './adapters/types'
 import { logTaskError, logTaskPayload, logTaskProgress, logTaskStart, logTaskSuccess, logTaskWarn, redactUrl } from '../utils/task-logger.js'
 
 type TaskType = 'image' | 'video'
@@ -39,6 +40,8 @@ interface GenerateImageParams {
   sceneId?: number
   characterId?: number
   propId?: number
+  // 角色造型（character_looks.id）：完成后回写到造型而非角色主形象；此时不传 characterId
+  lookId?: number
   prompt: string
   model?: string
   size?: string
@@ -91,6 +94,7 @@ export async function generateImage(params: GenerateImageParams): Promise<number
     size: params.size || '1920x1080',
     frameType: params.frameType,
     referenceImages: params.referenceImages,
+    lookId: params.lookId,
   })
 
   logTaskStart('ImageTask', 'enqueue', {
@@ -130,7 +134,8 @@ export async function generateVideo(params: GenerateVideoParams): Promise<number
     const id = await createTask('video', config, {
       storyboardId: params.storyboardId,
       dramaId: params.dramaId,
-      prompt: params.prompt,
+      // 开头统一加上「不要带字幕」，字幕由字幕制作步骤压制
+      prompt: withNoSubtitleDirective(params.prompt),
       model: params.model || config.model,
     }, {
       referenceMode: params.referenceMode || 'reference',
@@ -204,6 +209,25 @@ async function createTask(
   return id
 }
 
+/**
+ * 参考图降级原因：
+ * - model_unsupported：构建请求时已知该模型不接受参考图（如硅基流动的纯文生图模型）
+ * - request_rejected：带参考图的请求被服务以 4xx 拒绝（如 OpenAI 兼容中转不提供 /images/edits），已去掉参考图重试
+ */
+export type ReferenceFallback = 'model_unsupported' | 'request_rejected'
+
+/** 带参考图请求被拒时，这些状态码视为「服务不支持参考图」而降级重试（鉴权 401/403、限流 429、5xx 不降级） */
+const REFERENCE_REJECTED_STATUSES = new Set([400, 404, 405, 415, 422])
+
+/** 日志用：把请求体中的 base64 data URL 折叠成长度说明，避免日志被整张图片撑爆 */
+function collapseDataUrls(body: unknown): unknown {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return body
+  return Object.fromEntries(Object.entries(body as Record<string, unknown>).map(([k, v]) => [
+    k,
+    typeof v === 'string' && v.startsWith('data:') ? `[data URL, ${v.length} chars]` : v,
+  ]))
+}
+
 function parseTaskParams(raw: string | null | undefined): Record<string, any> {
   if (!raw) return {}
   try {
@@ -229,20 +253,31 @@ async function processTask(id: number, config: AIConfig) {
     })
 
     let url: string, method: string, headers: Record<string, string>, body: unknown
+    // 参考图降级：服务/模型不支持参考图时改为纯文字生成，原因记入任务 params.referenceFallback 供前端提示
+    let referenceFallback: ReferenceFallback | null = null
+    let buildWithoutReferences: (() => ProviderRequest) | null = null
 
     if (type === 'image') {
-      const adapter = getImageAdapter(config.provider)
+      const adapter = getImageAdapter(config.provider, config)
       const resolvedReferenceImages = await normalizeReferenceImages(params.referenceImages)
-      ;({ url, method, headers, body } = adapter.buildGenerateRequest(config, {
+      const imageRecord = {
         id: record.id,
         model: record.model,
         prompt: record.prompt,
         size: params.size,
         frameType: params.frameType,
+      }
+      const req = adapter.buildGenerateRequest(config, {
+        ...imageRecord,
         referenceImages: resolvedReferenceImages.length ? JSON.stringify(resolvedReferenceImages) : null,
-      }))
+      })
+      ;({ url, method, headers, body } = req)
+      if (req.referenceDropped) referenceFallback = req.referenceDropped
+      else if (resolvedReferenceImages.length) {
+        buildWithoutReferences = () => adapter.buildGenerateRequest(config, { ...imageRecord, referenceImages: null })
+      }
     } else {
-      const adapter = getVideoAdapter(config.provider)
+      const adapter = getVideoAdapter(config.provider, config)
       const resolvedImageUrl = await normalizeVideoReferenceUrl(params.imageUrl)
       const resolvedFirstFrameUrl = await normalizeVideoReferenceUrl(params.firstFrameUrl)
       const resolvedLastFrameUrl = await normalizeVideoReferenceUrl(params.lastFrameUrl)
@@ -282,19 +317,38 @@ async function processTask(id: number, config: AIConfig) {
       model: record.model,
     })
 
-    const isMultipart = body instanceof FormData
-    logTaskPayload(label, 'request payload', {
-      id, method, url, headers,
-      // multipart 表单（如 OpenAI /v1/images/edits）无法 JSON 化，记录字段摘要
-      body: isMultipart ? `[multipart/form-data: ${[...(body as FormData).keys()].join(', ')}]` : body,
-    })
+    const send = async () => {
+      const isMultipart = body instanceof FormData
+      logTaskPayload(label, 'request payload', {
+        id, method, url, headers,
+        // multipart 表单（如 OpenAI /v1/images/edits）无法 JSON 化，记录字段摘要；JSON 中的 base64 图片折叠为长度
+        body: isMultipart ? `[multipart/form-data: ${[...(body as FormData).keys()].join(', ')}]` : collapseDataUrls(body),
+      })
+      return fetch(url, {
+        method,
+        headers,
+        body: isMultipart ? (body as FormData) : JSON.stringify(body),
+        signal: AbortSignal.timeout(600_000),
+      })
+    }
 
-    const resp = await fetch(url, {
-      method,
-      headers,
-      body: isMultipart ? (body as FormData) : JSON.stringify(body),
-      signal: AbortSignal.timeout(600_000),
-    })
+    let resp = await send()
+
+    // 带参考图的请求被服务拒绝（端点不存在 / 不接受参考图字段等）→ 去掉参考图按纯文字重试一次
+    if (!resp.ok && buildWithoutReferences && REFERENCE_REJECTED_STATUSES.has(resp.status)) {
+      const detail = await resp.text()
+      logTaskWarn(label, 'reference-rejected-retry-text-only', { id, status: resp.status, url: redactUrl(url), detail: detail.slice(0, 300) })
+      ;({ url, method, headers, body } = buildWithoutReferences())
+      logTaskProgress(label, 'request', { id, provider: config.provider, method, url: redactUrl(url), model: record.model, referenceFallback: 'request_rejected' })
+      resp = await send()
+      referenceFallback = 'request_rejected'
+    }
+    if (referenceFallback) {
+      logTaskWarn(label, 'reference-fallback', { id, provider: config.provider, model: record.model, reason: referenceFallback })
+      await db.update(schema.sysTask)
+        .set({ params: JSON.stringify({ ...params, referenceFallback }), updatedAt: now() })
+        .where(eq(schema.sysTask.id, id))
+    }
 
     // Firemux 在响应头提供内部任务编号；即使 JSON 响应体中断也能查询原任务。
     const gatewayTaskId = resp.headers.get('X-Firemux-Task-Id') || resp.headers.get('X-Huobao-Task-Id')
@@ -308,7 +362,7 @@ async function processTask(id: number, config: AIConfig) {
     logTaskPayload(label, 'response payload', { id, provider: config.provider, result })
 
     if (type === 'image') {
-      const adapter = getImageAdapter(config.provider)
+      const adapter = getImageAdapter(config.provider, config)
       const { isAsync, taskId, imageUrl } = adapter.parseGenerateResponse(result)
 
       if (!isAsync && imageUrl) {
@@ -333,7 +387,7 @@ async function processTask(id: number, config: AIConfig) {
       return
     }
 
-    const adapter = getVideoAdapter(config.provider)
+    const adapter = getVideoAdapter(config.provider, config)
     const { isAsync, taskId, videoUrl, duration } = adapter.parseGenerateResponse(result)
     if (taskId) {
       await markPolling(id, taskId)
@@ -377,7 +431,7 @@ async function pollTask(record: SysTaskRecord, config: AIConfig, taskId: string)
   const type = record.type as TaskType
   const label = taskLabel(type)
   const profile = POLL_PROFILES[type]
-  const adapter = type === 'image' ? getImageAdapter(config.provider) : getVideoAdapter(config.provider)
+  const adapter = type === 'image' ? getImageAdapter(config.provider, config) : getVideoAdapter(config.provider, config)
   const startedAt = Date.now()
 
   for (let i = 0; i < profile.attempts; i++) {
@@ -494,6 +548,9 @@ async function writeBackImageAssets(record: SysTaskRecord, localPath: string) {
   }
   if (record.characterId) {
     await db.update(schema.characters).set({ imageUrl: localPath, updatedAt: now() }).where(eq(schema.characters.id, record.characterId))
+  }
+  if (params.lookId) {
+    await db.update(schema.characterLooks).set({ imageUrl: localPath, updatedAt: now() }).where(eq(schema.characterLooks.id, Number(params.lookId)))
   }
   if (record.sceneId) {
     await db.update(schema.scenes).set({ imageUrl: localPath, status: 'completed', updatedAt: now() }).where(eq(schema.scenes.id, record.sceneId))

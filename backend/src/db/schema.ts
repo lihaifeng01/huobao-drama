@@ -3,7 +3,7 @@
  * 自 MySQL 迁移：varchar(x)→text（SQLite 不校验长度）、int→integer、
  * boolean→integer boolean mode、时间戳仍为 text 存 ISO 字符串，表/列名不变。
  */
-import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, real, primaryKey } from 'drizzle-orm/sqlite-core'
 
 export const dramas = sqliteTable('dramas', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -38,6 +38,11 @@ export const episodes = sqliteTable('episodes', {
   imageConfigId: integer('image_config_id'),
   videoConfigId: integer('video_config_id'),
   resolution: text('resolution').default('720p'),
+  // 前情摘要（见 services/episode-summary.ts）
+  summary: text('summary'),
+  summarySourceHash: text('summary_source_hash'),
+  summaryEdited: integer('summary_edited', { mode: 'boolean' }).default(false),
+  summaryUpdatedAt: text('summary_updated_at'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),
@@ -58,16 +63,31 @@ export const characters = sqliteTable('characters', {
   seedValue: text('seed_value'),
   sortOrder: integer('sort_order'),
   localPath: text('local_path'),
+  aliases: text('aliases'), // JSON 字符串数组
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),
 })
 
-// Episode-Character many-to-many
+// 角色造型：默认造型即 characters 自身形象图；此表只存额外造型
+export const characterLooks = sqliteTable('character_looks', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  characterId: integer('character_id').notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  imageUrl: text('image_url'),
+  sortOrder: integer('sort_order').default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+})
+
+// Episode-Character many-to-many；lookId 为本集使用的造型（空 = 默认造型）
 export const episodeCharacters = sqliteTable('episode_characters', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   episodeId: integer('episode_id').notNull(),
   characterId: integer('character_id').notNull(),
+  lookId: integer('look_id'),
   createdAt: text('created_at').notNull(),
 })
 
@@ -130,6 +150,10 @@ export const storyboards = sqliteTable('storyboards', {
   referenceImages: text('reference_images'),
   videoUrl: text('video_url'),
   subtitleUrl: text('subtitle_url'),
+  subtitleStatus: text('subtitle_status'),
+  subtitleError: text('subtitle_error'),
+  subtitledVideoUrl: text('subtitled_video_url'),
+  subtitleSourceVideo: text('subtitle_source_video'),
   composedVideoUrl: text('composed_video_url'),
   status: text('status').default('pending'),
   createdAt: text('created_at').notNull(),
@@ -137,9 +161,11 @@ export const storyboards = sqliteTable('storyboards', {
   deletedAt: text('deleted_at'),
 })
 
+// lookId：该镜头覆盖使用的造型（空 = 跟随本集，0 = 强制默认造型）
 export const storyboardCharacters = sqliteTable('storyboard_characters', {
   storyboardId: integer('storyboard_id').notNull(),
   characterId: integer('character_id').notNull(),
+  lookId: integer('look_id'),
 }, (table) => [
   primaryKey({ columns: [table.storyboardId, table.characterId] }),
 ])
@@ -226,6 +252,44 @@ export const sysTask = sqliteTable('sys_task', {
   completedAt: text('completed_at'),
 })
 
+// 字幕工具任务：status 只表示正在进行的操作（idle / transcribing / burning），有无字幕、成品看 subtitle_url / output_url，最近一次失败原因在 error_msg
+export const subtitleToolJobs = sqliteTable('subtitle_tool_jobs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  videoUrl: text('video_url').notNull(),
+  width: integer('width').default(0),
+  height: integer('height').default(0),
+  duration: real('duration').default(0),
+  hasAudio: integer('has_audio', { mode: 'boolean' }).default(true),
+  status: text('status').notNull().default('idle'),
+  errorMsg: text('error_msg'),
+  subtitleUrl: text('subtitle_url'),
+  // 字幕来源：asr = 自动识别；upload = 手动上传
+  subtitleSource: text('subtitle_source'),
+  // JSON：{ font_size, bottom_percent }
+  style: text('style'),
+  outputUrl: text('output_url'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+})
+
+// 视频合成工具：status = merging / done / failed；clips 为 JSON [{ url, name, width, height, duration, has_audio }]（按合成顺序）
+export const mergeToolJobs = sqliteTable('merge_tool_jobs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  clips: text('clips').notNull(),
+  width: integer('width').default(0),
+  height: integer('height').default(0),
+  duration: real('duration').default(0),
+  status: text('status').notNull().default('merging'),
+  errorMsg: text('error_msg'),
+  outputUrl: text('output_url'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+})
+
 export const videoMerges = sqliteTable('video_merges', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   episodeId: integer('episode_id'),
@@ -292,4 +356,30 @@ export const appSettings = sqliteTable('app_settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
   updatedAt: text('updated_at').notNull(),
+})
+
+// 全局素材库：category = character | scene；文件夹可嵌套（parent_id 为空即顶层），文件 folder_id 为空表示根目录
+export const libraryFolders = sqliteTable('library_folders', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  category: text('category').notNull(),
+  parentId: integer('parent_id'),
+  name: text('name').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+})
+
+export const libraryFiles = sqliteTable('library_files', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  category: text('category').notNull(),
+  folderId: integer('folder_id'),
+  name: text('name').notNull(),
+  description: text('description'),
+  imageUrl: text('image_url').notNull(),
+  fileSize: integer('file_size'),
+  width: integer('width'),
+  height: integer('height'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
 })

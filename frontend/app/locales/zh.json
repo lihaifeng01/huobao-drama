@@ -28,12 +28,15 @@
     "serviceType": {
       "text": "文本",
       "image": "图片",
-      "video": "视频"
+      "video": "视频",
+      "subtitle": "字幕"
     }
   },
   "layout": {
     "nav": {
       "projects": "项目",
+      "library": "素材",
+      "tools": "工具",
       "settings": "设置"
     },
     "banner": {
@@ -151,6 +154,82 @@
       "minutesAgo": "{n} 分钟前",
       "hoursAgo": "{n} 小时前",
       "daysAgo": "{n} 天前"
+    }
+  },
+  "library": {
+    "title": "素材",
+    "sub": "跨项目聚合的角色与场景素材",
+    "category": {
+      "character": "角色",
+      "scene": "场景"
+    },
+    "newFolder": "新建文件夹",
+    "upload": "上传",
+    "uploading": "上传中 {done}/{total}",
+    "searchPlaceholder": "搜索文件夹或文件",
+    "root": "全部",
+    "sections": {
+      "myFolders": "我的文件夹",
+      "projectFolders": "项目文件夹",
+      "files": "文件",
+      "subFolders": "子文件夹"
+    },
+    "projectTag": "项目",
+    "projectHint": "随项目自动创建，内容与项目同步",
+    "fileCount": "{n} 个文件",
+    "folderStats": "{folders} 个文件夹 · {files} 个文件",
+    "itemCount": "{n} 项",
+    "openProject": "打开项目",
+    "readonlyHint": "项目素材为只读，请进入项目编辑",
+    "noImage": "暂无图片",
+    "empty": {
+      "files": "还没有上传{category}素材",
+      "filesDesc": "点击「上传」或将图片拖拽到这里",
+      "folder": "文件夹是空的",
+      "folderDesc": "点击「上传」或将图片拖拽到这里",
+      "project": "该项目还没有{category}",
+      "projectDesc": "在项目中提取或新增后会自动出现在这里",
+      "search": "没有匹配的素材"
+    },
+    "actions": {
+      "rename": "重命名",
+      "move": "移动到…",
+      "delete": "删除",
+      "preview": "预览"
+    },
+    "dialogs": {
+      "newFolderTitle": "新建文件夹",
+      "renameFolderTitle": "重命名文件夹",
+      "renameFileTitle": "重命名文件",
+      "folderNamePlaceholder": "输入文件夹名称",
+      "fileNamePlaceholder": "输入文件名称",
+      "moveTitle": "移动文件",
+      "moveTarget": "目标位置",
+      "rootFolder": "根目录（不放入文件夹）",
+      "deleteFolderTitle": "删除文件夹",
+      "deleteFolderMessage": "确定删除文件夹「{name}」吗？其中的 {n} 个文件也会一并删除。",
+      "deleteFileTitle": "删除文件",
+      "deleteFileMessage": "确定删除「{name}」吗？",
+      "moveFolderTitle": "移动文件夹",
+      "deleteFolderNestedMessage": "确定删除文件夹「{name}」吗？其中的全部子文件夹和 {n} 个文件也会一并删除。"
+    },
+    "toast": {
+      "folderCreated": "文件夹已创建",
+      "renamed": "已重命名",
+      "moved": "已移动",
+      "deleted": "已删除",
+      "uploaded": "已上传 {n} 个文件",
+      "uploadSkipped": "{n} 个文件不是图片，已跳过"
+    },
+    "dropHint": "松开即可上传到「{target}」",
+    "picker": {
+      "button": "从素材库选择图片",
+      "short": "素材库",
+      "title": "从素材库选择{category}图片",
+      "hint": "可从我的文件夹或其他项目中选择，点击图片即可应用",
+      "use": "使用",
+      "empty": "这里还没有素材",
+      "applied": "已应用素材库图片"
     }
   },
   "detail": {
@@ -290,7 +369,8 @@
       "meta": {
         "text": "剧本改写、角色场景提取、分镜拆解等 Agent 文本能力",
         "image": "角色图、场景图与镜头图等静态图像生成",
-        "video": "镜头视频直出生成，默认 Seedance 2.0"
+        "video": "镜头视频直出生成，默认 Seedance 2.0",
+        "subtitle": "识别镜头视频中的对白生成字幕，默认阿里云百炼 qwen-audio-3.0-asr-flash-filetrans"
       }
     },
     "styles": {
@@ -405,7 +485,41 @@
       "reachable": "端点已响应",
       "unreachable": "端点未通过测试",
       "providerRequired": "选择服务商",
-      "tempInvalid": "Temperature 需为 0~2 的数字"
+      "tempInvalid": "Temperature 需为 0~2 的数字",
+      "custom": {
+        "title": "自定义配置（中转站 / 非官方端点）",
+        "desc": "填写后将原样使用你提供的 URL（不再自动追加官方路径），并可按需改写鉴权头、请求体与响应解析；留空则完全沿用所选服务商的官方协议。",
+        "generateUrl": "提交 URL",
+        "generateUrlHint": "完整请求地址，原样使用。文本服务则作为 Base URL 原样传给 SDK。",
+        "pollUrl": "轮询 URL",
+        "pollUrlHint": "留空则为「提交 URL + / + 任务 ID」；需自定义位置时使用占位符：",
+        "authScheme": "鉴权方式",
+        "authDefault": "沿用官方",
+        "authBearer": "Authorization: Bearer 密钥",
+        "authRaw": "Authorization: 密钥（无 Bearer）",
+        "authXApiKey": "x-api-key: 密钥",
+        "authNone": "不带鉴权",
+        "headers": "额外请求头（JSON）",
+        "extraBody": "额外请求体字段（JSON）",
+        "extraBodyHint": "浅合并到官方请求体；值设为 null 可删除该字段。",
+        "bodyTemplate": "请求体模板（JSON，仅视频）",
+        "bodyTemplateHint": "整体替换官方请求体，需同时填写提交 URL；取值为空的字段会被省略，可在变量后追加默认值（写法见下方示例）。可用变量：",
+        "responseTitle": "响应解析（仅视频，留空自动识别）",
+        "taskIdPath": "任务 ID 路径",
+        "statusPath": "状态路径",
+        "videoUrlPath": "视频地址路径",
+        "errorPath": "错误信息路径",
+        "doneValues": "成功状态值（逗号分隔）",
+        "failedValues": "失败状态值（逗号分隔）",
+        "pathHint": "点号路径，如 data.video.url；多个候选用逗号分隔",
+        "example": "填入 GPT Router 示例",
+        "invalidJson": "{field} 不是合法的 JSON 对象"
+      },
+      "urlMode": "URL 模式",
+      "urlModeAuto": "自动补全",
+      "urlModeBase": "原样使用 Base URL",
+      "urlModeHint": "自动补全：按服务商官方规则在 Base URL 后追加路径（如 /v1、/api/v3）。原样使用：Base URL 即完整请求地址，不追加任何路径，轮询地址为 Base URL 加 / 加任务 ID，请求参数仍沿用服务商官方格式。",
+      "subtitleHint": "字幕服务使用阿里云百炼录音文件识别。Base URL 填 https://dashscope.aliyuncs.com（新加坡地域填 https://dashscope-intl.aliyuncs.com）；本地音频会经百炼临时存储上传（48 小时有效），不需要公网地址。"
     },
     "styleDialog": {
       "editTitle": "编辑风格预设",
@@ -487,7 +601,8 @@
       "prodStage": "制作阶段 · {step}",
       "exportDone": "导出阶段 · 已完成",
       "exportWaiting": "导出阶段 · 等待拼接",
-      "workbench": "工作台"
+      "workbench": "工作台",
+      "subtitlesDesc": "语音识别与字幕压制"
     },
     "script": {
       "raw": "原始内容",
@@ -503,7 +618,15 @@
       "rewriting": "正在改写剧本...",
       "scriptPlaceholder": "格式化剧本内容...",
       "rawRequired": "请先填写原始内容",
-      "skipDone": "已跳过 AI 改写，当前将直接使用原始内容"
+      "skipDone": "已跳过 AI 改写，当前将直接使用原始内容",
+      "saving": "保存中…",
+      "unsaved": "未保存",
+      "autoSaved": "已自动保存",
+      "rewriteConfirmTitle": "重新改写剧本？",
+      "rewriteConfirmMsg": "AI 会根据原始内容重新生成剧本，覆盖当前剧本，包括你手动做的修改。",
+      "skipConfirmTitle": "跳过 AI 改写？",
+      "skipConfirmMsg": "将直接把原始内容作为剧本，不经过 AI 改写。",
+      "skipConfirmOverwrite": "将用原始内容覆盖当前剧本，包括你手动做的修改。"
     },
     "prod": {
       "assets": "资产制作",
@@ -521,7 +644,8 @@
       "emptyDesc": "角色、场景和道具会在提取后显示在这里，可分别单独提取，也可一键并行提取全部。",
       "startExtract": "开始提取",
       "scriptFirst": "请先完成剧本编写",
-      "goBack": "返回处理"
+      "goBack": "返回处理",
+      "subtitles": "字幕制作"
     },
     "asset": {
       "fallbackType": "资产",
@@ -706,7 +830,12 @@
       "notReady": "未生成",
       "unbound": "未绑定",
       "gotoGenerate": "去生成 →",
-      "empty": "当前集还没有场景、角色或道具，先到「资产」提取素材后即可绑定。"
+      "empty": "当前集还没有场景、角色或道具，先到「资产」提取素材后即可绑定。",
+      "dropped": "未提交",
+      "droppedTitle": "「{name}」超出参考图上限，本次不会提交",
+      "truncatedHint": "参考图超出模型上限（{limit} 张），已优先保留角色图，以下素材本次不会提交：{names}",
+      "truncatedToast": "参考图超出上限（{limit} 张），未提交：{names}",
+      "truncatedBatchToast": "{n} 个镜头的参考图超出上限（{limit} 张），已优先保留角色图，超出的场景/道具未提交"
     },
     "vid": {
       "shotCount": "{n} 个镜头",
@@ -817,7 +946,10 @@
       "markedDone": "已完成",
       "markDoneTitle": "手动标记本集导出完成（可再次点击取消）",
       "markedDoneToast": "已标记为完成",
-      "unmarkDoneToast": "已取消完成标记"
+      "unmarkDoneToast": "已取消完成标记",
+      "withSubtitles": "使用字幕版",
+      "withoutSubtitles": "不用字幕版",
+      "withSubtitlesTitle": "拼接时，已制作字幕的镜头使用压制了字幕的视频"
     },
     "image": {
       "generatingChar": "角色图片生成中",
@@ -877,7 +1009,117 @@
       "transferring": "视频已生成，转存中",
       "awaitingDelivery": "视频已生成，等待交付",
       "restoreHint": "恢复已有任务，避免重复生成"
+    },
+    "sub": {
+      "stat": "{done}/{total} 已完成",
+      "modelTitle": "当前字幕服务模型",
+      "batchAll": "全部生成字幕",
+      "batchSelected": "为所选生成 ({n})",
+      "selectMissing": "选择未完成",
+      "downloadEpisode": "整集字幕",
+      "downloadEpisodeTitle": "下载与成片时间轴对齐的整集 SRT 字幕",
+      "downloadSrt": "下载 SRT 字幕文件",
+      "downloadVideo": "下载字幕版视频",
+      "noConfig": "还没有启用字幕服务，请先在设置中添加。",
+      "gotoSettings": "前往设置",
+      "emptyTitle": "还没有可加字幕的视频",
+      "emptyDesc": "先在「视频制作」中生成镜头视频，再回来制作字幕",
+      "gotoVideos": "前往视频制作",
+      "generate": "生成字幕",
+      "regenerate": "重新生成",
+      "clear": "清除字幕",
+      "previewSubtitled": "字幕版",
+      "previewOriginal": "原视频",
+      "cues": "字幕内容",
+      "noCues": "暂无字幕",
+      "staleHint": "镜头视频已重新生成，字幕已过期，请重新生成",
+      "started": "已提交 {n} 个镜头的字幕任务",
+      "nothingQueued": "所选镜头已在处理中",
+      "failed": "字幕生成失败",
+      "finished": "字幕制作完成",
+      "finishedWithFailed": "字幕制作结束，{n} 个镜头失败",
+      "state": {
+        "none": "未生成",
+        "processing": "识别中",
+        "done": "已完成",
+        "no_speech": "无语音",
+        "failed": "失败",
+        "stale": "已过期"
+      }
     }
+  },
+  "looks": {
+    "title": "造型",
+    "hintWithRef": "生成造型图时以默认形象为参考图，保持同一张脸（需图片模型支持参考图，如 OpenAI gpt-image、Gemini、硅基流动的 Qwen-Image-Edit；不支持时会降级为纯文字生成并提示）",
+    "hintNoRef": "角色还没有默认形象，造型图将无法参考人脸，建议先生成默认形象",
+    "noImage": "未生成",
+    "noImageShort": "无图",
+    "default": "默认",
+    "defaultName": "默认造型",
+    "defaultDesc": "角色形象图",
+    "generating": "生成中…",
+    "noDesc": "未填写造型描述",
+    "generate": "生成",
+    "regenerate": "重绘",
+    "upload": "上传造型图",
+    "edit": "编辑",
+    "namePlaceholder": "造型名称，如「婚纱」「校服」",
+    "descPlaceholder": "服装、发型、妆面、配饰…",
+    "create": "创建",
+    "add": "新增造型",
+    "deleteTitle": "删除造型",
+    "deleteMessage": "确定删除造型「{name}」吗？使用它的剧集和镜头会改回默认造型。",
+    "generated": "造型「{name}」已生成",
+    "generateFailed": "造型图生成失败",
+    "episodeLookTitle": "本集使用的造型",
+    "chip": "造型 · {name}",
+    "manage": "管理造型…",
+    "addShort": "+ 造型",
+    "shotTitle": "本镜头造型",
+    "followEpisode": "跟随本集（{name}）",
+    "fallbackHint": "所选造型还没有图片，暂用默认形象作为参考图",
+    "referenceFallback": {
+      "model": "当前图片模型不支持参考图，已按纯文字生成，人脸可能与原角色不一致。可在设置中换用支持参考图的模型（如 Qwen-Image-Edit）。",
+      "service": "当前图片服务拒绝了参考图，已去掉参考图按纯文字重新生成，人脸可能与原角色不一致。"
+    }
+  },
+  "identity": {
+    "aliases": "别名 / 称呼",
+    "aliasesPlaceholder": "如：小雨、林总（用「、」或逗号分隔）",
+    "aliasesHint": "剧本中用这些称呼指代同一人时，提取会复用该角色而不是新建",
+    "mergeButton": "合并重复角色…",
+    "mergeTitle": "合并到「{name}」",
+    "mergeDesc": "选中的角色会并入当前角色：剧集与镜头关联、造型、生成记录全部迁移，它们的名字成为当前角色的别名，视频提示词中的 {'@'}名字 会同步改写，随后被合并的角色将删除。",
+    "merging": "合并中…",
+    "mergeConfirm": "合并 {n} 个角色",
+    "merged": "已将 {names} 合并到「{name}」"
+  },
+  "recap": {
+    "button": "前情提要",
+    "title": "前情提要",
+    "desc": "运行剧本改写、资产提取、分镜拆解时，会把紧邻前 {n} 集的摘要作为前情提要提供给 AI，保持人物称呼、关系、伤势、换装与情节连贯。缺失或剧本已改动的摘要会在运行时自动生成；手动编辑过的摘要不会被自动覆盖。",
+    "previous": "前几集",
+    "current": "本集摘要",
+    "currentHint": "供后续剧集使用",
+    "firstEpisode": "这是第一集，没有前情。",
+    "episodeTitle": "第 {n} 集《{title}》",
+    "state": {
+      "fresh": "已生成",
+      "edited": "手动编辑",
+      "stale": "剧本已改动",
+      "missing": "未生成",
+      "none": "无剧本"
+    },
+    "outOfRange": "超出前情范围，不会提供给 AI",
+    "edit": "编辑",
+    "generate": "生成",
+    "regenerate": "重新生成",
+    "generating": "生成中…",
+    "generated": "第 {n} 集摘要已生成",
+    "notGenerated": "尚未生成，运行后续集的 AI 时会自动生成",
+    "noScript": "本集还没有剧本内容",
+    "placeholder": "【剧情】…\n【人物状态】人物名：状态\n【未解悬念】…\n【结尾】…",
+    "staleEditedHint": "剧本在你编辑摘要后又改动过，摘要可能已不准确；手动编辑的摘要不会被自动重新生成。"
   },
   "errors": {
     "network": "无法连接服务器，请检查网络或服务是否已启动",
@@ -939,6 +1181,94 @@
       "help": {
         "title": "随时重看引导",
         "desc": "点这个「?」按钮可重新播放本页引导。祝创作顺利！"
+      }
+    }
+  },
+  "tools": {
+    "title": "工具",
+    "sub": "独立于剧集流程的实用工具",
+    "subtitle": {
+      "name": "生成字幕",
+      "desc": "上传视频，自动识别或导入字幕，调整样式后合成",
+      "jobs": "任务",
+      "uploadVideo": "上传视频",
+      "uploading": "上传中 {pct}%",
+      "uploaded": "视频已上传",
+      "emptyJobs": "还没有任务，上传一个视频开始",
+      "dropTitle": "上传或拖入视频",
+      "dropDesc": "支持 mp4 / mov / m4v / webm / mkv / avi，最大 500MB",
+      "notVideo": "请拖入视频文件",
+      "previewEdit": "样式预览",
+      "previewOutput": "合成结果",
+      "previewHint": "点击右侧字幕条目可跳到对应位置；画面上的字幕是按当前样式模拟的预览",
+      "stepSubtitle": "字幕",
+      "model": "识别模型",
+      "autoTranscribe": "自动识别",
+      "transcribing": "识别中…",
+      "uploadSubtitle": "上传字幕文件",
+      "subtitleUploaded": "字幕已导入",
+      "noAudio": "视频没有音轨，无法自动识别，可以上传字幕文件",
+      "sourceAsr": "自动识别",
+      "sourceUpload": "手动上传",
+      "cueCount": "{n} 条",
+      "noSubtitleYet": "还没有字幕。自动识别，或上传 .srt / .vtt 字幕文件（支持 UTF-8 和 GBK 编码）",
+      "stepStyle": "样式",
+      "resetStyle": "恢复默认",
+      "fontSize": "字号",
+      "position": "距底部",
+      "positionHint": "字幕底边距离画面底部的高度",
+      "posBottom": "底部",
+      "posMiddle": "中部",
+      "posTop": "顶部",
+      "fontDefault": "字体暂用系统默认中文字体，白字黑描边",
+      "stepBurn": "合成",
+      "burn": "合成视频",
+      "reburn": "重新合成",
+      "burning": "合成中…",
+      "downloadVideo": "下载视频",
+      "needSubtitle": "先生成或上传字幕",
+      "styleChanged": "样式已修改，重新合成后生效",
+      "transcribeDone": "字幕识别完成",
+      "burnDone": "视频合成完成",
+      "stateNew": "待处理",
+      "stateReady": "有字幕",
+      "stateDone": "已合成",
+      "stateFailed": "失败",
+      "deleteConfirm": "删除任务「{name}」？"
+    },
+    "merge": {
+      "name": "视频合成",
+      "desc": "上传多个视频，按顺序拼接成一个",
+      "clips": "片段",
+      "clipStat": "{n} 个 · 共 {dur}",
+      "clear": "清空",
+      "addVideos": "添加视频",
+      "uploading": "上传中 {done}/{total} · {pct}%",
+      "added": "已添加 {n} 个视频",
+      "dropTitle": "添加或拖入多个视频",
+      "dropDesc": "支持 mp4 / mov / m4v / webm / mkv / avi，单个最大 500MB；可拖动调整顺序",
+      "noAudio": "无声",
+      "noAudioHint": "这个视频没有音轨，合成时这段补静音",
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "outputSize": "输出尺寸",
+      "sizeFirst": "{w}×{h}（第 1 个视频）",
+      "sizeClip": "{w}×{h}（第 {n} 个视频）",
+      "start": "按顺序合成（{n} 个）",
+      "hint": "尺寸或比例不同的视频会等比缩放并补黑边；统一为 30fps，没有声音的片段补静音",
+      "jobs": "合成记录",
+      "noJobs": "还没有合成记录",
+      "preview": "预览",
+      "reuse": "用这次的片段重新编辑",
+      "jobMeta": "{n} 个片段 · {w}×{h} · {dur}",
+      "started": "已开始合成",
+      "done": "视频合成完成",
+      "failed": "视频合成失败",
+      "deleteConfirm": "删除合成记录「{name}」？",
+      "status": {
+        "merging": "合成中",
+        "done": "已完成",
+        "failed": "失败"
       }
     }
   }

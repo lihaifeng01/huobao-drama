@@ -65,6 +65,7 @@ Organize each segment's content in this order (items with no content may be omit
 - Referencing scene/character names outside the lists
 - Abstract psychological description, literary metaphor (the model only recognizes visible imagery)
 - Language that does not match the session language directive
+- Asking for subtitles or on-screen dialogue text (dialogue is for the characters to speak; subtitles are added later in the Subtitles step)
 
 ## Saving
 

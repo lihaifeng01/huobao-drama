@@ -226,6 +226,42 @@ export const sqliteSchemaStatements = [
   `CREATE INDEX IF NOT EXISTS idx_sys_task_drama_id ON sys_task (drama_id)`,
   `CREATE INDEX IF NOT EXISTS idx_sys_task_storyboard_id ON sys_task (storyboard_id)`,
 
+  // 字幕工具：独立于剧集工作流，一个任务 = 一个上传的视频
+  `CREATE TABLE IF NOT EXISTS subtitle_tool_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    video_url TEXT NOT NULL,
+    width INTEGER DEFAULT 0,
+    height INTEGER DEFAULT 0,
+    duration REAL DEFAULT 0,
+    has_audio INTEGER DEFAULT 1,
+    status TEXT NOT NULL DEFAULT 'idle',
+    error_msg TEXT,
+    subtitle_url TEXT,
+    subtitle_source TEXT,
+    style TEXT,
+    output_url TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  )`,
+
+  // 视频合成工具：按顺序把多个上传的视频拼成一个，一次合成 = 一条记录
+  `CREATE TABLE IF NOT EXISTS merge_tool_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    clips TEXT NOT NULL,
+    width INTEGER DEFAULT 0,
+    height INTEGER DEFAULT 0,
+    duration REAL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'merging',
+    error_msg TEXT,
+    output_url TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  )`,
+
   `CREATE TABLE IF NOT EXISTS video_merges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     episode_id INTEGER,
@@ -287,6 +323,50 @@ export const sqliteSchemaStatements = [
     updated_at TEXT NOT NULL,
     deleted_at TEXT
   )`,
+
+  // 全局素材库（项目之外的角色/场景素材）：用户自建文件夹（可嵌套，parent_id 为空即顶层）+ 用户上传文件
+  // 项目文件夹不落表，由 dramas + characters/scenes 实时聚合
+  `CREATE TABLE IF NOT EXISTS library_folders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category TEXT NOT NULL,
+    parent_id INTEGER,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_library_folders_category ON library_folders (category)`,
+
+  `CREATE TABLE IF NOT EXISTS library_files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category TEXT NOT NULL,
+    folder_id INTEGER,
+    name TEXT NOT NULL,
+    description TEXT,
+    image_url TEXT NOT NULL,
+    file_size INTEGER,
+    width INTEGER,
+    height INTEGER,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_library_files_category ON library_files (category)`,
+  `CREATE INDEX IF NOT EXISTS idx_library_files_folder_id ON library_files (folder_id)`,
+
+  // 角色造型：同一角色的多套造型（服装/妆发变化），默认造型即 characters 本身的形象图，不落此表
+  `CREATE TABLE IF NOT EXISTS character_looks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    character_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    image_url TEXT,
+    sort_order INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_character_looks_character_id ON character_looks (character_id)`,
 
   // 应用级全局设置（key-value，如 AI 内容语言 content_language）
   `CREATE TABLE IF NOT EXISTS app_settings (
@@ -374,8 +454,45 @@ const UPGRADE_SQL = 'UPDATE style_presets SET "name" = ?, "prompt" = ?, "descrip
 // 内容寻址下架：命中下架种子原文才删除
 const REMOVE_SQL = 'DELETE FROM style_presets WHERE "value" = ? AND "prompt" = ?'
 
+/**
+ * 增量列：CREATE TABLE IF NOT EXISTS 不会给已存在的表补列，按 PRAGMA table_info 缺失才 ALTER（幂等）
+ */
+const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
+  { table: 'library_folders', column: 'parent_id', ddl: 'ALTER TABLE library_folders ADD COLUMN parent_id INTEGER' },
+  // 角色别名（JSON 字符串数组），提取去重与 @ 引用时视为同一角色
+  { table: 'characters', column: 'aliases', ddl: 'ALTER TABLE characters ADD COLUMN aliases TEXT' },
+  // 本集使用的造型（空 = 默认造型）
+  { table: 'episode_characters', column: 'look_id', ddl: 'ALTER TABLE episode_characters ADD COLUMN look_id INTEGER' },
+  // 单个镜头覆盖造型（空 = 跟随本集，0 = 强制默认造型）
+  { table: 'storyboard_characters', column: 'look_id', ddl: 'ALTER TABLE storyboard_characters ADD COLUMN look_id INTEGER' },
+  // 前情摘要：本集剧情/人物状态摘要，供后续集的 Agent 保持连续性
+  { table: 'episodes', column: 'summary', ddl: 'ALTER TABLE episodes ADD COLUMN summary TEXT' },
+  // 生成摘要时所依据剧本的哈希；剧本改动后与当前哈希不一致即视为过期
+  { table: 'episodes', column: 'summary_source_hash', ddl: 'ALTER TABLE episodes ADD COLUMN summary_source_hash TEXT' },
+  // 用户手动编辑过的摘要不被自动重新生成覆盖
+  { table: 'episodes', column: 'summary_edited', ddl: 'ALTER TABLE episodes ADD COLUMN summary_edited INTEGER DEFAULT 0' },
+  { table: 'episodes', column: 'summary_updated_at', ddl: 'ALTER TABLE episodes ADD COLUMN summary_updated_at TEXT' },
+  // 字幕制作：状态（processing/completed/no_speech/failed）、失败原因、压制后的视频、生成字幕时依据的原视频
+  { table: 'storyboards', column: 'subtitle_status', ddl: 'ALTER TABLE storyboards ADD COLUMN subtitle_status TEXT' },
+  { table: 'storyboards', column: 'subtitle_error', ddl: 'ALTER TABLE storyboards ADD COLUMN subtitle_error TEXT' },
+  { table: 'storyboards', column: 'subtitled_video_url', ddl: 'ALTER TABLE storyboards ADD COLUMN subtitled_video_url TEXT' },
+  { table: 'storyboards', column: 'subtitle_source_video', ddl: 'ALTER TABLE storyboards ADD COLUMN subtitle_source_video TEXT' },
+]
+
+/** 依赖增量列的索引，须在补列之后建 */
+const POST_COLUMN_STATEMENTS = [
+  `CREATE INDEX IF NOT EXISTS idx_library_folders_parent_id ON library_folders (parent_id)`,
+]
+
 export function initSqliteSchema(sqlite: Database.Database) {
   for (const statement of sqliteSchemaStatements) {
+    sqlite.exec(statement)
+  }
+  for (const { table, column, ddl } of ADDED_COLUMNS) {
+    const cols = sqlite.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
+    if (!cols.some(c => c.name === column)) sqlite.exec(ddl)
+  }
+  for (const statement of POST_COLUMN_STATEMENTS) {
     sqlite.exec(statement)
   }
   // 兼容已安装的桌面版；仅增加任务恢复元数据，不改写历史生成结果。

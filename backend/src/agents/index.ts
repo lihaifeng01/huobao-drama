@@ -9,7 +9,8 @@ import type { RequestContext } from '@mastra/core/request-context'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import { getTextConfig, getTextProviderBaseUrl, getConfigById } from '../services/ai.js'
-import { logTaskProgress } from '../utils/task-logger.js'
+import { withCustomHeadersFetch } from '../services/adapters/custom.js'
+import { logTaskError, logTaskProgress } from '../utils/task-logger.js'
 import { scriptTools } from './tools/script-tools.js'
 import { extractTools } from './tools/extract-tools.js'
 import { storyboardTools } from './tools/storyboard-tools.js'
@@ -17,7 +18,8 @@ import { imagePromptTools } from './tools/image-prompt-tools.js'
 import { loadAgentSkills, skillWorkspaces } from './skills.js'
 import { loadAgentPromptFile, loadBasePromptFile } from './prompts.js'
 import { buildLanguageDirective } from './language.js'
-import { getContentLanguageFromRC } from './context.js'
+import { getContentLanguageFromRC, getEpisodeId } from './context.js'
+import { buildRecapBlock } from '../services/episode-summary.js'
 
 // Default prompts (used when workspace/prompts/<type>.md 文件缺失时兜底)
 export const DEFAULT_PROMPTS: Record<string, { name: string; instructions: string }> = {
@@ -314,9 +316,13 @@ async function getModel(fileModel: string | undefined, modelOverride?: string, t
   const tempFetch = temperature !== null
     ? createTemperatureFetch(providerName, temperature, thinkingOffFetch)
     : thinkingOffFetch
-  const fetchImpl = isOfficialOpenAIHost(resolvedBaseURL)
+  const patchedFetch = isOfficialOpenAIHost(resolvedBaseURL)
     ? tempFetch
     : createMaxTokensFetch(providerName, tempFetch)
+  const custom = textConfig.custom
+  const fetchImpl = custom && (custom.auth_scheme || custom.headers)
+    ? withCustomHeadersFetch(custom, textConfig.apiKey, patchedFetch)
+    : patchedFetch
 
   if (providerName === 'gemini') {
     const googleProvider = createGoogleGenerativeAI({
@@ -346,7 +352,31 @@ const AGENT_TOOLS: Record<string, Record<string, any>> = {
   },
 }
 
-/** instructions 按请求解析：prompt 文件（或默认）+ 技能全文拼接 + 目标语言指令块
+/**
+ * 注入「前情提要」的 Agent：剧本改写、资产提取、分镜拆解需要知道前几集发生了什么
+ * （人物称呼、关系、伤势、换装、已揭露的秘密）。prompt_generator 不注入：
+ * 角色/场景图片提示词不该混入剧情，视频提示词已基于本集分镜。
+ */
+const RECAP_AGENT_TYPES = new Set(['script_rewriter', 'extractor', 'storyboard_breaker'])
+
+async function recapFor(type: string, requestContext?: RequestContext): Promise<string> {
+  if (!RECAP_AGENT_TYPES.has(type)) return ''
+  const episodeId = getEpisodeId(requestContext)
+  if (!episodeId) return ''
+  try {
+    return await buildRecapBlock(episodeId, {
+      model: requestContext?.get('modelOverride' as never) as string | undefined,
+      configId: requestContext?.get('textConfigId' as never) as number | undefined,
+      language: getContentLanguageFromRC(requestContext) ?? undefined,
+    })
+  } catch (err: any) {
+    // 前情提要只是增强，失败不影响 Agent 主流程
+    logTaskError('EpisodeSummary', 'recap', { type, episodeId, error: err.message })
+    return ''
+  }
+}
+
+/** instructions 按请求解析：prompt 文件（或默认）+ 技能全文拼接 + 前情提要 + 目标语言指令块
  *  prompt/skill 文本随内容语言切换语言变体（<type>.<lang>.md / SKILL.<lang>.md），缺失回退中文版 */
 function buildInstructions(type: string) {
   return async ({ requestContext }: { requestContext?: RequestContext }) => {
@@ -355,11 +385,40 @@ function buildInstructions(type: string) {
     const promptFile = await loadAgentPromptFile(type, lang)
     const baseInstructions = promptFile?.instructions || defaults.instructions
     const skillInstructions = await loadAgentSkills(type, lang)
+    const recap = await recapFor(type, requestContext)
     const languageDirective = buildLanguageDirective(lang)
-    return [baseInstructions, skillInstructions, languageDirective]
+    return [baseInstructions, skillInstructions, recap, languageDirective]
       .filter(Boolean)
       .join('\n\n')
   }
+}
+
+/** 前情摘要 Agent 的指令（内部辅助 Agent，不进 validAgentTypes，不在提示词/技能设置页出现） */
+const EPISODE_SUMMARY_INSTRUCTIONS = `你是短剧剧集编辑，为一集剧本写「前情摘要」，供后续剧集的编剧、资产提取和分镜保持连续性。
+
+要求：
+- 只依据给出的本集内容，不要编造，不要评价
+- 人物使用剧本中的正式名字
+- 输出纯文本（不要 Markdown 代码块），按以下四段，总长度不超过 400 字：
+
+【剧情】本集主要事件，按发生顺序，3-6 句
+【人物状态】本集结束时关键人物的状态，每行「人物名：状态」——只写有变化或对后续重要的：身份/关系变化、伤势或身体状况、服装造型变化、所在位置、掌握或暴露的秘密
+【未解悬念】留到后续的伏笔、未解决的冲突（没有就写「无」）
+【结尾】本集最后的画面与人物处境`
+
+/** 内部辅助 Agent：与主 Agent 共用模型解析（文本配置 + 请求覆盖），无工具 */
+export const auxiliaryAgents: Record<string, Agent> = {
+  episode_summarizer: new Agent({
+    id: 'episode_summarizer',
+    name: '前情摘要',
+    instructions: async ({ requestContext }: { requestContext?: RequestContext }) =>
+      [EPISODE_SUMMARY_INSTRUCTIONS, buildLanguageDirective(getContentLanguageFromRC(requestContext))].filter(Boolean).join('\n\n'),
+    model: async ({ requestContext }: { requestContext?: RequestContext }) => getModel(
+      undefined,
+      requestContext?.get('modelOverride' as never) as string | undefined,
+      requestContext?.get('textConfigId' as never) as number | undefined,
+    ),
+  }),
 }
 
 /** model 按请求解析：基础版 prompt 文件 frontmatter + RequestContext 的 modelOverride/textConfigId 覆盖

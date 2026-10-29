@@ -11,6 +11,7 @@ import episodes from './routes/episodes.js'
 import storyboards from './routes/storyboards.js'
 import scenes from './routes/scenes.js'
 import characters from './routes/characters.js'
+import characterLooks from './routes/characterLooks.js'
 import tasks from './routes/tasks.js'
 import upload from './routes/upload.js'
 import aiConfigs, { aiProviders } from './routes/aiConfigs.js'
@@ -23,8 +24,14 @@ import props from './routes/props.js'
 import settings from './routes/settings.js'
 import storage from './routes/storage.js'
 import serverUpdate from './routes/serverUpdate.js'
+import library from './routes/library.js'
+import subtitles from './routes/subtitles.js'
+import tools from './routes/tools.js'
 import { requestLogger, errorHandler } from './middleware/logger.js'
 import { resumeInterruptedTasks } from './services/generation.js'
+import { resetInterruptedSubtitles } from './services/subtitle.js'
+import { resetInterruptedToolJobs } from './services/subtitle-tool.js'
+import { resetInterruptedMergeJobs } from './services/merge-tool.js'
 import { DATA_ROOT } from './utils/paths.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -54,6 +61,7 @@ api.route('/episodes', episodes)
 api.route('/storyboards', storyboards)
 api.route('/scenes', scenes)
 api.route('/characters', characters)
+api.route('/character-looks', characterLooks)
 api.route('/tasks', tasks)
 api.route('/upload', upload)
 api.route('/ai-configs', aiConfigs)
@@ -67,6 +75,9 @@ api.route('/props', props)
 api.route('/storage', storage)
 api.route('/settings', settings)
 api.route('/server-update', serverUpdate)
+api.route('/library', library)
+api.route('/subtitles', subtitles)
+api.route('/tools', tools)
 
 app.route('/api/v1', api)
 
@@ -87,5 +98,8 @@ const port = Number(process.env.PORT || 5679)
 console.log(`🚀 Huobao Drama TS server on http://localhost:${port}`)
 
 await resumeInterruptedTasks()
+await resetInterruptedSubtitles()
+await resetInterruptedToolJobs()
+await resetInterruptedMergeJobs()
 
 serve({ fetch: app.fetch, port })

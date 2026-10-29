@@ -1,11 +1,12 @@
 import { Hono } from 'hono'
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { db, getInsertId, schema } from '../db/index.js'
 import { success, notFound, badRequest, now } from '../utils/response.js'
 import { toSnakeCaseArray, toSnakeCase } from '../utils/transform.js'
 import { getActiveConfigId } from '../services/ai.js'
 import { EXTRACT_TARGETS, getExtractionStatus, startExtraction, type ExtractTarget } from '../services/extraction.js'
 import { getVideoPromptBatchStatus, startVideoPromptBatch } from '../services/video-prompts.js'
+import { RECAP_MAX_EPISODES, generateEpisodeSummary, previousEpisodes, saveEditedSummary, summaryState } from '../services/episode-summary.js'
 
 const app = new Hono()
 
@@ -90,6 +91,7 @@ app.delete('/:id', async (c) => {
 })
 
 // GET /episodes/:id/characters — characters linked to this episode
+// 附带 looks（额外造型）与 episode_look_id（本集选用的造型，空 = 默认造型）
 app.get('/:id/characters', async (c) => {
   const episodeId = Number(c.req.param('id'))
   const links = await db.select().from(schema.episodeCharacters)
@@ -98,7 +100,31 @@ app.get('/:id/characters', async (c) => {
   if (!charIds.length) return success(c, [])
   const allChars = await db.select().from(schema.characters)
   const result = allChars.filter(ch => charIds.includes(ch.id) && !ch.deletedAt)
-  return success(c, toSnakeCaseArray(result))
+  const looks = (await db.select().from(schema.characterLooks)
+    .where(and(inArray(schema.characterLooks.characterId, charIds), isNull(schema.characterLooks.deletedAt))))
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.id - b.id)
+  return success(c, result.map(ch => ({
+    ...toSnakeCase(ch),
+    looks: looks.filter(l => l.characterId === ch.id).map(toSnakeCase),
+    episode_look_id: links.find(l => l.characterId === ch.id)?.lookId ?? null,
+  })))
+})
+
+// PUT /episodes/:id/characters/:characterId/look — 设置本集使用的造型 { look_id }（null = 默认造型）
+app.put('/:id/characters/:characterId/look', async (c) => {
+  const episodeId = Number(c.req.param('id'))
+  const characterId = Number(c.req.param('characterId'))
+  const body = await c.req.json()
+  const lookId = body.look_id ? Number(body.look_id) : null
+  if (lookId) {
+    const [look] = await db.select().from(schema.characterLooks)
+      .where(and(eq(schema.characterLooks.id, lookId), isNull(schema.characterLooks.deletedAt)))
+    if (!look || look.characterId !== characterId) return badRequest(c, '造型不属于该角色')
+  }
+  const res = await db.update(schema.episodeCharacters).set({ lookId })
+    .where(and(eq(schema.episodeCharacters.episodeId, episodeId), eq(schema.episodeCharacters.characterId, characterId)))
+  if (!res.changes) return badRequest(c, '该角色未关联到本集')
+  return success(c)
 })
 
 // GET /episodes/:id/scenes — scenes linked to this episode
@@ -123,6 +149,53 @@ app.get('/:id/props', async (c) => {
   const allProps = await db.select().from(schema.props)
   const result = allProps.filter(p => propIds.includes(p.id) && !p.deletedAt)
   return success(c, toSnakeCaseArray(result))
+})
+
+// GET /episodes/:id/recap — 前情提要：前几集摘要（最多 RECAP_MAX_EPISODES 集）+ 本集摘要状态
+app.get('/:id/recap', async (c) => {
+  const id = Number(c.req.param('id'))
+  const [ep] = await db.select().from(schema.episodes).where(eq(schema.episodes.id, id))
+  if (!ep) return notFound(c, '剧集不存在')
+  const prev = await previousEpisodes(id, Infinity)
+  const view = (e: typeof ep) => ({
+    id: e.id,
+    episode_number: e.episodeNumber,
+    title: e.title,
+    summary: e.summary || '',
+    state: summaryState(e),
+    edited: !!e.summaryEdited,
+    summary_updated_at: e.summaryUpdatedAt,
+  })
+  return success(c, {
+    max_episodes: RECAP_MAX_EPISODES,
+    // in_recap：是否在注入 Agent 的前情提要范围内（紧邻的前 RECAP_MAX_EPISODES 集）
+    previous: prev.map((e, i) => ({ ...view(e), in_recap: i >= prev.length - RECAP_MAX_EPISODES })),
+    current: view(ep),
+  })
+})
+
+// POST /episodes/:id/summary — 生成/重新生成本集摘要（同步返回；会覆盖手动编辑）
+app.post('/:id/summary', async (c) => {
+  const id = Number(c.req.param('id'))
+  const body = await c.req.json().catch(() => ({}))
+  try {
+    const summary = await generateEpisodeSummary(id, { model: body.model || undefined, configId: body.config_id ?? undefined })
+    return success(c, { summary })
+  } catch (err: any) {
+    return badRequest(c, err.message)
+  }
+})
+
+// PUT /episodes/:id/summary — 手动编辑摘要 { summary }（之后不再被自动重新生成覆盖；传空串清除）
+app.put('/:id/summary', async (c) => {
+  const id = Number(c.req.param('id'))
+  const body = await c.req.json()
+  try {
+    await saveEditedSummary(id, String(body.summary ?? ''))
+    return success(c)
+  } catch (err: any) {
+    return badRequest(c, err.message)
+  }
 })
 
 // POST /episodes/:id/extract — 异步提取资产（target: characters | scenes | props），立即返回，前端轮询状态
@@ -173,10 +246,17 @@ app.get('/:episode_id/storyboards', async (c) => {
 
   const links = await db.select().from(schema.storyboardCharacters)
   const charIdsByStoryboard = new Map<number, number[]>()
+  // 镜头级造型覆盖：{ [characterId]: lookId }，0 = 强制默认造型；未覆盖的角色不出现（跟随本集）
+  const looksByStoryboard = new Map<number, Record<number, number>>()
   for (const link of links) {
     const arr = charIdsByStoryboard.get(link.storyboardId) || []
     arr.push(link.characterId)
     charIdsByStoryboard.set(link.storyboardId, arr)
+    if (link.lookId !== null && link.lookId !== undefined) {
+      const map = looksByStoryboard.get(link.storyboardId) || {}
+      map[link.characterId] = link.lookId
+      looksByStoryboard.set(link.storyboardId, map)
+    }
   }
 
   const propLinks = await db.select().from(schema.storyboardProps)
@@ -202,6 +282,7 @@ app.get('/:episode_id/storyboards', async (c) => {
   return success(c, rows.map((row) => ({
     ...toSnakeCase(row),
     character_ids: charIdsByStoryboard.get(row.id) || [],
+    character_looks: looksByStoryboard.get(row.id) || {},
     prop_ids: propIdsByStoryboard.get(row.id) || [],
     characters: allChars
       .filter(ch => (charIdsByStoryboard.get(row.id) || []).includes(ch.id))

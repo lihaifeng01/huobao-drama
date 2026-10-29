@@ -56,12 +56,20 @@ export const episodeAPI = {
   extractStatus: (id: number) => api.get(`/episodes/${id}/extract-status`),
   generateVideoPrompts: (id: number, model?: string, configId?: number, storyboardIds?: number[]) => api.post(`/episodes/${id}/generate-video-prompts`, { model: model || undefined, config_id: configId || undefined, storyboard_ids: storyboardIds?.length ? storyboardIds : undefined }),
   videoPromptsStatus: (id: number) => api.get(`/episodes/${id}/video-prompts-status`),
+  // 前情提要：前几集摘要 + 本集摘要状态；生成（同步，覆盖手写）/ 手动编辑（空串清除）
+  recap: (id: number) => api.get(`/episodes/${id}/recap`),
+  generateSummary: (id: number, model?: string, configId?: number) => api.post(`/episodes/${id}/summary`, { model: model || undefined, config_id: configId || undefined }),
+  saveSummary: (id: number, summary: string) => api.put(`/episodes/${id}/summary`, { summary }),
+  // 本集使用的角色造型（lookId 为空 = 默认造型）
+  setCharacterLook: (id: number, characterId: number, lookId: number | null) => api.put(`/episodes/${id}/characters/${characterId}/look`, { look_id: lookId }),
 }
 
 export const storyboardAPI = {
   create: (data: any) => api.post('/storyboards', data),
   update: (id: number, data: any) => api.put(`/storyboards/${id}`, data),
   del: (id: number) => api.del(`/storyboards/${id}`),
+  // 镜头级造型覆盖（lookId 为空 = 跟随本集）
+  setCharacterLook: (id: number, characterId: number, lookId: number | null) => api.put(`/storyboards/${id}/character-look`, { character_id: characterId, look_id: lookId }),
 }
 
 export const characterAPI = {
@@ -71,6 +79,17 @@ export const characterAPI = {
   generatePrompt: (id: number, episodeId: number, force = false, textModel?: string, textConfigId?: number) => api.post(`/characters/${id}/generate-prompt`, { episode_id: episodeId, force, text_model: textModel || undefined, text_config_id: textConfigId || undefined }),
   generateImage: (id: number, episodeId: number, model?: string, configId?: number, textModel?: string, textConfigId?: number) => api.post(`/characters/${id}/generate-image`, { episode_id: episodeId, model: model || undefined, config_id: configId || undefined, text_model: textModel || undefined, text_config_id: textConfigId || undefined }),
   batchImages: (ids: number[], episodeId: number, model?: string, configId?: number, textModel?: string, textConfigId?: number) => api.post('/characters/batch-generate-images', { character_ids: ids, episode_id: episodeId, model: model || undefined, config_id: configId || undefined, text_model: textModel || undefined, text_config_id: textConfigId || undefined }),
+  // 把 sourceIds 合并进 id（源角色名并入别名，关联/造型/生成记录迁移后软删除）
+  merge: (id: number, sourceIds: number[]) => api.post(`/characters/${id}/merge`, { source_ids: sourceIds }),
+}
+
+// 角色造型：默认造型即角色自身形象图，这里管理额外造型
+export const lookAPI = {
+  list: (characterId: number) => api.get<any[]>(`/character-looks?character_id=${characterId}`),
+  create: (characterId: number, data: { name: string; description?: string }) => api.post('/character-looks', { character_id: characterId, ...data }),
+  update: (id: number, data: { name?: string; description?: string; image_url?: string | null }) => api.put(`/character-looks/${id}`, data),
+  del: (id: number) => api.del(`/character-looks/${id}`),
+  generateImage: (id: number, configId?: number, model?: string) => api.post(`/character-looks/${id}/generate-image`, { config_id: configId || undefined, model: model || undefined }),
 }
 
 export const sceneAPI = {
@@ -107,9 +126,12 @@ export const taskAPI = {
   listByEpisode: (episodeId: number) => api.get<{ tasks: any[]; merges: any[] }>(`/episodes/${episodeId}/generation-tasks`),
 }
 
-async function uploadReq<T = any>(path: string, file: File): Promise<T> {
+async function uploadReq<T = any>(path: string, file: File, fields?: Record<string, string | number | null | undefined>): Promise<T> {
   const fd = new FormData()
   fd.append('file', file)
+  for (const [k, v] of Object.entries(fields || {})) {
+    if (v !== undefined && v !== null && v !== '') fd.append(k, String(v))
+  }
   console.log(`%c[API] %cPOST %c${path} %c${file.name}`, 'color:#888', 'color:#4fc3f7;font-weight:bold', 'color:#ccc', 'color:#888')
   const resp = await fetch(`${BASE}${path}`, { method: 'POST', body: fd })
   const json = await resp.json()
@@ -120,15 +142,82 @@ async function uploadReq<T = any>(path: string, file: File): Promise<T> {
   return json.data ?? json
 }
 
+/** 带进度的上传（XHR）：大视频上传需要显示进度，fetch 拿不到上传进度 */
+function uploadWithProgress<T = any>(path: string, file: File, onProgress?: (ratio: number) => void): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `${BASE}${path}`)
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress?.(e.loaded / e.total) }
+    xhr.onerror = () => reject(new Error('上传失败，请检查网络'))
+    xhr.onload = () => {
+      let json: any = null
+      try { json = JSON.parse(xhr.responseText) } catch { /* 非 JSON */ }
+      if (xhr.status >= 400 || !json || (json.code && json.code >= 400)) reject(new Error(json?.message || `${xhr.status}`))
+      else resolve(json.data ?? json)
+    }
+    xhr.send(fd)
+  })
+}
+
+// 字幕工具（独立于剧集工作流）
+export const subtitleToolAPI = {
+  list: () => api.get<any[]>('/tools/subtitle-jobs'),
+  get: (id: number) => api.get(`/tools/subtitle-jobs/${id}`),
+  create: (file: File, onProgress?: (ratio: number) => void) => uploadWithProgress('/tools/subtitle-jobs', file, onProgress),
+  transcribe: (id: number, sel: { config_id?: number; model?: string } = {}) => api.post(`/tools/subtitle-jobs/${id}/transcribe`, sel),
+  uploadSubtitle: (id: number, file: File) => uploadReq(`/tools/subtitle-jobs/${id}/subtitle`, file),
+  burn: (id: number, style: { font_size: number; bottom_percent: number }) => api.post(`/tools/subtitle-jobs/${id}/burn`, style),
+  del: (id: number) => api.del(`/tools/subtitle-jobs/${id}`),
+}
+
+// 视频合成工具：先逐个上传片段，再按顺序提交合成
+export const mergeToolAPI = {
+  uploadClip: (file: File, onProgress?: (ratio: number) => void) => uploadWithProgress('/tools/merge-clips', file, onProgress),
+  list: () => api.get<any[]>('/tools/merge-jobs'),
+  merge: (body: { clips: { url: string; name: string }[]; width?: number; height?: number }) => api.post('/tools/merge-jobs', body),
+  del: (id: number) => api.del(`/tools/merge-jobs/${id}`),
+}
+
 export const uploadAPI = {
   image: (f: File) => uploadReq<{ url: string; path: string }>('/upload/image', f),
   video: (f: File) => uploadReq<{ url: string; path: string }>('/upload/video', f),
   audio: (f: File) => uploadReq<{ url: string; path: string }>('/upload/audio', f),
 }
+// 全局素材库：category = character | scene；项目文件夹只读，我的文件夹（可嵌套）/文件可增删改
+export type LibraryCategory = 'character' | 'scene'
+export const libraryAPI = {
+  overview: (category: LibraryCategory) => api.get(`/library/${category}`),
+  folder: (category: LibraryCategory, id: number) => api.get(`/library/${category}/folders/${id}`),
+  project: (category: LibraryCategory, dramaId: number) => api.get(`/library/${category}/projects/${dramaId}`),
+  folderTree: (category: LibraryCategory) => api.get<{ id: number; parent_id: number | null; name: string }[]>(`/library/${category}/folders`),
+  createFolder: (category: LibraryCategory, name: string, parentId?: number | null) => api.post(`/library/${category}/folders`, { name, parent_id: parentId || undefined }),
+  renameFolder: (id: number, name: string) => api.put(`/library/folders/${id}`, { name }),
+  moveFolder: (id: number, parentId: number | null) => api.put(`/library/folders/${id}`, { parent_id: parentId }),
+  delFolder: (id: number) => api.del(`/library/folders/${id}`),
+  upload: (category: LibraryCategory, f: File, folderId?: number | null) => uploadReq(`/library/${category}/files`, f, { folder_id: folderId }),
+  updateFile: (id: number, data: { name?: string; description?: string; folder_id?: number | null }) => api.put(`/library/files/${id}`, data),
+  delFile: (id: number) => api.del(`/library/files/${id}`),
+}
+
 export const mergeAPI = {
-  merge: (epId: number, storyboardIds?: number[]) => api.post(`/merge/episodes/${epId}/merge`, storyboardIds?.length ? { storyboard_ids: storyboardIds } : {}),
+  merge: (epId: number, storyboardIds?: number[], withSubtitles = true) => api.post(`/merge/episodes/${epId}/merge`, {
+    ...(storyboardIds?.length ? { storyboard_ids: storyboardIds } : {}),
+    ...(withSubtitles ? {} : { with_subtitles: false }),
+  }),
   status: (epId: number) => api.get(`/merge/episodes/${epId}/merge`),
   list: (epId: number) => api.get<any[]>(`/merge/episodes/${epId}/merges`),
+}
+export const subtitleAPI = {
+  // sel：工作台顶栏所选 { config_id, model }，缺省走默认字幕配置
+  generate: (sbId: number, sel: { config_id?: number; model?: string } = {}) => api.post(`/subtitles/storyboards/${sbId}`, sel),
+  batch: (epId: number, storyboardIds?: number[], sel: { config_id?: number; model?: string } = {}) => api.post(`/subtitles/episodes/${epId}`, {
+    ...(storyboardIds?.length ? { storyboard_ids: storyboardIds } : {}),
+    ...sel,
+  }),
+  clear: (sbId: number) => api.del(`/subtitles/storyboards/${sbId}`),
+  episodeSrtUrl: (epId: number) => `/api/v1/subtitles/episodes/${epId}/srt`,
 }
 export const aiConfigAPI = {
   list: (t?: string) => api.get(`/ai-configs${t ? `?service_type=${t}` : ''}`),

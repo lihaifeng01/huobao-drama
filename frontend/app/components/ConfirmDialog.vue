@@ -1,6 +1,7 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="overlay" @click.self="emit('cancel')">
+    <!-- 确认框总在最上层：常从其他弹窗内触发（如素材详情里删除造型） -->
+    <div v-if="open" class="overlay overlay-nested" @click.self="emit('cancel')">
       <div class="dialog confirm-dialog" role="alertdialog" aria-modal="true" :aria-label="effectiveTitle">
         <div class="confirm-icon">
           <Trash2 :size="20" :stroke-width="1.8" />

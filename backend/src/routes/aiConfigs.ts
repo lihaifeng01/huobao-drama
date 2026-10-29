@@ -5,6 +5,9 @@ import { success, notFound, created, badRequest, now } from '../utils/response.j
 import { toSnakeCase } from '../utils/transform.js'
 import { joinProviderUrl } from '../services/adapters/url.js'
 import { isOfficialProvider, parseConfigTemperature } from '../services/ai.js'
+import { applyCustomHeaders, normalizeCustomOptions, normalizeUrlMode, parseCustomOptions, parseUrlMode, withUrlMode } from '../services/adapters/custom.js'
+import type { CustomOptions } from '../services/adapters/types.js'
+import { buildAsrProbe } from '../services/adapters/aliyun-asr.js'
 import { redactUrl, logTaskError, logTaskProgress, logTaskSuccess } from '../utils/task-logger.js'
 
 const app = new Hono()
@@ -17,14 +20,18 @@ function normalizeTemperature(v: any): number | null {
   return n
 }
 
-/** 把 settings JSON 中的 temperature 透出为顶层字段，便于前端直接读写 */
+/** 把 settings JSON 中的 temperature/custom/url_mode 透出为顶层字段，便于前端直接读写 */
 function withParsedFields(r: any) {
   return {
     ...toSnakeCase(r),
     model: r.model ? JSON.parse(r.model) : [],
     temperature: parseConfigTemperature(r.settings),
+    custom: parseCustomOptions(r.settings),
+    url_mode: parseUrlMode(r.settings),
   }
 }
+
+const BASE_URL_MODE_ERROR = 'Base URL 原样使用模式需要以 http:// 或 https:// 开头的 Base URL'
 
 function bearerHeaders(apiKey?: string, withJson = false) {
   const headers: Record<string, string> = {}
@@ -45,6 +52,8 @@ function geminiHeaders(apiKey?: string, withJson = false) {
 function buildProbe(serviceType: string, provider: string, baseUrl: string, model?: string, apiKey?: string) {
   const p = provider.toLowerCase()
   const m = model || ''
+
+  if (serviceType === 'subtitle') return buildAsrProbe(baseUrl, m, apiKey)
 
   if (p === 'gemini') {
     // 探针统一走 generateContent:文本运行时(AI SDK)走的就是它,官方与中转站都支持;
@@ -115,6 +124,31 @@ function buildProbe(serviceType: string, provider: string, baseUrl: string, mode
   }
 }
 
+/** 配置了自定义提交 URL 时，探针直接请求该 URL（原样，不追加官方路径前缀） */
+function buildCustomProbe(serviceType: string, provider: string, custom: CustomOptions | null, model?: string, apiKey?: string) {
+  const url = custom?.generate_url
+  if (!url) return null
+
+  if (serviceType !== 'text') {
+    // 空请求体不会创建计费任务，仅验证端点与鉴权是否可达
+    return { method: 'POST', url, headers: bearerHeaders(apiKey, true), body: {} as unknown }
+  }
+
+  const p = provider.toLowerCase()
+  if (p === 'gemini') {
+    return {
+      method: 'POST',
+      url: joinProviderUrl(url, '', `/models/${model || 'gemini-3.1-pro-preview'}:generateContent`),
+      headers: geminiHeaders(apiKey, true),
+      body: { contents: [{ parts: [{ text: 'hi' }] }] } as unknown,
+    }
+  }
+  if (p === 'volcengine') {
+    return { method: 'POST', url: joinProviderUrl(url, '', '/chat/completions'), headers: bearerHeaders(apiKey, true), body: {} as unknown }
+  }
+  return { method: 'GET', url: joinProviderUrl(url, '', '/models'), headers: bearerHeaders(apiKey), body: undefined as unknown }
+}
+
 // GET /ai-configs?service_type=text
 app.get('/', async (c) => {
   const serviceType = c.req.query('service_type')
@@ -147,6 +181,29 @@ app.post('/', async (c) => {
     }
   }
 
+  let custom: CustomOptions | null = null
+  if ('custom' in body) {
+    try {
+      custom = normalizeCustomOptions(body.custom)
+    } catch (e: any) {
+      return badRequest(c, e.message)
+    }
+  }
+  const settings: Record<string, any> = {}
+  if (temperature !== null) settings.temperature = temperature
+  if (custom) settings.custom = custom
+
+  let urlMode: 'auto' | 'base'
+  try {
+    urlMode = normalizeUrlMode(body.url_mode)
+  } catch (e: any) {
+    return badRequest(c, e.message)
+  }
+  if (urlMode === 'base') {
+    if (!/^https?:\/\//i.test(String(body.base_url || '').trim())) return badRequest(c, BASE_URL_MODE_ERROR)
+    settings.url_mode = urlMode
+  }
+
   const res = await db.insert(schema.aiServiceConfigs).values({
     serviceType: body.service_type,
     provider: body.provider,
@@ -156,7 +213,7 @@ app.post('/', async (c) => {
     model: JSON.stringify(body.model || []),
     priority: body.priority || 0,
     isActive: true,
-    settings: temperature !== null ? JSON.stringify({ temperature }) : null,
+    settings: Object.keys(settings).length ? JSON.stringify(settings) : null,
     createdAt: ts,
     updatedAt: ts,
   })
@@ -178,7 +235,18 @@ app.post('/test', async (c) => {
   }
 
   const model = Array.isArray(body.model) ? body.model[0] : body.model
-  const probe = buildProbe(body.service_type, body.provider, body.base_url, model, body.api_key)
+  let custom: CustomOptions | null = null
+  let urlMode: 'auto' | 'base'
+  try {
+    custom = normalizeCustomOptions(body.custom)
+    urlMode = normalizeUrlMode(body.url_mode)
+  } catch (e: any) {
+    return badRequest(c, e.message)
+  }
+  custom = withUrlMode(custom, urlMode, body.base_url)
+  const probe = buildCustomProbe(body.service_type, body.provider, custom, model, body.api_key)
+    ?? buildProbe(body.service_type, body.provider, body.base_url, model, body.api_key)
+  if (custom) applyCustomHeaders(probe.headers, body.api_key || '', custom)
   const probeUrl = redactUrl(probe.url)
 
   logTaskProgress('AIConfig', 'probe-start', {
@@ -195,7 +263,7 @@ app.post('/test', async (c) => {
       body: probe.body ? JSON.stringify(probe.body) : undefined,
     })
     const text = await resp.text()
-    const reachable = [200, 204, 400, 401, 403].includes(resp.status)
+    const reachable = [200, 204, 400, 401, 403, 422].includes(resp.status)
     const payload = {
       ok: resp.ok,
       reachable,
@@ -270,18 +338,47 @@ app.put('/:id', async (c) => {
   if ('model' in body) updates.model = JSON.stringify(body.model)
   if ('priority' in body) updates.priority = body.priority
   if ('is_active' in body) updates.isActive = body.is_active
-  if ('temperature' in body) {
-    let temperature: number | null
-    try {
-      temperature = normalizeTemperature(body.temperature)
-    } catch {
-      return badRequest(c, 'temperature 须为 0 到 2 之间的数字')
-    }
-    // 与已有 settings 合并，清空的 temperature 从 JSON 中移除
+  if ('temperature' in body || 'custom' in body || 'url_mode' in body) {
+    // 与已有 settings 合并，清空的字段从 JSON 中移除
     let settings: Record<string, any> = {}
     try { settings = existing.settings ? JSON.parse(existing.settings) : {} } catch { settings = {} }
-    if (temperature === null) delete settings.temperature
-    else settings.temperature = temperature
+
+    if ('temperature' in body) {
+      let temperature: number | null
+      try {
+        temperature = normalizeTemperature(body.temperature)
+      } catch {
+        return badRequest(c, 'temperature 须为 0 到 2 之间的数字')
+      }
+      if (temperature === null) delete settings.temperature
+      else settings.temperature = temperature
+    }
+
+    if ('custom' in body) {
+      let custom: CustomOptions | null
+      try {
+        custom = normalizeCustomOptions(body.custom)
+      } catch (e: any) {
+        return badRequest(c, e.message)
+      }
+      if (custom) settings.custom = custom
+      else delete settings.custom
+    }
+
+    if ('url_mode' in body) {
+      let urlMode: 'auto' | 'base'
+      try {
+        urlMode = normalizeUrlMode(body.url_mode)
+      } catch (e: any) {
+        return badRequest(c, e.message)
+      }
+      if (urlMode === 'base') settings.url_mode = urlMode
+      else delete settings.url_mode
+    }
+    if (settings.url_mode === 'base') {
+      const baseUrl = 'base_url' in body ? body.base_url : existing.baseUrl
+      if (!/^https?:\/\//i.test(String(baseUrl || '').trim())) return badRequest(c, BASE_URL_MODE_ERROR)
+    }
     updates.settings = Object.keys(settings).length ? JSON.stringify(settings) : null
   }
 
