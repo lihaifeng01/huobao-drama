@@ -623,7 +623,10 @@
       "unsaved": "저장 안 됨",
       "autoSaved": "자동 저장됨",
       "rewriteConfirmTitle": "대본을 다시 작성할까요?",
-      "rewriteConfirmMsg": "AI가 원본 내용으로 대본을 다시 생성해, 직접 수정한 내용을 포함한 현재 대본을 덮어씁니다."
+      "rewriteConfirmMsg": "AI가 원본 내용으로 대본을 다시 생성해, 직접 수정한 내용을 포함한 현재 대본을 덮어씁니다.",
+      "skipConfirmTitle": "AI 다시 쓰기를 건너뛸까요?",
+      "skipConfirmMsg": "원본 내용을 AI 다시 쓰기 없이 그대로 대본으로 사용합니다.",
+      "skipConfirmOverwrite": "직접 수정한 내용을 포함한 현재 대본을 원본 내용으로 덮어씁니다."
     },
     "prod": {
       "assets": "에셋 제작",

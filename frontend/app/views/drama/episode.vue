@@ -217,7 +217,7 @@
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                 {{ t('common.save') }}
               </button>
-              <button v-if="rawContent" class="btn btn-sm" @click="skipRewrite">
+              <button v-if="rawContent" class="btn btn-sm" @click="requestSkipRewrite">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/><path d="M13 18l6-6-6-6"/></svg>
                 {{ t('episode.script.skipRewrite') }}
               </button>
@@ -242,7 +242,7 @@
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                 {{ t('episode.script.startRewrite') }}
               </button>
-              <button class="btn" @click="skipRewrite">
+              <button class="btn" @click="requestSkipRewrite">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/><path d="M13 18l6-6-6-6"/></svg>
                 {{ t('episode.script.skipRewrite') }}
               </button>
@@ -1670,6 +1670,14 @@
         @close="recapOpen = false"
       />
       <ConfirmDialog
+        :open="skipConfirmOpen"
+        :title="t('episode.script.skipConfirmTitle')"
+        :message="scriptContent ? t('episode.script.skipConfirmOverwrite') : t('episode.script.skipConfirmMsg')"
+        :confirm-text="t('episode.script.skipRewrite')"
+        @confirm="skipConfirmOpen = false; skipRewrite()"
+        @cancel="skipConfirmOpen = false"
+      />
+      <ConfirmDialog
         :open="rewriteConfirmOpen"
         :title="t('episode.script.rewriteConfirmTitle')"
         :message="t('episode.script.rewriteConfirmMsg')"
@@ -3045,6 +3053,15 @@ const rewriteConfirmOpen = ref(false)
 // 发给 Agent 的 message 是功能性提示词而非 UI 文案：产出语言由后端全局「内容语言」指令控制，
 // 这里保持中文不随界面语言变化
 async function doRewrite() { await flushScriptSaves(); runAgent('script_rewriter', '请读取剧本并改写为格式化剧本，然后保存', dramaId, epId.value, refresh, chatModelOverride(), chatConfigId()) }
+// 跳过改写会把原始内容直接作为剧本；已有剧本时会覆盖（包括手动修改），先确认
+const skipConfirmOpen = ref(false)
+function requestSkipRewrite() {
+  if (!(localRaw.value || rawContent.value || '').trim()) {
+    toast.warning(t('episode.script.rawRequired'))
+    return
+  }
+  skipConfirmOpen.value = true
+}
 function skipRewrite() {
   const raw = (localRaw.value || rawContent.value || '').trim()
   if (!raw) {

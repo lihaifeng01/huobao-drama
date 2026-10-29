@@ -623,7 +623,10 @@
       "unsaved": "Unsaved",
       "autoSaved": "Saved automatically",
       "rewriteConfirmTitle": "Rewrite the script again?",
-      "rewriteConfirmMsg": "AI will regenerate the script from the original content and replace the current script, including your manual edits."
+      "rewriteConfirmMsg": "AI will regenerate the script from the original content and replace the current script, including your manual edits.",
+      "skipConfirmTitle": "Skip AI rewriting?",
+      "skipConfirmMsg": "The original content will be used as the script as-is, without AI rewriting.",
+      "skipConfirmOverwrite": "The current script, including your manual edits, will be replaced with the original content."
     },
     "prod": {
       "assets": "Asset Production",

@@ -623,7 +623,10 @@
       "unsaved": "未保存",
       "autoSaved": "已自动保存",
       "rewriteConfirmTitle": "重新改写剧本？",
-      "rewriteConfirmMsg": "AI 会根据原始内容重新生成剧本，覆盖当前剧本，包括你手动做的修改。"
+      "rewriteConfirmMsg": "AI 会根据原始内容重新生成剧本，覆盖当前剧本，包括你手动做的修改。",
+      "skipConfirmTitle": "跳过 AI 改写？",
+      "skipConfirmMsg": "将直接把原始内容作为剧本，不经过 AI 改写。",
+      "skipConfirmOverwrite": "将用原始内容覆盖当前剧本，包括你手动做的修改。"
     },
     "prod": {
       "assets": "资产制作",

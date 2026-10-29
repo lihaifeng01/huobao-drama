@@ -623,7 +623,10 @@
       "unsaved": "未保存",
       "autoSaved": "自動保存済み",
       "rewriteConfirmTitle": "脚本を書き直しますか？",
-      "rewriteConfirmMsg": "AI が元の内容から脚本を再生成し、手動で行った修正を含む現在の脚本を上書きします。"
+      "rewriteConfirmMsg": "AI が元の内容から脚本を再生成し、手動で行った修正を含む現在の脚本を上書きします。",
+      "skipConfirmTitle": "AI 書き直しをスキップしますか？",
+      "skipConfirmMsg": "元の内容を AI で書き直さずにそのまま脚本として使用します。",
+      "skipConfirmOverwrite": "手動で行った修正を含む現在の脚本を、元の内容で上書きします。"
     },
     "prod": {
       "assets": "アセット制作",
