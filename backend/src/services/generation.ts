@@ -11,6 +11,7 @@ import { getActiveConfig, getConfigById } from './ai.js'
 import { now } from '../utils/response.js'
 import { downloadFile, fetchImageAsCompressedDataUrl, generateImageThumb, readImageAsCompressedDataUrl, readImageAsDataUrl, saveBase64Image } from '../utils/storage.js'
 import { extractVideoPoster } from '../utils/video-poster.js'
+import { withNoSubtitleDirective } from './video-prompt-guard.js'
 import { getImageAdapter, getVideoAdapter } from './adapters/registry'
 import type { AIConfig, ProviderRequest } from './adapters/types'
 import { logTaskError, logTaskPayload, logTaskProgress, logTaskStart, logTaskSuccess, logTaskWarn, redactUrl } from '../utils/task-logger.js'
@@ -133,7 +134,8 @@ export async function generateVideo(params: GenerateVideoParams): Promise<number
     const id = await createTask('video', config, {
       storyboardId: params.storyboardId,
       dramaId: params.dramaId,
-      prompt: params.prompt,
+      // 统一追加「不要生成字幕」，字幕由字幕制作步骤压制
+      prompt: withNoSubtitleDirective(params.prompt),
       model: params.model || config.model,
     }, {
       referenceMode: params.referenceMode || 'reference',
