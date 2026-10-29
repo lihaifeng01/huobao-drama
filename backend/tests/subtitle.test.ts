@@ -163,3 +163,30 @@ test('镜头字幕：识别、生成 SRT、压制字幕版，整集字幕按成�
     await new Promise(r => setTimeout(r, 200))
   }
 })
+
+test('按工作台所选配置与模型识别；模型不在该配置中时拒绝', async () => {
+  const ts = new Date().toISOString()
+  const res = await db.insert(schema.aiServiceConfigs).values({
+    serviceType: 'subtitle', provider: 'aliyun', name: 'asr-q3', baseUrl: 'https://dashscope.test', apiKey: 'sk-q3',
+    model: JSON.stringify(['qwen-audio-3.0-asr-flash-filetrans', 'qwen3-asr-flash-filetrans']), priority: -1, isActive: true, createdAt: ts, updatedAt: ts,
+  })
+  const configId = Number(res.lastInsertRowid)
+  const sb = await db.insert(schema.storyboards).values({ episodeId: 2, storyboardNumber: 1, videoUrl: 'static/videos/a.mp4', createdAt: ts, updatedAt: ts })
+  const id = Number(sb.lastInsertRowid)
+
+  await assert.rejects(enqueueSubtitles([id], { configId, model: 'not-a-model' }), /没有模型 not-a-model/)
+  // 非字幕类型的配置 id 不能冒充
+  const img = await db.insert(schema.aiServiceConfigs).values({ serviceType: 'image', provider: 'openai', name: 'img', baseUrl: 'x', apiKey: 'x', model: '[]', isActive: true, createdAt: ts, updatedAt: ts })
+  await assert.rejects(enqueueSubtitles([id], { configId: Number(img.lastInsertRowid) }), /所选字幕配置不存在/)
+
+  calls.length = 0
+  assert.deepEqual(await enqueueSubtitles([id], { configId, model: 'qwen3-asr-flash-filetrans' }), [id])
+  const done = await waitStatus(id)
+  assert.equal(done.subtitleStatus, 'completed', done.subtitleError || '')
+  const policy = calls.find(c => c.url.includes('/uploads'))!
+  assert.match(policy.url, /model=qwen3-asr-flash-filetrans/)
+  assert.equal(policy.headers.authorization, 'Bearer sk-q3')
+  const submit = calls.find(c => c.json)!
+  assert.equal(submit.json.model, 'qwen3-asr-flash-filetrans')
+  assert.match(submit.json.input.file_url, /^oss:\/\//)
+})

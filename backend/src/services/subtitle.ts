@@ -18,7 +18,7 @@ import { ffmpeg, ffmpegPath, checkFfmpegSuite } from '../utils/ffmpeg.js'
 import { extractVideoPoster } from '../utils/video-poster.js'
 import { cuesToSrt, parseSrt, sentencesToCues, type SrtCue } from '../utils/srt.js'
 import { logTaskError, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
-import { getActiveConfig, type AIConfig } from './ai.js'
+import { getActiveConfig, getConfigById, type AIConfig } from './ai.js'
 import { transcribeAudioFile } from './adapters/aliyun-asr.js'
 
 type Storyboard = typeof schema.storyboards.$inferSelect
@@ -26,9 +26,29 @@ type Storyboard = typeof schema.storyboards.$inferSelect
 const LABEL = 'SubtitleTask'
 const MAX_CONCURRENCY = 2
 
-export async function getSubtitleConfig(): Promise<AIConfig> {
-  const config = await getActiveConfig('subtitle')
-  if (!config) throw new Error('未配置字幕服务，请先到「设置 → AI 服务」添加并启用字幕服务')
+/** 工作台顶栏选择的字幕配置与模型；都不传 = 启用配置中优先级最高者的默认模型 */
+export interface SubtitleSelection {
+  configId?: number
+  model?: string
+}
+
+export async function getSubtitleConfig(sel: SubtitleSelection = {}): Promise<AIConfig> {
+  let config: AIConfig | null
+  if (sel.configId) {
+    const [row] = await db.select().from(schema.aiServiceConfigs).where(eq(schema.aiServiceConfigs.id, sel.configId))
+    if (row?.serviceType !== 'subtitle') throw new Error('所选字幕配置不存在')
+    config = await getConfigById(sel.configId)
+    if (!config) throw new Error('所选字幕配置已停用或已删除，请重新选择')
+  } else {
+    config = await getActiveConfig('subtitle')
+    if (!config) throw new Error('未配置字幕服务，请先到「设置 → AI 服务」添加并启用字幕服务')
+  }
+  if (sel.model) {
+    const [row] = await db.select().from(schema.aiServiceConfigs).where(eq(schema.aiServiceConfigs.id, config.id!))
+    const models: string[] = row?.model ? JSON.parse(row.model) : []
+    if (!models.includes(sel.model)) throw new Error(`字幕配置「${row?.name || config.provider}」中没有模型 ${sel.model}`)
+    config = { ...config, model: sel.model }
+  }
   if (!config.apiKey) throw new Error('字幕服务未填写 API Key')
   if (!config.model) throw new Error('字幕服务未配置模型')
   return config
@@ -48,21 +68,22 @@ export function isSubtitleCurrent(sb: Storyboard) {
 
 // ---------- 并发队列：识别和压制都较重，限制同时处理的镜头数 ----------
 
-const queue: number[] = []
+// 入队时记下所选配置与模型，处理时按它解析（用户中途切换顶栏选择不影响已入队的镜头）
+const queue: { id: number; sel: SubtitleSelection }[] = []
 const queued = new Set<number>()
 let running = 0
 
 /** 把镜头加入字幕队列；返回实际入队的 id（没有视频或已在队列中的跳过） */
-export async function enqueueSubtitles(storyboardIds: number[]): Promise<number[]> {
+export async function enqueueSubtitles(storyboardIds: number[], sel: SubtitleSelection = {}): Promise<number[]> {
   await ensureFfmpeg()
-  await getSubtitleConfig()
+  await getSubtitleConfig(sel)
   const accepted: number[] = []
   for (const id of storyboardIds) {
     if (queued.has(id)) continue
     const [sb] = await db.select().from(schema.storyboards).where(eq(schema.storyboards.id, id))
     if (!sb?.videoUrl) continue
     queued.add(id)
-    queue.push(id)
+    queue.push({ id, sel })
     accepted.push(id)
     await db.update(schema.storyboards)
       .set({ subtitleStatus: 'processing', subtitleError: null, updatedAt: now() })
@@ -74,9 +95,9 @@ export async function enqueueSubtitles(storyboardIds: number[]): Promise<number[
 
 function pump() {
   while (running < MAX_CONCURRENCY && queue.length) {
-    const id = queue.shift()!
+    const { id, sel } = queue.shift()!
     running++
-    processStoryboard(id)
+    processStoryboard(id, sel)
       .catch(async (err: Error) => {
         logTaskError(LABEL, 'subtitle', { storyboardId: id, error: err.message })
         await db.update(schema.storyboards)
@@ -100,15 +121,15 @@ export async function resetInterruptedSubtitles() {
 
 // ---------- 单个镜头处理 ----------
 
-async function processStoryboard(id: number) {
+async function processStoryboard(id: number, sel: SubtitleSelection) {
   const [sb] = await db.select().from(schema.storyboards).where(eq(schema.storyboards.id, id))
   if (!sb?.videoUrl) throw new Error('镜头还没有视频')
   const sourceVideo = sb.videoUrl
   const videoAbs = getAbsolutePath(sourceVideo)
   if (!fs.existsSync(videoAbs)) throw new Error('镜头视频文件已丢失（本地文件不存在），请重新生成视频')
 
-  const config = await getSubtitleConfig()
-  logTaskStart(LABEL, 'subtitle', { storyboardId: id, model: config.model })
+  const config = await getSubtitleConfig(sel)
+  logTaskStart(LABEL, 'subtitle', { storyboardId: id, configId: config.id, model: config.model })
 
   const info = await probeVideo(videoAbs)
   if (!info.hasAudio) {

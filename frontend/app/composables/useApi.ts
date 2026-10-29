@@ -172,8 +172,12 @@ export const mergeAPI = {
   list: (epId: number) => api.get<any[]>(`/merge/episodes/${epId}/merges`),
 }
 export const subtitleAPI = {
-  generate: (sbId: number) => api.post(`/subtitles/storyboards/${sbId}`, {}),
-  batch: (epId: number, storyboardIds?: number[]) => api.post(`/subtitles/episodes/${epId}`, storyboardIds?.length ? { storyboard_ids: storyboardIds } : {}),
+  // sel：工作台顶栏所选 { config_id, model }，缺省走默认字幕配置
+  generate: (sbId: number, sel: { config_id?: number; model?: string } = {}) => api.post(`/subtitles/storyboards/${sbId}`, sel),
+  batch: (epId: number, storyboardIds?: number[], sel: { config_id?: number; model?: string } = {}) => api.post(`/subtitles/episodes/${epId}`, {
+    ...(storyboardIds?.length ? { storyboard_ids: storyboardIds } : {}),
+    ...sel,
+  }),
   clear: (sbId: number) => api.del(`/subtitles/storyboards/${sbId}`),
   episodeSrtUrl: (epId: number) => `/api/v1/subtitles/episodes/${epId}/srt`,
 }

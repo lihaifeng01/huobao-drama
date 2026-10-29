@@ -46,6 +46,14 @@
             :show-config="videoModelMultiCfg"
           />
           <ModelSelect
+            v-if="subtitleModelOptions.length"
+            v-model="subtitleModel"
+            :label="t('common.serviceType.subtitle')"
+            :options="subtitleModelOptions"
+            :default-label="t('episode.model.defaultWith', { model: subtitleModelOptions[0].model })"
+            :show-config="subtitleModelMultiCfg"
+          />
+          <ModelSelect
             v-model="episodeResolution"
             :label="t('episode.topbar.resolution')"
             :options="resolutionOptions"
@@ -1803,8 +1811,9 @@ const prodTabIdx = computed({
 const imageConfigs = ref([])
 const videoConfigs = ref([])
 const textConfigs = ref([])
+const subtitleConfigs = ref([])
 // 生成时可选模型：空串 = 跟随配置默认（models[0]）；选择持久化到 localStorage，刷新页面后保留
-const MODEL_STORE_KEYS = { chat: 'huobao:model:chat', image: 'huobao:model:image', video: 'huobao:model:video' }
+const MODEL_STORE_KEYS = { chat: 'huobao:model:chat', image: 'huobao:model:image', video: 'huobao:model:video', subtitle: 'huobao:model:subtitle' }
 function readStoredModel(key, legacyKey = '') {
   try { return localStorage.getItem(key) || (legacyKey && localStorage.getItem(legacyKey)) || '' } catch { return '' }
 }
@@ -1812,6 +1821,7 @@ function readStoredModel(key, legacyKey = '') {
 const chatModel = ref(readStoredModel(MODEL_STORE_KEYS.chat, 'huobao:model:rewrite'))
 const imageModel = ref(readStoredModel(MODEL_STORE_KEYS.image))
 const videoModel = ref(readStoredModel(MODEL_STORE_KEYS.video))
+const subtitleModel = ref(readStoredModel(MODEL_STORE_KEYS.subtitle))
 function persistModel(modelRef, key) {
   watch(modelRef, v => {
     try { v ? localStorage.setItem(key, v) : localStorage.removeItem(key) } catch {}
@@ -1820,6 +1830,7 @@ function persistModel(modelRef, key) {
 persistModel(chatModel, MODEL_STORE_KEYS.chat)
 persistModel(imageModel, MODEL_STORE_KEYS.image)
 persistModel(videoModel, MODEL_STORE_KEYS.video)
+persistModel(subtitleModel, MODEL_STORE_KEYS.subtitle)
 // 左侧菜单栏收起/展开：收起为窄图标栏给内容区让位，持久化到 localStorage
 const SIDEBAR_COLLAPSED_KEY = 'huobao:sidebar-collapsed'
 const sidebarCollapsed = ref((() => {
@@ -2407,6 +2418,7 @@ function hasMultiConfigs(options) {
 const textModelOptions = computed(() => collectModelOptions(textConfigs.value))
 const imageModelOptions = computed(() => collectModelOptions(imageConfigs.value))
 const videoModelOptions = computed(() => collectModelOptions(videoConfigs.value))
+const subtitleModelOptions = computed(() => collectModelOptions(subtitleConfigs.value))
 const selectedVideoConfig = computed(() => {
   const selected = videoModelOptions.value.find(option => option.key === videoModel.value)
   if (selected) return videoConfigs.value.find(config => config.id === selected.configId)
@@ -2484,9 +2496,11 @@ function pruneStaleModel(modelRef, optionsRef) {
 pruneStaleModel(chatModel, textModelOptions)
 pruneStaleModel(imageModel, imageModelOptions)
 pruneStaleModel(videoModel, videoModelOptions)
+pruneStaleModel(subtitleModel, subtitleModelOptions)
 const textModelMultiCfg = computed(() => hasMultiConfigs(textModelOptions.value))
 const imageModelMultiCfg = computed(() => hasMultiConfigs(imageModelOptions.value))
 const videoModelMultiCfg = computed(() => hasMultiConfigs(videoModelOptions.value))
+const subtitleModelMultiCfg = computed(() => hasMultiConfigs(subtitleModelOptions.value))
 
 // Production step helpers
 // ========== 任务列表面板 ==========
@@ -3297,11 +3311,14 @@ function hasVid(s) { return !!getVideoUrl(s) }
 
 // ===== 字幕制作 =====
 // 状态来自镜头字段：subtitle_status + subtitle_source_video（与当前 video_url 不一致即字幕过期）
-const subtitleConfigs = ref([])
-const subtitleModelLabel = computed(() => {
-  const top = [...subtitleConfigs.value].filter(c => c.is_active).sort((a, b) => (b.priority || 0) - (a.priority || 0))[0]
-  return top?.model?.[0] || ''
-})
+// 生效模型：顶栏所选，未选则为默认（优先级最高的启用配置的首个模型）
+const subtitleModelLabel = computed(() => bareModelName(subtitleModel.value) || subtitleModelOptions.value[0]?.model || '')
+function subtitleSelection() {
+  return {
+    model: bareModelName(subtitleModel.value) || undefined,
+    config_id: ownerConfigId(subtitleModelOptions.value, subtitleModel.value),
+  }
+}
 const subVideoSbs = computed(() => sbs.value.filter(sb => sb.video_url || sb.videoUrl))
 function subState(sb) {
   const status = sb?.subtitle_status
@@ -3368,7 +3385,7 @@ async function reloadStoryboards() {
 }
 async function genSubtitle(sb) {
   try {
-    await subtitleAPI.generate(sb.id)
+    await subtitleAPI.generate(sb.id, subtitleSelection())
     toast.success(t('episode.sub.started', { n: 1 }))
   } catch (e) {
     toastError(e, { fallback: 'episode.sub.failed' })
@@ -3379,7 +3396,7 @@ async function batchSubtitles() {
   const ids = subSelectMode.value && selectedSubSbIds.value.length ? [...selectedSubSbIds.value] : undefined
   subBatching.value = true
   try {
-    const res = await subtitleAPI.batch(epId.value, ids)
+    const res = await subtitleAPI.batch(epId.value, ids, subtitleSelection())
     const n = res?.storyboard_ids?.length || 0
     if (n) toast.success(t('episode.sub.started', { n }))
     else toast.info(t('episode.sub.nothingQueued'))

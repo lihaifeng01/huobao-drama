@@ -75,6 +75,7 @@
   - 设置 → AI 服务新增「字幕」服务类型（`service_type: 'subtitle'`，仅 `aliyun`），预设阿里云百炼录音文件识别，默认模型 `qwen-audio-3.0-asr-flash-filetrans`，也可选 `qwen3-asr-flash-filetrans`。「测试」走 `GET /api/v1/uploads?action=getPolicy`，不产生计费任务。
   - 剧集工作台「制作」下新增「字幕制作」子步骤（视频制作之后），主流程跑马灯变为五段。支持单镜头生成 / 重新生成、选择模式批量、全部生成；每个镜头可下载 SRT 和字幕版视频；「整集字幕」下载与成片时间轴对齐的 SRT。
   - 导出页拼接时默认使用字幕版镜头，可用「使用字幕版 / 不用字幕版」切换（`POST /merge/episodes/:id/merge` 新增 `with_subtitles`，默认 true）。
+  - 剧集工作台顶栏新增「字幕」模型选择框，和文本、图片、视频一致：选中值存 `huobao:model:subtitle`，为 `provider/model` 复合键。字幕接口新增可选的 `config_id` / `model`，缺省时走默认（启用配置中优先级最高者的首个模型）。后端会校验 `config_id` 确实是字幕配置、`model` 在该配置的模型列表里。所选值在入队时记下，处理时按它解析，所以上传凭证和识别用的是同一个模型。字幕制作页的模型标签显示实际生效的模型。最初版本没有这个选择框，只能去设置页改优先级，用户反馈后补上。
   - 导出页的镜头缩略图、镜头预览弹窗和其中的下载链接都跟随这个开关（`exportVideoUrl()`），用字幕版的镜头左下角有字幕角标。最初只有拼接请求跟随开关，预览始终是原视频，用户反馈后修正。已拼好的成片不受开关影响，它是拼接当时的结果。
 - **关键文件**：`backend/src/services/adapters/aliyun-asr.ts`（百炼接口）、`backend/src/services/subtitle.ts`（抽音频、队列、压制、整集 SRT）、`backend/src/utils/srt.ts`（切句与 SRT）、`backend/src/routes/subtitles.ts`、`frontend/app/views/drama/episode.vue`（`prodTab === 'subtitles'`）、`frontend/app/pages/settings.vue`。
 - **流程**：ffmpeg 抽 16kHz 单声道 mp3 → `getPolicy` 拿临时上传凭证 → 表单上传到 `upload_host`，得到 `oss://` 地址（48 小时有效）→ `POST /api/v1/services/audio/asr/transcription`（`X-DashScope-Async: enable` + `X-DashScope-OssResourceResolve: enable`）→ 每 3 秒轮询 `/api/v1/tasks/{id}`，最长 15 分钟 → 下载 `transcription_url` 的 JSON → 切句写 SRT → `subtitles` 滤镜压制（`-c:a copy`）。
