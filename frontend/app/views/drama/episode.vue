@@ -186,7 +186,8 @@
             </div>
             <div class="toolbar-right">
               <span v-if="rawLen" class="char-count">{{ t('episode.script.charCount', { n: rawLen }) }}</span>
-              <button class="btn btn-sm" @click="saveRaw(); toast.success(t('episode.script.saved'))">
+              <span :class="['save-state', { dirty: rawDirty }]">{{ saveStateText(rawSaving, rawDirty) }}</span>
+              <button class="btn btn-sm" :disabled="rawSaving" @click="flushScriptSaves().then(() => !rawDirty && toast.success(t('episode.script.saved')))">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                 {{ t('common.save') }}
               </button>
@@ -196,6 +197,7 @@
             class="fill-textarea"
             v-model="localRaw"
             :placeholder="t('episode.script.rawPlaceholder')"
+            @blur="flushScriptSaves"
           />
         </div>
 
@@ -210,11 +212,16 @@
             </div>
             <div class="toolbar-right">
               <span v-if="scriptLen" class="char-count">{{ t('episode.script.charCount', { n: scriptLen }) }}</span>
+              <span v-if="scriptContent || localScript" :class="['save-state', { dirty: scriptDirty }]">{{ saveStateText(scriptSaving, scriptDirty) }}</span>
+              <button v-if="scriptContent || localScript" class="btn btn-sm" :disabled="scriptSaving || rn" @click="saveScriptNow">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                {{ t('common.save') }}
+              </button>
               <button v-if="rawContent" class="btn btn-sm" @click="skipRewrite">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/><path d="M13 18l6-6-6-6"/></svg>
                 {{ t('episode.script.skipRewrite') }}
               </button>
-              <button v-if="scriptContent" class="btn btn-sm" @click="doRewrite" :disabled="rn">
+              <button v-if="scriptContent" class="btn btn-sm" @click="rewriteConfirmOpen = true" :disabled="rn">
                 <Loader2 v-if="rn && rt === 'script_rewriter'" :size="11" class="animate-spin" />
                 <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
                 {{ t('episode.script.rewriteAgain') }}
@@ -245,7 +252,7 @@
             <Loader2 :size="24" class="animate-spin" style="color:var(--accent)" />
             <div class="loading-text">{{ t('episode.script.rewriting') }}</div>
           </div>
-          <textarea v-else class="fill-textarea" v-model="localScript" :placeholder="t('episode.script.scriptPlaceholder')" />
+          <textarea v-else class="fill-textarea" v-model="localScript" :placeholder="t('episode.script.scriptPlaceholder')" @blur="flushScriptSaves" />
         </div>
       </div>
 
@@ -1663,6 +1670,14 @@
         @close="recapOpen = false"
       />
       <ConfirmDialog
+        :open="rewriteConfirmOpen"
+        :title="t('episode.script.rewriteConfirmTitle')"
+        :message="t('episode.script.rewriteConfirmMsg')"
+        :confirm-text="t('episode.script.rewriteAgain')"
+        @confirm="rewriteConfirmOpen = false; doRewrite()"
+        @cancel="rewriteConfirmOpen = false"
+      />
+      <ConfirmDialog
         :open="assetDelete.open"
         :title="t('episode.delete.title', { type: assetDeleteTypeLabel })"
         :message="t('episode.delete.message', { type: assetDeleteTypeLabel, name: assetDeleteName })"
@@ -2968,11 +2983,68 @@ async function refresh() {
   await Promise.all([loadGenTasks(), loadExportMerges()])
 }
 
-function saveRaw() { episodeAPI.update(epId.value, { content: localRaw.value }); episode.value.content = localRaw.value }
-function saveScr() { episodeAPI.update(epId.value, { script_content: localScript.value }); episode.value.script_content = localScript.value }
+// 剧本编辑：停止输入约 1 秒后自动保存，离开剧本面板、提取资产前也会先保存；保存状态显示在工具栏
+const rawSaving = ref(false)
+const scriptSaving = ref(false)
+const rawDirty = computed(() => localRaw.value !== rawContent.value)
+const scriptDirty = computed(() => localScript.value !== scriptContent.value)
+async function saveRaw() {
+  if (!epId.value || !rawDirty.value) return
+  const value = localRaw.value
+  rawSaving.value = true
+  try {
+    await episodeAPI.update(epId.value, { content: value })
+    episode.value.content = value
+  } catch (e) {
+    toastError(e)
+  } finally {
+    rawSaving.value = false
+  }
+}
+async function saveScr() {
+  if (!epId.value || !scriptDirty.value) return
+  const value = localScript.value
+  scriptSaving.value = true
+  try {
+    await episodeAPI.update(epId.value, { script_content: value })
+    episode.value.script_content = value
+  } catch (e) {
+    toastError(e)
+  } finally {
+    scriptSaving.value = false
+  }
+}
+let rawSaveTimer = null
+let scriptSaveTimer = null
+watch(localRaw, () => {
+  clearTimeout(rawSaveTimer)
+  if (rawDirty.value) rawSaveTimer = setTimeout(saveRaw, 1000)
+})
+watch(localScript, () => {
+  clearTimeout(scriptSaveTimer)
+  if (scriptDirty.value) scriptSaveTimer = setTimeout(saveScr, 1000)
+})
+function flushScriptSaves() {
+  clearTimeout(rawSaveTimer)
+  clearTimeout(scriptSaveTimer)
+  return Promise.all([saveRaw(), saveScr()])
+}
+watch(panel, (_, prev) => { if (prev === 'script') flushScriptSaves() })
+onBeforeUnmount(flushScriptSaves)
+async function saveScriptNow() {
+  await flushScriptSaves()
+  if (!scriptDirty.value) toast.success(t('episode.script.saved'))
+}
+function saveStateText(saving, dirty) {
+  if (saving) return t('episode.script.saving')
+  return dirty ? t('episode.script.unsaved') : t('episode.script.autoSaved')
+}
+
+// 重新改写会覆盖当前剧本（包括手动修改），先确认
+const rewriteConfirmOpen = ref(false)
 // 发给 Agent 的 message 是功能性提示词而非 UI 文案：产出语言由后端全局「内容语言」指令控制，
 // 这里保持中文不随界面语言变化
-function doRewrite() { saveRaw(); runAgent('script_rewriter', '请读取剧本并改写为格式化剧本，然后保存', dramaId, epId.value, refresh, chatModelOverride(), chatConfigId()) }
+async function doRewrite() { await flushScriptSaves(); runAgent('script_rewriter', '请读取剧本并改写为格式化剧本，然后保存', dramaId, epId.value, refresh, chatModelOverride(), chatConfigId()) }
 function skipRewrite() {
   const raw = (localRaw.value || rawContent.value || '').trim()
   if (!raw) {
@@ -2996,10 +3068,11 @@ const extractingTargets = ref([])
 const extractingLabels = computed(() => EXTRACT_TARGETS.value.filter(x => extractingTargets.value.includes(x.key)).map(x => x.label).join(t('common.listJoin')))
 function isExtracting(target) { return extractingTargets.value.includes(target) }
 
-function doExtract(target) {
+async function doExtract(target) {
   if (isExtracting(target) || !epId.value) return
-  saveScr()
   extractingTargets.value.push(target)
+  // 提取由后端读库里的剧本，必须等保存完成
+  await flushScriptSaves()
   episodeAPI.extract(epId.value, target, chatModelOverride(), chatConfigId())
     .then(() => pollExtractStatus(target))
     .catch(e => {
@@ -4514,6 +4587,8 @@ onMounted(() => setTimeout(() => autoTour('episode', EPISODE_TOUR, t), 900))
   font-family: var(--font-body); background: var(--bg-input); color: var(--text-0);
 }
 .fill-textarea:focus { box-shadow: none; }
+.save-state { font-size: 11px; color: var(--text-3); }
+.save-state.dirty { color: var(--tag-warning-text); }
 
 /* Step Empty State */
 .step-empty {

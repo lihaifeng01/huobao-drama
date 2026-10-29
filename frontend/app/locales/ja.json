@@ -618,7 +618,12 @@
       "rewriting": "脚本をリライト中...",
       "scriptPlaceholder": "書式付き脚本の内容...",
       "rawRequired": "先に原文を入力してください",
-      "skipDone": "AI リライトをスキップしました。原文をそのまま使用します"
+      "skipDone": "AI リライトをスキップしました。原文をそのまま使用します",
+      "saving": "保存中…",
+      "unsaved": "未保存",
+      "autoSaved": "自動保存済み",
+      "rewriteConfirmTitle": "脚本を書き直しますか？",
+      "rewriteConfirmMsg": "AI が元の内容から脚本を再生成し、手動で行った修正を含む現在の脚本を上書きします。"
     },
     "prod": {
       "assets": "アセット制作",

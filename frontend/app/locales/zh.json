@@ -618,7 +618,12 @@
       "rewriting": "正在改写剧本...",
       "scriptPlaceholder": "格式化剧本内容...",
       "rawRequired": "请先填写原始内容",
-      "skipDone": "已跳过 AI 改写，当前将直接使用原始内容"
+      "skipDone": "已跳过 AI 改写，当前将直接使用原始内容",
+      "saving": "保存中…",
+      "unsaved": "未保存",
+      "autoSaved": "已自动保存",
+      "rewriteConfirmTitle": "重新改写剧本？",
+      "rewriteConfirmMsg": "AI 会根据原始内容重新生成剧本，覆盖当前剧本，包括你手动做的修改。"
     },
     "prod": {
       "assets": "资产制作",

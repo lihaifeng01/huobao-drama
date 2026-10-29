@@ -618,7 +618,12 @@
       "rewriting": "대본을 재작성하는 중...",
       "scriptPlaceholder": "형식화된 대본 내용...",
       "rawRequired": "먼저 원문을 입력하세요",
-      "skipDone": "AI 재작성을 건거이습니다. 원문을 그대로 사용합니다"
+      "skipDone": "AI 재작성을 건거이습니다. 원문을 그대로 사용합니다",
+      "saving": "저장 중…",
+      "unsaved": "저장 안 됨",
+      "autoSaved": "자동 저장됨",
+      "rewriteConfirmTitle": "대본을 다시 작성할까요?",
+      "rewriteConfirmMsg": "AI가 원본 내용으로 대본을 다시 생성해, 직접 수정한 내용을 포함한 현재 대본을 덮어씁니다."
     },
     "prod": {
       "assets": "에셋 제작",
