@@ -22,7 +22,9 @@ test('video presets use official provider endpoints', () => {
   assert.doesNotMatch(providerPresets, /api\.firemux\.com/)
   assert.match(settingsPage, /https:\/\/ark\.cn-beijing\.volces\.com/)
   assert.match(providerPresets, /https:\/\/\{WorkspaceId\}\.cn-beijing\.maas\.aliyuncs\.com/)
-  assert.doesNotMatch(settingsPage, /https:\/\/dashscope\.aliyuncs\.com/)
+  // 视频预设不再走 dashscope 旧域名；字幕（录音文件识别）的临时上传接口只在 dashscope 域名上提供
+  const videoPresets = providerPresets.slice(providerPresets.indexOf('video: {'), providerPresets.indexOf('subtitle: {'))
+  assert.doesNotMatch(videoPresets, /https:\/\/dashscope\.aliyuncs\.com/)
   assert.doesNotMatch(settingsPage, /https:\/\/api\.vidu\.com/)
 })
 

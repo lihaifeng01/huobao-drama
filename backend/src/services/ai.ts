@@ -8,7 +8,7 @@ import { joinProviderUrl } from './adapters/url.js'
 import { parseCustomOptions, parseUrlMode, withUrlMode } from './adapters/custom.js'
 import type { CustomOptions } from './adapters/types.js'
 
-export type ServiceType = 'text' | 'image' | 'video'
+export type ServiceType = 'text' | 'image' | 'video' | 'subtitle'
 
 export interface AIConfig {
   id?: number
@@ -37,6 +37,8 @@ export const officialProviders: Record<ServiceType, readonly string[]> = {
   text: ['openai', 'gemini', 'volcengine'],
   image: ['openai', 'gemini', 'volcengine'],
   video: ['volcengine', 'minimax', 'aliyun'],
+  // 字幕：阿里云百炼录音文件识别（Filetrans 系列 ASR 模型）
+  subtitle: ['aliyun'],
 }
 
 export function isOfficialProvider(serviceType?: string | null, provider?: string | null): boolean {

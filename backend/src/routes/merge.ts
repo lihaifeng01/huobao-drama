@@ -15,16 +15,18 @@ app.post('/episodes/:id/merge', async (c) => {
   if (!ep) return badRequest(c, '剧集不存在')
 
   let storyboardIds: number[] | undefined
+  let withSubtitles = true
   try {
     const body = await c.req.json()
     if (Array.isArray(body?.storyboard_ids)) {
       storyboardIds = body.storyboard_ids.map(Number).filter(Boolean)
     }
+    if (body?.with_subtitles === false) withSubtitles = false
   } catch { /* 无 body 时拼接全部 */ }
 
   try {
     logTaskStart('MergeAPI', 'episode-merge', { episodeId, dramaId: ep.dramaId, storyboardIds })
-    const mergeId = await mergeEpisodeVideos(episodeId, ep.dramaId, storyboardIds)
+    const mergeId = await mergeEpisodeVideos(episodeId, ep.dramaId, storyboardIds, withSubtitles)
     logTaskSuccess('MergeAPI', 'episode-merge', { episodeId, mergeId })
     return success(c, { merge_id: mergeId, status: 'processing' })
   } catch (err: any) {

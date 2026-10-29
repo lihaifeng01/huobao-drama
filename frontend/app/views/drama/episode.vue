@@ -132,7 +132,7 @@
           <svg class="sidebar-toggle-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           <span v-if="!sidebarCollapsed">{{ t('episode.sidebar.collapse') }}</span>
         </button>
-        <!-- 步骤跑马灯：四段主流程进度，当前段流动光效，点击段可跳转 -->
+        <!-- 步骤跑马灯：五段主流程进度，当前段流动光效，点击段可跳转 -->
         <div class="sidebar-progress">
           <div class="sidebar-progress-head">
             <span class="sidebar-progress-title">{{ currentStageLabel }}</span>
@@ -905,6 +905,139 @@
             </div>
           </div>
 
+          <!-- Sub: Subtitles（字幕制作：识别镜头视频语音 → SRT → 压制字幕版） -->
+          <div v-if="prodTab === 'subtitles'" class="prod-content">
+            <div class="prod-section-bar">
+              <span class="dim" style="font-size:12px">{{ t('episode.prod.subtitles') }}</span>
+              <span class="tag mono">{{ t('episode.sub.stat', { done: subDoneCount, total: subVideoSbs.length }) }}</span>
+              <span v-if="subtitleModelLabel" class="tag mono" :title="t('episode.sub.modelTitle')">{{ subtitleModelLabel }}</span>
+              <div class="ml-auto flex gap-1">
+                <button class="btn btn-sm" :class="{ 'is-on': subSelectMode }" :disabled="!subVideoSbs.length" @click="toggleSubSelectMode">
+                  {{ subSelectMode ? t('episode.vid.selectDone', { n: selectedSubSbIds.length }) : t('episode.vid.select') }}
+                </button>
+                <button class="btn btn-sm btn-primary" :disabled="!subVideoSbs.length || subBatching || !subtitleConfigs.length" @click="batchSubtitles">
+                  <Loader2 v-if="subBatching" :size="11" class="animate-spin" />
+                  <Captions v-else :size="12" />
+                  {{ subSelectMode && selectedSubSbIds.length ? t('episode.sub.batchSelected', { n: selectedSubSbIds.length }) : t('episode.sub.batchAll') }}
+                </button>
+                <a
+                  class="btn btn-sm"
+                  :class="{ 'is-disabled': !subDoneCount }"
+                  :href="subDoneCount && epId ? subtitleAPI.episodeSrtUrl(epId) : undefined"
+                  :title="t('episode.sub.downloadEpisodeTitle')"
+                  download
+                >
+                  <Download :size="12" />
+                  {{ t('episode.sub.downloadEpisode') }}
+                </a>
+              </div>
+            </div>
+            <div v-if="!subtitleConfigs.length" class="sub-config-hint">
+              {{ t('episode.sub.noConfig') }}
+              <NuxtLink to="/settings" class="btn btn-sm">{{ t('episode.sub.gotoSettings') }}</NuxtLink>
+            </div>
+            <div v-if="!subVideoSbs.length" class="step-empty" style="flex:1">
+              <div class="empty-visual"><Captions :size="32" :stroke-width="1.3" /></div>
+              <div class="empty-title">{{ t('episode.sub.emptyTitle') }}</div>
+              <div class="empty-desc">{{ t('episode.sub.emptyDesc') }}</div>
+              <button class="btn btn-primary" @click="prodTab = 'videos'">{{ t('episode.sub.gotoVideos') }}</button>
+            </div>
+            <div v-else class="sub-workbench">
+              <section class="sub-list">
+                <div v-if="subSelectMode" class="shot-quick-actions">
+                  <button class="shot-quick-btn" @click="selectedSubSbIds = subVideoSbs.map(sb => sb.id)">{{ t('episode.sb.selectAll') }}</button>
+                  <button class="shot-quick-btn" @click="selectedSubSbIds = subVideoSbs.filter(sb => ['none', 'stale', 'failed'].includes(subState(sb))).map(sb => sb.id)">{{ t('episode.sub.selectMissing') }}</button>
+                  <button class="shot-quick-btn" @click="selectedSubSbIds = []">{{ t('episode.sb.clear') }}</button>
+                </div>
+                <div
+                  v-for="sb in subVideoSbs"
+                  :key="sb.id"
+                  :class="['sub-row', { active: !subSelectMode && subSelected?.id === sb.id, 'is-selected': subSelectMode && selectedSubSbIds.includes(sb.id) }]"
+                  role="button"
+                  tabindex="0"
+                  @click="onSubRowClick(sb)"
+                  @keydown.enter.prevent="onSubRowClick(sb)"
+                >
+                  <span v-if="subSelectMode" class="shot-check" :class="{ on: selectedSubSbIds.includes(sb.id) }">
+                    <svg v-if="selectedSubSbIds.includes(sb.id)" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  </span>
+                  <video
+                    class="sub-row-thumb"
+                    :src="'/' + getVideoUrl(sb)"
+                    :poster="posterOf('/' + getVideoUrl(sb)) || undefined"
+                    preload="none"
+                    muted
+                    playsinline
+                    tabindex="-1"
+                  />
+                  <div class="sub-row-main">
+                    <div class="sub-row-title">#{{ sb.storyboard_number }} {{ sb.title || '' }}</div>
+                    <div class="sub-row-meta">
+                      <span :class="['video-task-status', 'is-' + subStateClass(sb)]">
+                        <Loader2 v-if="subState(sb) === 'processing'" :size="10" class="animate-spin" />
+                        {{ t('episode.sub.state.' + subState(sb)) }}
+                      </span>
+                      <span v-if="sb.subtitle_error && ['failed', 'no_speech'].includes(subState(sb))" class="sub-row-error" :title="sb.subtitle_error">{{ sb.subtitle_error }}</span>
+                    </div>
+                  </div>
+                  <div class="sub-row-actions" @click.stop>
+                    <button
+                      class="btn btn-sm"
+                      :disabled="subState(sb) === 'processing' || !subtitleConfigs.length"
+                      @click="genSubtitle(sb)"
+                    >
+                      {{ subState(sb) === 'none' ? t('episode.sub.generate') : t('episode.sub.regenerate') }}
+                    </button>
+                    <a
+                      v-if="sb.subtitle_url && subState(sb) === 'done'"
+                      class="btn btn-sm"
+                      :href="'/' + sb.subtitle_url"
+                      :download="`shot-${sb.storyboard_number}.srt`"
+                      :title="t('episode.sub.downloadSrt')"
+                    >
+                      <Download :size="11" /> SRT
+                    </a>
+                  </div>
+                </div>
+              </section>
+              <section class="sub-preview">
+                <template v-if="subSelected">
+                  <div class="sub-preview-head">
+                    <span class="sub-preview-title">#{{ subSelected.storyboard_number }} {{ subSelected.title || '' }}</span>
+                    <div v-if="subState(subSelected) === 'done'" class="ml-auto flex gap-1">
+                      <button type="button" :class="['btn btn-sm', { 'is-on': subPreviewMode === 'subtitled' }]" @click="subPreviewMode = 'subtitled'">{{ t('episode.sub.previewSubtitled') }}</button>
+                      <button type="button" :class="['btn btn-sm', { 'is-on': subPreviewMode === 'original' }]" @click="subPreviewMode = 'original'">{{ t('episode.sub.previewOriginal') }}</button>
+                    </div>
+                  </div>
+                  <div class="sub-player">
+                    <video :key="subPreviewSrc" :src="subPreviewSrc" :poster="posterOf(subPreviewSrc) || undefined" controls playsinline preload="metadata" />
+                  </div>
+                  <div class="sub-cues">
+                    <div class="sub-cues-head">
+                      <span>{{ t('episode.sub.cues') }}</span>
+                      <a
+                        v-if="subSelected.subtitled_video_url && subState(subSelected) === 'done'"
+                        class="btn btn-sm ml-auto"
+                        :href="'/' + subSelected.subtitled_video_url"
+                        :download="`shot-${subSelected.storyboard_number}-subtitled.mp4`"
+                      >
+                        <Download :size="11" /> {{ t('episode.sub.downloadVideo') }}
+                      </a>
+                      <button v-if="subState(subSelected) !== 'none' && subState(subSelected) !== 'processing'" class="btn btn-sm btn-ghost" @click="clearSubtitle(subSelected)">{{ t('episode.sub.clear') }}</button>
+                    </div>
+                    <div v-if="subCues.length" class="sub-cue-list">
+                      <div v-for="(c, i) in subCues" :key="i" class="sub-cue">
+                        <span class="mono sub-cue-time">{{ c.time }}</span>
+                        <span>{{ c.text }}</span>
+                      </div>
+                    </div>
+                    <div v-else class="sub-cue-empty">{{ subState(subSelected) === 'stale' ? t('episode.sub.staleHint') : t('episode.sub.noCues') }}</div>
+                  </div>
+                </template>
+              </section>
+            </div>
+          </div>
+
           <!-- Production Navigator -->
         </template>
       </div>
@@ -995,6 +1128,16 @@
                     {{ exportSelectedReadyIds.length === exportReadyIds.length && exportReadyIds.length ? t('episode.export.clearSelection') : t('episode.export.selectAllReady') }}
                   </button>
                   <button
+                    v-if="exportHasSubtitled"
+                    class="btn btn-sm"
+                    :class="{ 'is-on': mergeWithSubtitles }"
+                    :title="t('episode.export.withSubtitlesTitle')"
+                    @click="mergeWithSubtitles = !mergeWithSubtitles"
+                  >
+                    <Captions :size="12" />
+                    {{ mergeWithSubtitles ? t('episode.export.withSubtitles') : t('episode.export.withoutSubtitles') }}
+                  </button>
+                  <button
                     class="btn btn-sm btn-primary"
                     :disabled="!exportSelectedReadyIds.length"
                     @click="doMerge(exportSelectedReadyIds)"
@@ -1017,14 +1160,16 @@
                   <div class="exp-thumb">
                     <video
                       v-if="hasVid(sb)"
-                      :src="'/' + getVideoUrl(sb)"
-                      :poster="posterOf('/' + getVideoUrl(sb)) || undefined"
+                      :key="exportVideoUrl(sb)"
+                      :src="'/' + exportVideoUrl(sb)"
+                      :poster="posterOf('/' + exportVideoUrl(sb)) || undefined"
                       preload="none"
                       muted
                       playsinline
                       tabindex="-1"
                     />
-                    <div v-else class="exp-thumb-empty">
+                    <span v-if="exportUsesSubtitled(sb)" class="exp-sub-badge" :title="t('episode.export.withSubtitlesTitle')"><Captions :size="10" /></span>
+                    <div v-else-if="!hasVid(sb)" class="exp-thumb-empty">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
                     </div>
                     <span class="exp-thumb-index">#{{ String(i+1).padStart(2,'0') }}</span>
@@ -1388,7 +1533,8 @@
           <div class="image-viewer-head">
             <div class="image-viewer-title">{{ t('episode.export.shotPreview', { n: shotNumberOf(previewShot) }) }}</div>
             <span v-if="previewShot.duration" class="dim" style="font-size:11px">{{ previewShot.duration }}s</span>
-            <a :href="'/' + getVideoUrl(previewShot)" download class="btn btn-sm" style="margin-left:auto">
+            <span v-if="exportUsesSubtitled(previewShot)" class="tag tag-accent"><Captions :size="11" /> {{ t('episode.sub.previewSubtitled') }}</span>
+            <a :href="'/' + exportVideoUrl(previewShot)" download class="btn btn-sm" style="margin-left:auto">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               {{ t('common.download') }}
             </a>
@@ -1398,8 +1544,8 @@
           </div>
           <div class="merge-viewer-body">
             <video
-              :key="previewShot.id"
-              :src="'/' + getVideoUrl(previewShot)"
+              :key="previewShot.id + ':' + exportVideoUrl(previewShot)"
+              :src="'/' + exportVideoUrl(previewShot)"
               controls
               autoplay
               playsinline
@@ -1526,9 +1672,9 @@ import { toast } from 'vue-sonner'
 import { useI18n } from 'vue-i18n'
 import {
   Users, FileText, FolderKanban, Clapperboard, Download, Loader2,
-  Plus, X, ListTodo, CircleHelp, Images, BookOpen,
+  Plus, X, ListTodo, CircleHelp, Images, BookOpen, Captions,
 } from 'lucide-vue-next'
-import { api, dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, propAPI, taskAPI, mergeAPI, aiConfigAPI, uploadAPI } from '~/composables/useApi'
+import { api, dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, propAPI, taskAPI, mergeAPI, aiConfigAPI, uploadAPI, subtitleAPI } from '~/composables/useApi'
 import { startTour, autoTour } from '~/composables/useTour'
 import { resolveCharacterLook } from '~/composables/useCharacterIdentity'
 import { useAgent } from '~/composables/useAgent'
@@ -1604,7 +1750,7 @@ async function loadExportMerges() {
 const scriptStep = ref(storedPanel ? (storedPanel.scriptStep === 0 ? 0 : 1) : 0)
 // 旧版本地存储的 'storyboard' 子步骤已并入 'videos'（视频制作）
 const storedProdTab = storedPanel?.prodTab === 'storyboard' ? 'videos' : storedPanel?.prodTab
-const prodTab = ref(['assets', 'videos'].includes(storedProdTab) ? storedProdTab : 'assets')
+const prodTab = ref(['assets', 'videos', 'subtitles'].includes(storedProdTab) ? storedProdTab : 'assets')
 // 面板位置变化即持久化
 watch([panel, scriptStep, prodTab], ([p, s, pt]) => {
   try { localStorage.setItem(PANEL_STORE_KEY, JSON.stringify({ panel: p, scriptStep: s, prodTab: pt })) } catch { /* 静默 */ }
@@ -2530,12 +2676,14 @@ const assetReadyCount = computed(() => charImgCount.value + sceneImgCount.value 
 const prodTabDefs = computed(() => [
   { id: 'assets', label: t('episode.prod.assets'), icon: FolderKanban, badge: assetTotalCount.value ? `${assetReadyCount.value}/${assetTotalCount.value}` : '' },
   { id: 'videos', label: t('episode.prod.videos'), icon: Clapperboard, badge: sbs.value.length ? `${shotVidCount.value}/${sbs.value.length}` : '' },
+  { id: 'subtitles', label: t('episode.prod.subtitles'), icon: Captions, badge: subVideoSbs.value.length ? `${subDoneCount.value}/${subVideoSbs.value.length}` : '' },
 ])
 
 const mainStageDefs = computed(() => ([
   { id: 'script', label: t('episode.stage.script'), desc: t('episode.stage.scriptDesc'), icon: FileText },
   { id: 'assets', label: t('episode.prod.assets'), desc: t('episode.stage.assetsDesc'), icon: FolderKanban },
   { id: 'videos', label: t('episode.stage.videos'), desc: t('episode.stage.videosDesc'), icon: Clapperboard },
+  { id: 'subtitles', label: t('episode.prod.subtitles'), desc: t('episode.stage.subtitlesDesc'), icon: Captions },
   { id: 'export', label: t('episode.stage.export'), desc: t('episode.stage.exportDesc'), icon: Download },
 ]))
 
@@ -2554,6 +2702,7 @@ const sidebarSections = computed(() => ([
     items: [
       { key: 'prod:assets', label: t('episode.prod.assets'), desc: '', icon: Users },
       { key: 'prod:videos', label: t('episode.prod.videos'), desc: '', icon: Clapperboard },
+      { key: 'prod:subtitles', label: t('episode.prod.subtitles'), desc: '', icon: Captions },
     ],
   },
   {
@@ -2586,7 +2735,7 @@ function sectionState(sectionId) {
 const activeMainStage = computed(() => {
   if (panel.value === 'export') return 'export'
   if (panel.value === 'production') {
-    return prodTab.value === 'assets' ? 'assets' : 'videos'
+    return prodTab.value === 'assets' ? 'assets' : prodTab.value === 'subtitles' ? 'subtitles' : 'videos'
   }
   return 'script'
 })
@@ -2597,6 +2746,7 @@ function mainStageDone(stageId) {
   if (stageId === 'videos') {
     return !!sbs.value.length && shotVidCount.value === sbs.value.length
   }
+  if (stageId === 'subtitles') return !!subVideoSbs.value.length && subDoneCount.value === subVideoSbs.value.length
   if (stageId === 'export') return exportDone.value
   return false
 }
@@ -2617,6 +2767,11 @@ function goMainStage(stageId) {
     prodTab.value = 'videos'
     return
   }
+  if (stageId === 'subtitles') {
+    panel.value = 'production'
+    prodTab.value = 'subtitles'
+    return
+  }
   panel.value = 'export'
 }
 
@@ -2629,11 +2784,12 @@ const activeSubStepKey = computed(() => {
   return 'export:merge'
 })
 
-// 步骤跑马灯：四段主流程（剧本 → 资产制作 → 视频制作 → 导出），段点击跳转、当前段流动光效
+// 步骤跑马灯：五段主流程（剧本 → 资产制作 → 视频制作 → 字幕制作 → 导出），段点击跳转、当前段流动光效
 const mainProgressSteps = computed(() => [
   { id: 'script', label: t('episode.stage.script') },
   { id: 'assets', label: t('episode.prod.assets') },
   { id: 'videos', label: t('episode.stage.videos') },
+  { id: 'subtitles', label: t('episode.prod.subtitles') },
   { id: 'export', label: t('episode.stage.export') },
 ])
 const currentMainIdx = computed(() => {
@@ -3139,6 +3295,125 @@ function batchPropImages() {
 function getVideoUrl(s) { return s?.video_url || s?.videoUrl || s?.composed_video_url || s?.composedVideoUrl || null }
 function hasVid(s) { return !!getVideoUrl(s) }
 
+// ===== 字幕制作 =====
+// 状态来自镜头字段：subtitle_status + subtitle_source_video（与当前 video_url 不一致即字幕过期）
+const subtitleConfigs = ref([])
+const subtitleModelLabel = computed(() => {
+  const top = [...subtitleConfigs.value].filter(c => c.is_active).sort((a, b) => (b.priority || 0) - (a.priority || 0))[0]
+  return top?.model?.[0] || ''
+})
+const subVideoSbs = computed(() => sbs.value.filter(sb => sb.video_url || sb.videoUrl))
+function subState(sb) {
+  const status = sb?.subtitle_status
+  if (!status) return 'none'
+  if (status === 'processing') return 'processing'
+  if (status === 'failed') return 'failed'
+  if (sb.subtitle_source_video !== (sb.video_url || sb.videoUrl)) return 'stale'
+  return status === 'no_speech' ? 'no_speech' : 'done'
+}
+function subStateClass(sb) {
+  const st = subState(sb)
+  if (st === 'done' || st === 'no_speech') return 'done'
+  if (st === 'failed') return 'failed'
+  return 'pending'
+}
+const subDoneCount = computed(() => subVideoSbs.value.filter(sb => ['done', 'no_speech'].includes(subState(sb))).length)
+const subProcessingCount = computed(() => subVideoSbs.value.filter(sb => subState(sb) === 'processing').length)
+const subSelectedId = ref(null)
+const subSelected = computed(() => subVideoSbs.value.find(sb => sb.id === subSelectedId.value) || subVideoSbs.value[0] || null)
+const subPreviewMode = ref('subtitled')
+const subPreviewSrc = computed(() => {
+  const sb = subSelected.value
+  if (!sb) return ''
+  const useSub = subPreviewMode.value === 'subtitled' && subState(sb) === 'done' && sb.subtitled_video_url
+  return '/' + (useSub ? sb.subtitled_video_url : getVideoUrl(sb))
+})
+const subSelectMode = ref(false)
+const selectedSubSbIds = ref([])
+const subBatching = ref(false)
+function toggleSubSelectMode() {
+  subSelectMode.value = !subSelectMode.value
+  if (!subSelectMode.value) selectedSubSbIds.value = []
+}
+function onSubRowClick(sb) {
+  if (!subSelectMode.value) { subSelectedId.value = sb.id; return }
+  const ids = selectedSubSbIds.value
+  selectedSubSbIds.value = ids.includes(sb.id) ? ids.filter(id => id !== sb.id) : [...ids, sb.id]
+}
+
+// 预览区展示字幕条目：直接读取 SRT 文件
+const subCues = ref([])
+function parseSrtText(text) {
+  return String(text || '').replace(/\r/g, '').split(/\n{2,}/).map(block => {
+    const lines = block.trim().split('\n')
+    const i = lines.findIndex(l => l.includes('-->'))
+    if (i < 0) return null
+    const time = lines[i].split('-->').map(x => x.trim().replace(/,\d+$/, '').replace(/^00:/, '')).join(' → ')
+    return { time, text: lines.slice(i + 1).join(' ') }
+  }).filter(c => c && c.text)
+}
+watch(() => [subSelected.value?.id, subSelected.value?.subtitle_url, subState(subSelected.value)], async () => {
+  const sb = subSelected.value
+  subCues.value = []
+  if (!sb?.subtitle_url || subState(sb) !== 'done') return
+  try {
+    const res = await fetch('/' + sb.subtitle_url)
+    if (res.ok && subSelected.value?.id === sb.id) subCues.value = parseSrtText(await res.text())
+  } catch { /* 静默 */ }
+}, { immediate: true })
+
+async function reloadStoryboards() {
+  if (!epId.value) return
+  try { sbs.value = await episodeAPI.storyboards(epId.value) } catch { /* 静默 */ }
+}
+async function genSubtitle(sb) {
+  try {
+    await subtitleAPI.generate(sb.id)
+    toast.success(t('episode.sub.started', { n: 1 }))
+  } catch (e) {
+    toastError(e, { fallback: 'episode.sub.failed' })
+  }
+  await reloadStoryboards()
+}
+async function batchSubtitles() {
+  const ids = subSelectMode.value && selectedSubSbIds.value.length ? [...selectedSubSbIds.value] : undefined
+  subBatching.value = true
+  try {
+    const res = await subtitleAPI.batch(epId.value, ids)
+    const n = res?.storyboard_ids?.length || 0
+    if (n) toast.success(t('episode.sub.started', { n }))
+    else toast.info(t('episode.sub.nothingQueued'))
+    subSelectMode.value = false
+    selectedSubSbIds.value = []
+  } catch (e) {
+    toastError(e, { fallback: 'episode.sub.failed' })
+  } finally {
+    subBatching.value = false
+  }
+  await reloadStoryboards()
+}
+async function clearSubtitle(sb) {
+  try {
+    await subtitleAPI.clear(sb.id)
+    await reloadStoryboards()
+  } catch (e) { toastError(e) }
+}
+// 有镜头在制作字幕时轮询镜头列表；全部结束后提示结果
+let subPollTimer = null
+watch(subProcessingCount, (n, prev) => {
+  if (n > 0 && !subPollTimer) subPollTimer = setInterval(reloadStoryboards, 4000)
+  if (n === 0 && subPollTimer) {
+    clearInterval(subPollTimer)
+    subPollTimer = null
+    if (prev > 0) {
+      const failed = subVideoSbs.value.filter(sb => subState(sb) === 'failed').length
+      if (failed) toast.warning(t('episode.sub.finishedWithFailed', { n: failed }))
+      else toast.success(t('episode.sub.finished'))
+    }
+  }
+})
+onBeforeUnmount(() => { if (subPollTimer) clearInterval(subPollTimer) })
+
 // ===== 分镜视频历史（一个分镜可能生成多个视频,sys_task 留存全部记录）=====
 const sbVideoHistory = ref([])
 const previewVideoUrl = ref('') // 空表示当前分镜；历史视频可以是本地路径或远程 URL
@@ -3598,6 +3873,16 @@ async function pollVideoGeneration(generationId, storyboardId) {
   // 页面等待结束不代表上游失败；后续由任务列表轮询继续跟踪。
   await loadGenTasks()
 }
+// 拼接时已制作字幕的镜头默认使用字幕版
+const mergeWithSubtitles = ref(true)
+const exportHasSubtitled = computed(() => sbs.value.some(sb => subState(sb) === 'done' && sb.subtitled_video_url))
+// 导出页的缩略图、预览与下载跟随「使用字幕版」开关，与拼接实际取用的视频一致
+function exportUsesSubtitled(sb) {
+  return !!(mergeWithSubtitles.value && sb?.subtitled_video_url && subState(sb) === 'done')
+}
+function exportVideoUrl(sb) {
+  return exportUsesSubtitled(sb) ? sb.subtitled_video_url : getVideoUrl(sb)
+}
 async function doMerge(ids) {
   const storyboardIds = Array.isArray(ids) ? ids : undefined
   if (storyboardIds && !storyboardIds.length) {
@@ -3605,7 +3890,7 @@ async function doMerge(ids) {
     return
   }
   try {
-    await mergeAPI.merge(epId.value, storyboardIds)
+    await mergeAPI.merge(epId.value, storyboardIds, mergeWithSubtitles.value)
     toast.success(t('episode.export.mergingToast'))
   } catch (e) {
     toastError(e, { fallback: 'episode.export.mergeFailed' })
@@ -3626,11 +3911,13 @@ async function doMerge(ids) {
 }
 async function loadConfigs() {
   try {
-    const [imgCfgs, vidCfgs, txtCfgs] = await Promise.all([
+    const [imgCfgs, vidCfgs, txtCfgs, subCfgs] = await Promise.all([
       aiConfigAPI.list('image'),
       aiConfigAPI.list('video'),
       aiConfigAPI.list('text'),
+      aiConfigAPI.list('subtitle'),
     ])
+    subtitleConfigs.value = (subCfgs || []).filter(c => c.is_active)
     imageConfigs.value = imgCfgs || []
     videoConfigs.value = vidCfgs || []
     textConfigs.value = txtCfgs || []
@@ -6064,6 +6351,12 @@ button.video-task-metric.on { box-shadow: 0 0 0 2px var(--accent); }
   background: rgba(0,0,0,0.35);
   color: #fff;
 }
+.exp-sub-badge {
+  position: absolute; left: 6px; bottom: 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 5px;
+  background: var(--accent); color: var(--on-accent);
+}
 .exp-check.on { background: var(--accent); border-color: var(--accent); }
 .exp-thumb {
   position: relative;
@@ -6435,5 +6728,50 @@ button.video-task-metric.on { box-shadow: 0 0 0 2px var(--accent); }
     width: 100%;
   }
 
+}
+
+/* ===== 字幕制作 ===== */
+.sub-config-hint {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-radius: var(--radius);
+  background: var(--warning-bg); color: var(--tag-warning-text); font-size: 12px;
+}
+.sub-config-hint .btn { margin-left: auto; }
+.btn.is-disabled { opacity: 0.45; pointer-events: none; }
+.sub-workbench { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(300px, 420px) minmax(0, 1fr); gap: 10px; }
+.sub-list, .sub-preview {
+  min-height: 0; overflow-y: auto;
+  border: 1px solid var(--surface-outline); border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+}
+.sub-list { padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.sub-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 8px; border-radius: var(--radius); cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
+}
+.sub-row:hover { background: var(--bg-hover); }
+.sub-row.active, .sub-row.is-selected { background: var(--accent-bg); border-color: var(--accent); }
+.sub-row-thumb { width: 72px; height: 44px; object-fit: cover; border-radius: 6px; background: var(--media-surface); flex-shrink: 0; pointer-events: none; }
+.sub-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.sub-row-title { font-size: 12.5px; font-weight: 600; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sub-row-meta { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.sub-row-error { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sub-row-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.sub-preview { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.sub-preview-head { display: flex; align-items: center; gap: 8px; }
+.sub-preview-title { font-size: 13px; font-weight: 700; color: var(--text-0); font-family: var(--font-display); }
+.sub-player { display: flex; justify-content: center; background: var(--media-surface); border-radius: var(--radius); overflow: hidden; }
+.sub-player video { max-width: 100%; max-height: 46vh; display: block; }
+.sub-cues { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.sub-cues-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-2); }
+.sub-cue-list { display: flex; flex-direction: column; gap: 2px; }
+.sub-cue { display: flex; gap: 10px; padding: 4px 6px; border-radius: 6px; font-size: 12.5px; color: var(--text-1); }
+.sub-cue:hover { background: var(--bg-hover); }
+.sub-cue-time { color: var(--text-3); font-size: 11px; white-space: nowrap; padding-top: 1px; }
+.sub-cue-empty { font-size: 12px; color: var(--text-3); padding: 8px 6px; }
+@media (max-width: 900px) {
+  .sub-workbench { grid-template-columns: 1fr; }
 }
 </style>

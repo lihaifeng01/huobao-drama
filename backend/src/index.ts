@@ -25,8 +25,10 @@ import settings from './routes/settings.js'
 import storage from './routes/storage.js'
 import serverUpdate from './routes/serverUpdate.js'
 import library from './routes/library.js'
+import subtitles from './routes/subtitles.js'
 import { requestLogger, errorHandler } from './middleware/logger.js'
 import { resumeInterruptedTasks } from './services/generation.js'
+import { resetInterruptedSubtitles } from './services/subtitle.js'
 import { DATA_ROOT } from './utils/paths.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -71,6 +73,7 @@ api.route('/storage', storage)
 api.route('/settings', settings)
 api.route('/server-update', serverUpdate)
 api.route('/library', library)
+api.route('/subtitles', subtitles)
 
 app.route('/api/v1', api)
 
@@ -91,5 +94,6 @@ const port = Number(process.env.PORT || 5679)
 console.log(`🚀 Huobao Drama TS server on http://localhost:${port}`)
 
 await resumeInterruptedTasks()
+await resetInterruptedSubtitles()
 
 serve({ fetch: app.fetch, port })

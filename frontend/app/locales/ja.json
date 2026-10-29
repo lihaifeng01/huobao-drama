@@ -28,7 +28,8 @@
     "serviceType": {
       "text": "テキスト",
       "image": "画像",
-      "video": "動画"
+      "video": "動画",
+      "subtitle": "字幕"
     }
   },
   "layout": {
@@ -367,7 +368,8 @@
       "meta": {
         "text": "脚本リライト、キャラクター・シーン抽出、分镜分解などの Agent テキスト能力",
         "image": "キャラクター図、シーン図、ショット図などの静止画生成",
-        "video": "ショット動画の直接生成（デフォルト Seedance 2.0）"
+        "video": "ショット動画の直接生成（デフォルト Seedance 2.0）",
+        "subtitle": "ショット動画のセリフを認識して字幕を作成します。既定は Alibaba Cloud Model Studio の qwen-audio-3.0-asr-flash-filetrans"
       }
     },
     "styles": {
@@ -515,7 +517,8 @@
       "urlMode": "URL モード",
       "urlModeAuto": "自動補完",
       "urlModeBase": "Base URL をそのまま使用",
-      "urlModeHint": "自動補完：プロバイダー公式のルールで Base URL にパスを追加します（例：/v1、/api/v3）。そのまま使用：Base URL を完全なリクエスト URL として扱い、パスは追加しません。ポーリング URL は Base URL に / とタスク ID を付けたもので、リクエストパラメーターは公式形式のままです。"
+      "urlModeHint": "自動補完：プロバイダー公式のルールで Base URL にパスを追加します（例：/v1、/api/v3）。そのまま使用：Base URL を完全なリクエスト URL として扱い、パスは追加しません。ポーリング URL は Base URL に / とタスク ID を付けたもので、リクエストパラメーターは公式形式のままです。",
+      "subtitleHint": "字幕サービスは Alibaba Cloud Model Studio の録音ファイル認識を使用します。Base URL は https://dashscope.aliyuncs.com（シンガポールは https://dashscope-intl.aliyuncs.com）。ローカル音声は Model Studio の一時ストレージ（48 時間有効）にアップロードされるため、公開 URL は不要です。"
     },
     "styleDialog": {
       "editTitle": "スタイルプリセットを編集",
@@ -597,7 +600,8 @@
       "prodStage": "制作段階 · {step}",
       "exportDone": "書き出し段階 · 完了",
       "exportWaiting": "書き出し段階 · 結合待ち",
-      "workbench": "ワークベンチ"
+      "workbench": "ワークベンチ",
+      "subtitlesDesc": "音声認識と字幕焼き込み"
     },
     "script": {
       "raw": "原文",
@@ -631,7 +635,8 @@
       "emptyDesc": "キャラクター、シーン、小道具は抽出後ここに表示されます。個別に抽出するか、一括で並行抽出できます。",
       "startExtract": "抽出を開始",
       "scriptFirst": "先に脚本を完成させてください",
-      "goBack": "処理に戻る"
+      "goBack": "処理に戻る",
+      "subtitles": "字幕制作"
     },
     "asset": {
       "fallbackType": "資産",
@@ -932,7 +937,10 @@
       "markedDone": "完了",
       "markDoneTitle": "このエピソードの書き出しを手動で完了にします（再クリックで解除）",
       "markedDoneToast": "完了としてマークしました",
-      "unmarkDoneToast": "完了マークを解除しました"
+      "unmarkDoneToast": "完了マークを解除しました",
+      "withSubtitles": "字幕版を使用",
+      "withoutSubtitles": "字幕版を使わない",
+      "withSubtitlesTitle": "結合時、字幕を作成したショットは字幕焼き込み済みの動画を使用します"
     },
     "image": {
       "generatingChar": "キャラクター画像を生成中",
@@ -992,6 +1000,43 @@
       "transferring": "動画生成済み・転送中",
       "awaitingDelivery": "動画生成済み・配信待ち",
       "restoreHint": "既存のタスクを復旧し、重複生成を避けます"
+    },
+    "sub": {
+      "stat": "{done}/{total} 完了",
+      "modelTitle": "現在の字幕モデル",
+      "batchAll": "すべてに字幕",
+      "batchSelected": "選択に字幕 ({n})",
+      "selectMissing": "未完了を選択",
+      "downloadEpisode": "全話字幕",
+      "downloadEpisodeTitle": "完成動画のタイムラインに合わせた全話 SRT をダウンロード",
+      "downloadSrt": "SRT ファイルをダウンロード",
+      "downloadVideo": "字幕版動画をダウンロード",
+      "noConfig": "字幕サービスが有効になっていません。先に設定で追加してください。",
+      "gotoSettings": "設定へ",
+      "emptyTitle": "字幕を付けられる動画がありません",
+      "emptyDesc": "先に「動画制作」でショット動画を生成してください",
+      "gotoVideos": "動画制作へ",
+      "generate": "字幕を生成",
+      "regenerate": "再生成",
+      "clear": "字幕を削除",
+      "previewSubtitled": "字幕版",
+      "previewOriginal": "元動画",
+      "cues": "字幕内容",
+      "noCues": "字幕なし",
+      "staleHint": "ショット動画が再生成されたため字幕が古くなっています。再生成してください。",
+      "started": "{n} 件のショットの字幕タスクを送信しました",
+      "nothingQueued": "選択したショットはすでに処理中です",
+      "failed": "字幕生成に失敗しました",
+      "finished": "字幕制作が完了しました",
+      "finishedWithFailed": "字幕制作が終了しました（{n} 件失敗）",
+      "state": {
+        "none": "未生成",
+        "processing": "認識中",
+        "done": "完了",
+        "no_speech": "音声なし",
+        "failed": "失敗",
+        "stale": "期限切れ"
+      }
     }
   },
   "looks": {
