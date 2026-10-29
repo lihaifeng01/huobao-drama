@@ -134,7 +134,7 @@ export async function generateVideo(params: GenerateVideoParams): Promise<number
     const id = await createTask('video', config, {
       storyboardId: params.storyboardId,
       dramaId: params.dramaId,
-      // 统一追加「不要生成字幕」，字幕由字幕制作步骤压制
+      // 开头统一加上「不要带字幕」，字幕由字幕制作步骤压制
       prompt: withNoSubtitleDirective(params.prompt),
       model: params.model || config.model,
     }, {

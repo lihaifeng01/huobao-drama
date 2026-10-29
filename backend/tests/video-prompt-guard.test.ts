@@ -19,13 +19,15 @@ const { generateVideo } = await import('../src/services/generation.ts')
 const { setContentLanguage } = await import('../src/services/app-settings.ts')
 const { withNoSubtitleDirective } = await import('../src/services/video-prompt-guard.ts')
 
-test('追加「不要生成字幕」：按内容语言、只追加一次、空提示词不处理', () => {
+test('开头加上「不要带字幕」：按内容语言、只加一次、空提示词不处理', () => {
   const zh = withNoSubtitleDirective('0-3秒：@小明说：「你好」', 'zh')
-  assert.equal(zh, '0-3秒：@小明说：「你好」\n画面中不要出现字幕、对白文字或水印。')
+  assert.equal(zh, '注意：不要带字幕。\n0-3秒：@小明说：「你好」')
   assert.equal(withNoSubtitleDirective(zh, 'zh'), zh)
-  // 语言切换后，已带其他语言约束的提示词也不重复追加
+  // 语言切换后，已带其他语言约束的提示词也不重复加
   assert.equal(withNoSubtitleDirective(zh, 'en'), zh)
-  assert.match(withNoSubtitleDirective('A man walks in.', 'en'), /\nDo not render subtitles/)
+  // 用户已在提示词里手写了同样的句子，不重复
+  assert.equal(withNoSubtitleDirective('出场人物：@小明。注意：不要带字幕。', 'zh'), '出场人物：@小明。注意：不要带字幕。')
+  assert.equal(withNoSubtitleDirective('A man walks in.', 'en'), 'Note: no subtitles.\nA man walks in.')
   assert.equal(withNoSubtitleDirective('', 'zh'), '')
 })
 
@@ -55,8 +57,8 @@ test('提交给视频服务的提示词带有约束', async () => {
       task = db.select().from(schema.sysTask).where(eq(schema.sysTask.id, id)).get()!
     }
     assert.equal(task.status, 'failed')
-    assert.match(task.prompt || '', /画面中不要出现字幕、对白文字或水印。$/)
-    assert.match(JSON.stringify(bodies[0]), /画面中不要出现字幕、对白文字或水印/)
+    assert.match(task.prompt || '', /^注意：不要带字幕。\n@小明说/)
+    assert.match(JSON.stringify(bodies[0]), /注意：不要带字幕。/)
   } finally {
     await new Promise<void>(r => server.close(() => r()))
   }
