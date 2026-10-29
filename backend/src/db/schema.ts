@@ -3,7 +3,7 @@
  * 自 MySQL 迁移：varchar(x)→text（SQLite 不校验长度）、int→integer、
  * boolean→integer boolean mode、时间戳仍为 text 存 ISO 字符串，表/列名不变。
  */
-import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, real, primaryKey } from 'drizzle-orm/sqlite-core'
 
 export const dramas = sqliteTable('dramas', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -250,6 +250,28 @@ export const sysTask = sqliteTable('sys_task', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   completedAt: text('completed_at'),
+})
+
+// 字幕工具任务：status 只表示正在进行的操作（idle / transcribing / burning），有无字幕、成品看 subtitle_url / output_url，最近一次失败原因在 error_msg
+export const subtitleToolJobs = sqliteTable('subtitle_tool_jobs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  videoUrl: text('video_url').notNull(),
+  width: integer('width').default(0),
+  height: integer('height').default(0),
+  duration: real('duration').default(0),
+  hasAudio: integer('has_audio', { mode: 'boolean' }).default(true),
+  status: text('status').notNull().default('idle'),
+  errorMsg: text('error_msg'),
+  subtitleUrl: text('subtitle_url'),
+  // 字幕来源：asr = 自动识别；upload = 手动上传
+  subtitleSource: text('subtitle_source'),
+  // JSON：{ font_size, bottom_percent }
+  style: text('style'),
+  outputUrl: text('output_url'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
 })
 
 export const videoMerges = sqliteTable('video_merges', {

@@ -26,9 +26,11 @@ import storage from './routes/storage.js'
 import serverUpdate from './routes/serverUpdate.js'
 import library from './routes/library.js'
 import subtitles from './routes/subtitles.js'
+import tools from './routes/tools.js'
 import { requestLogger, errorHandler } from './middleware/logger.js'
 import { resumeInterruptedTasks } from './services/generation.js'
 import { resetInterruptedSubtitles } from './services/subtitle.js'
+import { resetInterruptedToolJobs } from './services/subtitle-tool.js'
 import { DATA_ROOT } from './utils/paths.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -74,6 +76,7 @@ api.route('/settings', settings)
 api.route('/server-update', serverUpdate)
 api.route('/library', library)
 api.route('/subtitles', subtitles)
+api.route('/tools', tools)
 
 app.route('/api/v1', api)
 
@@ -95,5 +98,6 @@ console.log(`🚀 Huobao Drama TS server on http://localhost:${port}`)
 
 await resumeInterruptedTasks()
 await resetInterruptedSubtitles()
+await resetInterruptedToolJobs()
 
 serve({ fetch: app.fetch, port })

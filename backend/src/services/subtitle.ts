@@ -137,34 +137,38 @@ async function processStoryboard(id: number, sel: SubtitleSelection) {
     return
   }
 
+  const portrait = info.height > info.width
+  const cues = await transcribeVideoCues(videoAbs, config, portrait, LABEL)
+  if (!cues.length) {
+    await finish(id, sourceVideo, { status: 'no_speech', error: '未识别到语音' })
+    return
+  }
+
+  const subDir = path.join(STORAGE_ROOT, 'subtitles')
+  fs.mkdirSync(subDir, { recursive: true })
+  const srtName = `${uuid()}.srt`
+  fs.writeFileSync(path.join(subDir, srtName), cuesToSrt(cues), 'utf-8')
+  const subtitleUrl = `static/subtitles/${srtName}`
+
+  const videoDir = path.join(STORAGE_ROOT, 'subtitled')
+  fs.mkdirSync(videoDir, { recursive: true })
+  const videoName = `${uuid()}.mp4`
+  await burnSubtitles(videoAbs, path.join(subDir, srtName), path.join(videoDir, videoName), portrait)
+  const subtitledVideoUrl = `static/subtitled/${videoName}`
+  await extractVideoPoster(subtitledVideoUrl)
+
+  await finish(id, sourceVideo, { status: 'completed', subtitleUrl, subtitledVideoUrl })
+  logTaskSuccess(LABEL, 'subtitle', { storyboardId: id, cues: cues.length, subtitleUrl, subtitledVideoUrl })
+}
+
+/** 抽 16kHz 单声道音频 → 识别 → 切成字幕条目（字幕工具与工作流共用）；无语音返回空数组 */
+export async function transcribeVideoCues(videoAbs: string, config: AIConfig, portrait: boolean, label = LABEL): Promise<SrtCue[]> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'huobao-sub-'))
   try {
     const audioPath = path.join(tmpDir, `${uuid()}.mp3`)
     await runFfmpeg(['-y', '-i', videoAbs, '-vn', '-ac', '1', '-ar', '16000', '-c:a', 'libmp3lame', '-b:a', '64k', audioPath])
-
-    const sentences = await transcribeAudioFile(config, audioPath, LABEL)
-    const portrait = info.height > info.width
-    const cues = sentencesToCues(sentences, portrait ? 12 : 18)
-    if (!cues.length) {
-      await finish(id, sourceVideo, { status: 'no_speech', error: '未识别到语音' })
-      return
-    }
-
-    const subDir = path.join(STORAGE_ROOT, 'subtitles')
-    fs.mkdirSync(subDir, { recursive: true })
-    const srtName = `${uuid()}.srt`
-    fs.writeFileSync(path.join(subDir, srtName), cuesToSrt(cues), 'utf-8')
-    const subtitleUrl = `static/subtitles/${srtName}`
-
-    const videoDir = path.join(STORAGE_ROOT, 'subtitled')
-    fs.mkdirSync(videoDir, { recursive: true })
-    const videoName = `${uuid()}.mp4`
-    await burnSubtitles(videoAbs, path.join(subDir, srtName), path.join(videoDir, videoName), portrait)
-    const subtitledVideoUrl = `static/subtitled/${videoName}`
-    await extractVideoPoster(subtitledVideoUrl)
-
-    await finish(id, sourceVideo, { status: 'completed', subtitleUrl, subtitledVideoUrl })
-    logTaskSuccess(LABEL, 'subtitle', { storyboardId: id, cues: cues.length, subtitleUrl, subtitledVideoUrl })
+    const sentences = await transcribeAudioFile(config, audioPath, label)
+    return sentencesToCues(sentences, portrait ? 12 : 18)
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true })
   }
@@ -183,7 +187,7 @@ async function finish(id: number, sourceVideo: string, r: { status: string; erro
 
 // ---------- FFmpeg ----------
 
-function probeVideo(filePath: string): Promise<{ hasAudio: boolean; width: number; height: number; duration: number }> {
+export function probeVideo(filePath: string): Promise<{ hasAudio: boolean; width: number; height: number; duration: number }> {
   return new Promise((resolve, reject) => {
     ffmpeg.ffprobe(filePath, (err, meta) => {
       if (err) { reject(new Error(`读取视频信息失败：${err.message}`)); return }
@@ -199,7 +203,7 @@ function probeVideo(filePath: string): Promise<{ hasAudio: boolean; width: numbe
 }
 
 /** 直接 spawn ffmpeg：subtitles 滤镜的文件路径以 cwd 相对名传入，避开 Windows 盘符冒号的转义问题 */
-function runFfmpeg(args: string[], cwd?: string): Promise<void> {
+export function runFfmpeg(args: string[], cwd?: string): Promise<void> {
   return new Promise((resolve, reject) => {
     let stderr = ''
     let child
@@ -218,7 +222,7 @@ function runFfmpeg(args: string[], cwd?: string): Promise<void> {
   })
 }
 
-function subtitleFont() {
+export function subtitleFont() {
   if (process.platform === 'darwin') return 'PingFang SC'
   if (process.platform === 'win32') return 'Microsoft YaHei'
   // Docker 镜像内装的是文泉驿微米黑；其他 Linux 上找不到时 fontconfig 会回退到已装的中文字体

@@ -36,6 +36,7 @@
     "nav": {
       "projects": "Projects",
       "library": "Assets",
+      "tools": "Tools",
       "settings": "Settings"
     },
     "banner": {
@@ -1173,6 +1174,59 @@
         "title": "Replay anytime",
         "desc": "Click this \"?\" button to replay this page's guide. Happy creating!"
       }
+    }
+  },
+  "tools": {
+    "title": "Tools",
+    "sub": "Standalone utilities outside the episode workflow",
+    "subtitle": {
+      "name": "Subtitles",
+      "desc": "Upload a video, transcribe or import subtitles, adjust the style and burn them in",
+      "jobs": "Jobs",
+      "uploadVideo": "Upload video",
+      "uploading": "Uploading {pct}%",
+      "uploaded": "Video uploaded",
+      "emptyJobs": "No jobs yet. Upload a video to start",
+      "dropTitle": "Upload or drop a video",
+      "dropDesc": "mp4 / mov / m4v / webm / mkv / avi, up to 500MB",
+      "notVideo": "Please drop a video file",
+      "previewEdit": "Style preview",
+      "previewOutput": "Result",
+      "previewHint": "Click a subtitle line on the right to jump to it. Subtitles on the video are a simulated preview of the current style",
+      "stepSubtitle": "Subtitles",
+      "model": "Model",
+      "autoTranscribe": "Transcribe",
+      "transcribing": "Transcribing…",
+      "uploadSubtitle": "Upload subtitle file",
+      "subtitleUploaded": "Subtitles imported",
+      "noAudio": "The video has no audio track, so it cannot be transcribed. Upload a subtitle file instead",
+      "sourceAsr": "Transcribed",
+      "sourceUpload": "Uploaded",
+      "cueCount": "{n} lines",
+      "noSubtitleYet": "No subtitles yet. Transcribe, or upload an .srt / .vtt file (UTF-8 or GBK)",
+      "stepStyle": "Style",
+      "resetStyle": "Reset",
+      "fontSize": "Font size",
+      "position": "From bottom",
+      "positionHint": "Distance from the bottom of the frame to the subtitle",
+      "posBottom": "Bottom",
+      "posMiddle": "Middle",
+      "posTop": "Top",
+      "fontDefault": "Uses the default system CJK font, white text with black outline",
+      "stepBurn": "Burn in",
+      "burn": "Burn in",
+      "reburn": "Burn in again",
+      "burning": "Burning…",
+      "downloadVideo": "Download video",
+      "needSubtitle": "Transcribe or upload subtitles first",
+      "styleChanged": "Style changed. Burn in again to apply it",
+      "transcribeDone": "Transcription finished",
+      "burnDone": "Video ready",
+      "stateNew": "New",
+      "stateReady": "Has subtitles",
+      "stateDone": "Done",
+      "stateFailed": "Failed",
+      "deleteConfirm": "Delete job \"{name}\"?"
     }
   }
 }

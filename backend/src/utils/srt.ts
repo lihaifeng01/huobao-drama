@@ -124,19 +124,33 @@ export function cuesToSrt(cues: SrtCue[]) {
   return cues.map((c, i) => `${i + 1}\n${formatSrtTime(c.start)} --> ${formatSrtTime(c.end)}\n${c.text}\n`).join('\n')
 }
 
+/** 解析 SRT / WebVTT（VTT 允许省略小时、时间后可带样式设置、文本里可带 <v> 等标签） */
 export function parseSrt(content: string): SrtCue[] {
   const cues: SrtCue[] = []
   const toMs = (t: string) => {
-    const m = t.trim().match(/(\d+):(\d+):(\d+)[,.](\d+)/)
-    return m ? ((+m[1] * 60 + +m[2]) * 60 + +m[3]) * 1000 + +m[4] : 0
+    const m = t.trim().match(/^(?:(\d+):)?(\d+):(\d+)[,.](\d+)/)
+    if (!m) return 0
+    const frac = Math.round(Number(`0.${m[4]}`) * 1000)
+    return ((Number(m[1] || 0) * 60 + Number(m[2])) * 60 + Number(m[3])) * 1000 + frac
   }
-  for (const block of content.replace(/\r/g, '').split(/\n{2,}/)) {
+  for (const block of content.replace(/^\uFEFF/, '').replace(/\r/g, '').split(/\n{2,}/)) {
     const lines = block.trim().split('\n')
     const timeIdx = lines.findIndex(l => l.includes('-->'))
     if (timeIdx < 0) continue
     const [a, b] = lines[timeIdx].split('-->')
-    const text = lines.slice(timeIdx + 1).join('\n').trim()
+    const text = lines.slice(timeIdx + 1).join('\n').replace(/<[^>]+>/g, '').trim()
     if (text) cues.push({ start: toMs(a), end: toMs(b), text })
   }
   return cues
+}
+
+/** 字幕文件解码：带 BOM 的 UTF-8/UTF-16 按 BOM；否则先试 UTF-8，不合法时按 GB18030（国内常见的 GBK 字幕） */
+export function decodeSubtitleFile(buf: Buffer): string {
+  if (buf[0] === 0xff && buf[1] === 0xfe) return new TextDecoder('utf-16le').decode(buf.subarray(2))
+  if (buf[0] === 0xfe && buf[1] === 0xff) return new TextDecoder('utf-16be').decode(buf.subarray(2))
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(buf).replace(/^\uFEFF/, '')
+  } catch {
+    return new TextDecoder('gb18030').decode(buf)
+  }
 }
