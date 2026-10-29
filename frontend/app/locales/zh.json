@@ -36,6 +36,7 @@
     "nav": {
       "projects": "项目",
       "library": "素材",
+      "tools": "工具",
       "settings": "设置"
     },
     "banner": {
@@ -1173,6 +1174,59 @@
         "title": "随时重看引导",
         "desc": "点这个「?」按钮可重新播放本页引导。祝创作顺利！"
       }
+    }
+  },
+  "tools": {
+    "title": "工具",
+    "sub": "独立于剧集流程的实用工具",
+    "subtitle": {
+      "name": "生成字幕",
+      "desc": "上传视频，自动识别或导入字幕，调整样式后合成",
+      "jobs": "任务",
+      "uploadVideo": "上传视频",
+      "uploading": "上传中 {pct}%",
+      "uploaded": "视频已上传",
+      "emptyJobs": "还没有任务，上传一个视频开始",
+      "dropTitle": "上传或拖入视频",
+      "dropDesc": "支持 mp4 / mov / m4v / webm / mkv / avi，最大 500MB",
+      "notVideo": "请拖入视频文件",
+      "previewEdit": "样式预览",
+      "previewOutput": "合成结果",
+      "previewHint": "点击右侧字幕条目可跳到对应位置；画面上的字幕是按当前样式模拟的预览",
+      "stepSubtitle": "字幕",
+      "model": "识别模型",
+      "autoTranscribe": "自动识别",
+      "transcribing": "识别中…",
+      "uploadSubtitle": "上传字幕文件",
+      "subtitleUploaded": "字幕已导入",
+      "noAudio": "视频没有音轨，无法自动识别，可以上传字幕文件",
+      "sourceAsr": "自动识别",
+      "sourceUpload": "手动上传",
+      "cueCount": "{n} 条",
+      "noSubtitleYet": "还没有字幕。自动识别，或上传 .srt / .vtt 字幕文件（支持 UTF-8 和 GBK 编码）",
+      "stepStyle": "样式",
+      "resetStyle": "恢复默认",
+      "fontSize": "字号",
+      "position": "距底部",
+      "positionHint": "字幕底边距离画面底部的高度",
+      "posBottom": "底部",
+      "posMiddle": "中部",
+      "posTop": "顶部",
+      "fontDefault": "字体暂用系统默认中文字体，白字黑描边",
+      "stepBurn": "合成",
+      "burn": "合成视频",
+      "reburn": "重新合成",
+      "burning": "合成中…",
+      "downloadVideo": "下载视频",
+      "needSubtitle": "先生成或上传字幕",
+      "styleChanged": "样式已修改，重新合成后生效",
+      "transcribeDone": "字幕识别完成",
+      "burnDone": "视频合成完成",
+      "stateNew": "待处理",
+      "stateReady": "有字幕",
+      "stateDone": "已合成",
+      "stateFailed": "失败",
+      "deleteConfirm": "删除任务「{name}」？"
     }
   }
 }

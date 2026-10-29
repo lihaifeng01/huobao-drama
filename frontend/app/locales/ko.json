@@ -36,6 +36,7 @@
     "nav": {
       "projects": "프로젝트",
       "library": "소재",
+      "tools": "도구",
       "settings": "설정"
     },
     "banner": {
@@ -1173,6 +1174,59 @@
         "title": "언제든 다시 보기",
         "desc": "이 \"?\" 버튼으로 이 페이지의 가이드를 다시 재생할 수 있습니다. 즐거운 제작 되세요!"
       }
+    }
+  },
+  "tools": {
+    "title": "도구",
+    "sub": "에피소드 제작 흐름과 독립된 도구",
+    "subtitle": {
+      "name": "자막 생성",
+      "desc": "영상을 올리고 자동 인식하거나 자막을 가져와 스타일을 조정한 뒤 합성",
+      "jobs": "작업",
+      "uploadVideo": "영상 업로드",
+      "uploading": "업로드 중 {pct}%",
+      "uploaded": "영상을 업로드했습니다",
+      "emptyJobs": "작업이 없습니다. 영상을 업로드해 시작하세요",
+      "dropTitle": "영상을 업로드하거나 끌어다 놓기",
+      "dropDesc": "mp4 / mov / m4v / webm / mkv / avi, 최대 500MB",
+      "notVideo": "영상 파일을 끌어다 놓으세요",
+      "previewEdit": "스타일 미리보기",
+      "previewOutput": "합성 결과",
+      "previewHint": "오른쪽 자막 줄을 클릭하면 해당 위치로 이동합니다. 화면의 자막은 현재 스타일을 시뮬레이션한 미리보기입니다",
+      "stepSubtitle": "자막",
+      "model": "인식 모델",
+      "autoTranscribe": "자동 인식",
+      "transcribing": "인식 중…",
+      "uploadSubtitle": "자막 파일 업로드",
+      "subtitleUploaded": "자막을 가져왔습니다",
+      "noAudio": "영상에 오디오 트랙이 없어 자동 인식할 수 없습니다. 자막 파일을 업로드하세요",
+      "sourceAsr": "자동 인식",
+      "sourceUpload": "직접 업로드",
+      "cueCount": "{n}줄",
+      "noSubtitleYet": "아직 자막이 없습니다. 자동 인식하거나 .srt / .vtt 파일(UTF-8 / GBK)을 업로드하세요",
+      "stepStyle": "스타일",
+      "resetStyle": "기본값",
+      "fontSize": "글자 크기",
+      "position": "아래에서",
+      "positionHint": "화면 아래쪽에서 자막까지의 높이",
+      "posBottom": "아래",
+      "posMiddle": "가운데",
+      "posTop": "위",
+      "fontDefault": "글꼴은 시스템 기본 CJK 글꼴, 흰 글자에 검은 테두리",
+      "stepBurn": "합성",
+      "burn": "영상 합성",
+      "reburn": "다시 합성",
+      "burning": "합성 중…",
+      "downloadVideo": "영상 다운로드",
+      "needSubtitle": "먼저 자막을 생성하거나 업로드하세요",
+      "styleChanged": "스타일이 변경되었습니다. 다시 합성하면 적용됩니다",
+      "transcribeDone": "자막 인식 완료",
+      "burnDone": "영상 합성 완료",
+      "stateNew": "대기",
+      "stateReady": "자막 있음",
+      "stateDone": "합성 완료",
+      "stateFailed": "실패",
+      "deleteConfirm": "작업 「{name}」을(를) 삭제할까요?"
     }
   }
 }

@@ -24,6 +24,10 @@
           <Images :size="15" :stroke-width="1.8" />
           <span>{{ t('layout.nav.library') }}</span>
         </NuxtLink>
+        <NuxtLink to="/tools" class="nav-link" :class="{ active: route.path === '/tools' }">
+          <Wrench :size="15" :stroke-width="1.8" />
+          <span>{{ t('layout.nav.tools') }}</span>
+        </NuxtLink>
         <NuxtLink to="/settings" class="nav-link" :class="{ active: route.path === '/settings' }">
           <Settings :size="15" :stroke-width="1.8" />
           <span>{{ t('layout.nav.settings') }}</span>
@@ -60,7 +64,7 @@
 </template>
 
 <script setup>
-import { LayoutGrid, Images, Settings, TriangleAlert, Github } from 'lucide-vue-next'
+import { LayoutGrid, Images, Wrench, Settings, TriangleAlert, Github } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { aiConfigAPI } from '~/composables/useApi'
 import brandLogo from '~/assets/brand-logo.png'

@@ -226,6 +226,26 @@ export const sqliteSchemaStatements = [
   `CREATE INDEX IF NOT EXISTS idx_sys_task_drama_id ON sys_task (drama_id)`,
   `CREATE INDEX IF NOT EXISTS idx_sys_task_storyboard_id ON sys_task (storyboard_id)`,
 
+  // 字幕工具：独立于剧集工作流，一个任务 = 一个上传的视频
+  `CREATE TABLE IF NOT EXISTS subtitle_tool_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    video_url TEXT NOT NULL,
+    width INTEGER DEFAULT 0,
+    height INTEGER DEFAULT 0,
+    duration REAL DEFAULT 0,
+    has_audio INTEGER DEFAULT 1,
+    status TEXT NOT NULL DEFAULT 'idle',
+    error_msg TEXT,
+    subtitle_url TEXT,
+    subtitle_source TEXT,
+    style TEXT,
+    output_url TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  )`,
+
   `CREATE TABLE IF NOT EXISTS video_merges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     episode_id INTEGER,

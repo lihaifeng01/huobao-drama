@@ -142,6 +142,36 @@ async function uploadReq<T = any>(path: string, file: File, fields?: Record<stri
   return json.data ?? json
 }
 
+/** 带进度的上传（XHR）：大视频上传需要显示进度，fetch 拿不到上传进度 */
+function uploadWithProgress<T = any>(path: string, file: File, onProgress?: (ratio: number) => void): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `${BASE}${path}`)
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress?.(e.loaded / e.total) }
+    xhr.onerror = () => reject(new Error('上传失败，请检查网络'))
+    xhr.onload = () => {
+      let json: any = null
+      try { json = JSON.parse(xhr.responseText) } catch { /* 非 JSON */ }
+      if (xhr.status >= 400 || !json || (json.code && json.code >= 400)) reject(new Error(json?.message || `${xhr.status}`))
+      else resolve(json.data ?? json)
+    }
+    xhr.send(fd)
+  })
+}
+
+// 字幕工具（独立于剧集工作流）
+export const subtitleToolAPI = {
+  list: () => api.get<any[]>('/tools/subtitle-jobs'),
+  get: (id: number) => api.get(`/tools/subtitle-jobs/${id}`),
+  create: (file: File, onProgress?: (ratio: number) => void) => uploadWithProgress('/tools/subtitle-jobs', file, onProgress),
+  transcribe: (id: number, sel: { config_id?: number; model?: string } = {}) => api.post(`/tools/subtitle-jobs/${id}/transcribe`, sel),
+  uploadSubtitle: (id: number, file: File) => uploadReq(`/tools/subtitle-jobs/${id}/subtitle`, file),
+  burn: (id: number, style: { font_size: number; bottom_percent: number }) => api.post(`/tools/subtitle-jobs/${id}/burn`, style),
+  del: (id: number) => api.del(`/tools/subtitle-jobs/${id}`),
+}
+
 export const uploadAPI = {
   image: (f: File) => uploadReq<{ url: string; path: string }>('/upload/image', f),
   video: (f: File) => uploadReq<{ url: string; path: string }>('/upload/video', f),
