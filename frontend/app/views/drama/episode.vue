@@ -1160,14 +1160,16 @@
                   <div class="exp-thumb">
                     <video
                       v-if="hasVid(sb)"
-                      :src="'/' + getVideoUrl(sb)"
-                      :poster="posterOf('/' + getVideoUrl(sb)) || undefined"
+                      :key="exportVideoUrl(sb)"
+                      :src="'/' + exportVideoUrl(sb)"
+                      :poster="posterOf('/' + exportVideoUrl(sb)) || undefined"
                       preload="none"
                       muted
                       playsinline
                       tabindex="-1"
                     />
-                    <div v-else class="exp-thumb-empty">
+                    <span v-if="exportUsesSubtitled(sb)" class="exp-sub-badge" :title="t('episode.export.withSubtitlesTitle')"><Captions :size="10" /></span>
+                    <div v-else-if="!hasVid(sb)" class="exp-thumb-empty">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
                     </div>
                     <span class="exp-thumb-index">#{{ String(i+1).padStart(2,'0') }}</span>
@@ -1531,7 +1533,8 @@
           <div class="image-viewer-head">
             <div class="image-viewer-title">{{ t('episode.export.shotPreview', { n: shotNumberOf(previewShot) }) }}</div>
             <span v-if="previewShot.duration" class="dim" style="font-size:11px">{{ previewShot.duration }}s</span>
-            <a :href="'/' + getVideoUrl(previewShot)" download class="btn btn-sm" style="margin-left:auto">
+            <span v-if="exportUsesSubtitled(previewShot)" class="tag tag-accent"><Captions :size="11" /> {{ t('episode.sub.previewSubtitled') }}</span>
+            <a :href="'/' + exportVideoUrl(previewShot)" download class="btn btn-sm" style="margin-left:auto">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               {{ t('common.download') }}
             </a>
@@ -1541,8 +1544,8 @@
           </div>
           <div class="merge-viewer-body">
             <video
-              :key="previewShot.id"
-              :src="'/' + getVideoUrl(previewShot)"
+              :key="previewShot.id + ':' + exportVideoUrl(previewShot)"
+              :src="'/' + exportVideoUrl(previewShot)"
               controls
               autoplay
               playsinline
@@ -3873,6 +3876,13 @@ async function pollVideoGeneration(generationId, storyboardId) {
 // 拼接时已制作字幕的镜头默认使用字幕版
 const mergeWithSubtitles = ref(true)
 const exportHasSubtitled = computed(() => sbs.value.some(sb => subState(sb) === 'done' && sb.subtitled_video_url))
+// 导出页的缩略图、预览与下载跟随「使用字幕版」开关，与拼接实际取用的视频一致
+function exportUsesSubtitled(sb) {
+  return !!(mergeWithSubtitles.value && sb?.subtitled_video_url && subState(sb) === 'done')
+}
+function exportVideoUrl(sb) {
+  return exportUsesSubtitled(sb) ? sb.subtitled_video_url : getVideoUrl(sb)
+}
 async function doMerge(ids) {
   const storyboardIds = Array.isArray(ids) ? ids : undefined
   if (storyboardIds && !storyboardIds.length) {
@@ -6340,6 +6350,12 @@ button.video-task-metric.on { box-shadow: 0 0 0 2px var(--accent); }
   border: 1.5px solid rgba(255,255,255,0.9);
   background: rgba(0,0,0,0.35);
   color: #fff;
+}
+.exp-sub-badge {
+  position: absolute; left: 6px; bottom: 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 5px;
+  background: var(--accent); color: var(--on-accent);
 }
 .exp-check.on { background: var(--accent); border-color: var(--accent); }
 .exp-thumb {
