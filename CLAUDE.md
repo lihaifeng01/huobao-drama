@@ -4,6 +4,8 @@
 
 火宝短剧（Huobao Drama）— AI 短剧/漫剧一站式制作工具。全 TypeScript 栈：小说 → 剧本改写 → 资产提取 → 生图 → 分镜拆解 → 生视频 → FFmpeg 拼接导出。支持 Electron 桌面版（macOS dmg）与服务器部署。
 
+本仓库从 [chatfire-AI/huobao-drama](https://github.com/chatfire-AI/huobao-drama) 独立维护（`lihaifeng01/huobao-drama`），发版、更新清单、Docker 镜像（`lhf/huobao-drama` / GHCR）都指向本仓库，不要改回上游地址。
+
 ## Structure
 
 ```

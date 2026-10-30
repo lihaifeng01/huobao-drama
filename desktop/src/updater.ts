@@ -1,8 +1,8 @@
 /**
  * 应用内更新器（无 Apple 签名方案，同 Tauri updater 思路）
  *
- * - 清单：HUOBAO_UPDATE_FEED；未设置时双源 —— 国内 COS 优先，GitHub Releases 兜底
- *   （两个源返回同一份清单结构，仅下载 URL 域名不同，见 desktop/scripts/publish-release.mjs）
+ * - 清单：HUOBAO_UPDATE_FEED；未设置时读本仓库 GitHub Releases 的 latest.json
+ *   （自建 COS 镜像时用 HUOBAO_UPDATE_FEED 指向其 latest.json，结构相同，见 desktop/scripts/publish-release.mjs）
  * - macOS：下载 zip（.app 归档）→ sha256 校验 → 解压 → 旧包改名 .old 备胎 → 新包就位
  *   → `open` 拉起新应用 → 当前实例退出；下次启动清理 .old
  * - Windows：下载 Setup.exe → sha256 校验 → detached 静默安装（/S）→ 当前实例退出
@@ -16,12 +16,12 @@ import * as path from 'path'
 import crypto from 'crypto'
 import { spawn, execFile } from 'child_process'
 
-// 双源：COS（国内直连）优先，GitHub（海外）兜底；HUOBAO_UPDATE_FEED 可整体覆盖
+// 本仓库已从上游 chatfire-AI/huobao-drama 独立，默认只读本仓库 GitHub Releases 的清单
+// （上游 COS 源发布的是上游版本，不能再混用）；HUOBAO_UPDATE_FEED 可整体覆盖（如自建国内镜像）
 const FEED_URLS = process.env.HUOBAO_UPDATE_FEED
   ? [process.env.HUOBAO_UPDATE_FEED]
   : [
-    'https://installer.chatfire.site/huobao-drama/latest.json',
-    'https://github.com/chatfire-AI/huobao-drama/releases/latest/download/latest.json',
+    'https://github.com/lihaifeng01/huobao-drama/releases/latest/download/latest.json',
   ]
 
 export interface UpdateState {

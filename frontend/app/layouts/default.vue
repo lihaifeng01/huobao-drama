@@ -37,7 +37,7 @@
       <div class="header-right">
         <a
           class="github-link"
-          href="https://github.com/chatfire-AI/huobao-drama"
+          href="https://github.com/lihaifeng01/huobao-drama"
           target="_blank"
           rel="noopener"
           aria-label="GitHub"

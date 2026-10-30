@@ -7,7 +7,7 @@
 [![Node Version](https://img.shields.io/badge/Node.js-20+-339933?style=flat&logo=node.js)](https://nodejs.org)
 [![Vue Version](https://img.shields.io/badge/Vue-3.x-4FC08D?style=flat&logo=vue.js)](https://vuejs.org)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
-[![다운로드](https://img.shields.io/github/v/release/chatfire-AI/huobao-drama?style=flat&logo=github&label=%EB%8B%A4%EC%9A%B4%EB%A1%9C%EB%93%9C)](https://github.com/chatfire-AI/huobao-drama/releases/latest)
+[![다운로드](https://img.shields.io/github/v/release/lihaifeng01/huobao-drama?style=flat&logo=github&label=%EB%8B%A4%EC%9A%B4%EB%A1%9C%EB%93%9C)](https://github.com/lihaifeng01/huobao-drama/releases/latest)
 
 [中英双语](README.md) | [English](README.en.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | **한국어**
 
@@ -19,10 +19,18 @@
 
 배포 후 「설정 → 火宝快捷 설정」에 Key 를 붙여넣으면 추천 설정 3개가 한 번에 입력됩니다
 
-<h3>📥 <a href="https://github.com/chatfire-AI/huobao-drama/releases/latest">데스크톱 앱 다운로드 (macOS / Windows)</a></h3>
+<h3>📥 <a href="https://github.com/lihaifeng01/huobao-drama/releases/latest">데스크톱 앱 다운로드 (macOS / Windows)</a></h3>
 <h3>🌐 <a href="https://www.firemux.cn">공식 웹사이트</a></h3>
 
 </div>
+
+---
+
+## 🍴 이 저장소에 대하여
+
+이 저장소는 [chatfire-AI/huobao-drama](https://github.com/chatfire-AI/huobao-drama)(v4.0.9)를 기반으로 독립적으로 유지 관리되며, 더 이상 GitHub fork가 아닙니다. 데스크톱 설치 파일과 Docker 이미지(`lhf/huobao-drama` / `ghcr.io/lihaifeng01/huobao-drama`)는 이 저장소에서 별도로 배포합니다. 라이선스는 업스트림과 동일한 [CC BY-NC-SA 4.0](LICENSE)입니다.
+
+추가된 기능(소재 라이브러리, 캐릭터 별칭·병합·의상, 이전 줄거리 요약, 자막 제작, 도구 페이지〈자막 생성·영상 합치기〉, 중계 서버 지원 등) 목록은 [README.en.md 「Features Added in This Repository」](README.en.md#-features-added-in-this-repository)를 참고하세요.
 
 ---
 
@@ -133,7 +141,7 @@ data/       — 생성된 에셋과 SQLite 데이터베이스
 
 ```bash
 # 저장소 클론
-git clone https://github.com/chatfire-AI/huobao-drama.git
+git clone https://github.com/lihaifeng01/huobao-drama.git
 cd huobao-drama
 
 # 백엔드 의존성 설치
@@ -284,20 +292,20 @@ cd backend && npx tsx scripts/import-mysql-to-sqlite.ts
 
 ### 🖥️ 데스크톱 앱(권장)
 
-**⬇️ 빌드된 설치 파일: [GitHub Releases](https://github.com/chatfire-AI/huobao-drama/releases/latest) · [중국용 미러(Tencent COS)](https://installer.chatfire.site/huobao-drama/v4.0.5/)**
+**⬇️ 빌드된 설치 파일: [GitHub Releases](https://github.com/lihaifeng01/huobao-drama/releases/latest)**
 
 | 플랫폼 | 다운로드 파일 |
 |---|---|
-| macOS(Apple Silicon, M 시리즈) | `HuobaoDrama-4.0.5-arm64.dmg` |
-| macOS(Intel) | `HuobaoDrama-4.0.5.dmg` |
-| Windows | `HuobaoDrama.Setup.4.0.5.exe` |
+| macOS(Apple Silicon, M 시리즈) | `HuobaoDrama-<version>-arm64.dmg` |
+| macOS(Intel) | `HuobaoDrama-<version>.dmg` |
+| Windows | `HuobaoDrama.Setup.<version>.exe` |
 
-> 중국 본토에서는 GitHub이 불안정하므로 Tencent COS 미러를 이용하세요. 앱 내 업데이터도 COS를 우선하고 GitHub으로 폴백합니다.
+> 파일명의 버전은 Release 페이지를 따르세요. 앱 내 업데이터는 기본적으로 이 저장소 GitHub Releases의 `latest.json`을 확인합니다(`HUOBAO_UPDATE_FEED`로 변경 가능).
 
 **커맨드라인 설치(권장, 복구 불필요)**: curl로 다운로드하면 macOS 격리 속성이 붙지 않아 "손상됨" 경고 없이 바로 실행됩니다(Apple Silicon은 `-arm64.dmg`, Intel은 일반 dmg 사용):
 
 ```bash
-curl -L -o /tmp/HuobaoDrama.dmg https://installer.chatfire.site/huobao-drama/v4.0.5/HuobaoDrama-4.0.5-arm64.dmg \
+curl -L -o /tmp/HuobaoDrama.dmg https://github.com/lihaifeng01/huobao-drama/releases/download/v<version>/HuobaoDrama-<version>-arm64.dmg \
   && hdiutil attach -nobrowse /tmp/HuobaoDrama.dmg \
   && cp -R /Volumes/HuobaoDrama*/HuobaoDrama.app /Applications/ \
   && hdiutil detach /Volumes/HuobaoDrama*
@@ -419,14 +427,14 @@ server {
 **방법 A — 사전 빌드 이미지(클론·빌드 불필요)**: 멀티 아키텍처(`linux/amd64` + `linux/arm64`), x86 서버와 ARM 디바이스 자동 매칭
 
 ```bash
-docker pull lhf/huobao-drama:4.0.6
+docker pull lhf/huobao-drama:latest
 
 docker run -d \
   --name huobao-drama \
   -p 5679:5679 \
   -v huobao-data:/app/data \
   --restart unless-stopped \
-  lhf/huobao-drama:4.0.6
+  lhf/huobao-drama:latest
 ```
 
 **방법 B — docker compose(소스 빌드 + Watchtower 인앱 업데이트)**: 저장소 루트에 올인원 `Dockerfile`(프런트엔드 generate + 백엔드 의존성/런타임 3단계, 백엔드는 서버 배포와 동일하게 tsx로 실행)과 `docker-compose.yml`(앱 + Watchtower)을 제공합니다:
@@ -436,7 +444,7 @@ docker run -d \
 cp .env.example .env   # WATCHTOWER_TOKEN 수정
 
 # 2. 빌드 및 시작(릴리스 시 버전을 주입하여 「정보 및 업데이트」 비교에 사용)
-HUOBAO_VERSION=4.0.5 docker compose up -d --build
+HUOBAO_VERSION=4.0.9 docker compose up -d --build
 
 # 3. http://localhost:5679 접속
 ```

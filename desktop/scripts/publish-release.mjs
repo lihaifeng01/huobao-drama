@@ -28,6 +28,8 @@ const RELEASE = path.join(DESKTOP, 'release')
 /** 国内下载基址:默认桶默认域名,可被 COS_BASE_URL 覆盖(如 https://dl.chatfire.site/huobao-drama) */
 const COS_BASE_URL = process.env.COS_BASE_URL || 'https://installer.chatfire.site/huobao-drama'
 const COS_KEY_PREFIX = 'huobao-drama'
+/** GitHub 仓库（owner/repo），可被 GITHUB_REPO 覆盖 */
+const GITHUB_REPO = process.env.GITHUB_REPO || 'lihaifeng01/huobao-drama'
 
 const pkg = JSON.parse(fs.readFileSync(path.join(DESKTOP, 'package.json'), 'utf8'))
 const version = pkg.version
@@ -60,12 +62,12 @@ if (!skipGh) {
   console.log(`[1/3] GitHub Release ${tag} …`)
   // gh release upload 要求 Release 已存在，不存在则先创建（--clobber 才能重复传）
   try {
-    execFileSync('gh', ['release', 'view', tag], { stdio: 'ignore' })
+    execFileSync('gh', ['release', 'view', tag, '--repo', GITHUB_REPO], { stdio: 'ignore' })
   } catch {
     console.log(`  Release 不存在，先创建 …`)
-    execFileSync('gh', ['release', 'create', tag, '--title', tag, '--notes', notes || tag], { stdio: 'inherit' })
+    execFileSync('gh', ['release', 'create', tag, '--repo', GITHUB_REPO, '--title', tag, '--notes', notes || tag], { stdio: 'inherit' })
   }
-  const ghArgs = ['release', 'upload', tag, ...existing.map(f => path.join(RELEASE, f)), '--clobber']
+  const ghArgs = ['release', 'upload', tag, '--repo', GITHUB_REPO, ...existing.map(f => path.join(RELEASE, f)), '--clobber']
   execFileSync('gh', ghArgs, { stdio: 'inherit' })
   console.log(`  ✓ 已上传 ${existing.length} 个资产`)
 }
@@ -96,9 +98,9 @@ const buildFeed = async (baseUrl) => {
 }
 
 // GitHub 版(沿用 make-update-feed 的 base-url 约定)
-const ghFeed = await buildFeed(`https://github.com/chatfire-AI/huobao-drama/releases/download/${tag}`)
+const ghFeed = await buildFeed(`https://github.com/${GITHUB_REPO}/releases/download/${tag}`)
 fs.writeFileSync(path.join(RELEASE, 'latest.json'), JSON.stringify(ghFeed, null, 2))
-if (!skipGh) execFileSync('gh', ['release', 'upload', tag, path.join(RELEASE, 'latest.json'), '--clobber'], { stdio: 'inherit' })
+if (!skipGh) execFileSync('gh', ['release', 'upload', tag, '--repo', GITHUB_REPO, path.join(RELEASE, 'latest.json'), '--clobber'], { stdio: 'inherit' })
 
 // COS 版(桶内固定路径 latest.json,更新器国内源入口)
 const cosFeed = await buildFeed(`${COS_BASE_URL}/v${version}`)
@@ -137,6 +139,6 @@ console.log('  ✓ latest.js (官网自动下载清单)')
 
 console.log(`
 发布完成:
-  海外  https://github.com/chatfire-AI/huobao-drama/releases/${tag}
+  海外  https://github.com/${GITHUB_REPO}/releases/${tag}
   国内  ${COS_BASE_URL}/latest.json
 `)

@@ -69,6 +69,20 @@
 
 ## 变更条目
 
+### 2026-10-30 · 从上游 fork 独立：发布地址指向本仓库，新增 Docker 自动发布
+- **分支**：`dev`
+- **改动**
+  - 应用内更新清单默认只读 `https://github.com/lihaifeng01/huobao-drama/releases/latest/download/latest.json`（`backend/src/services/server-update.ts`、`desktop/src/updater.ts`），去掉上游的 `installer.chatfire.site` COS 源。
+  - 顶栏 GitHub 链接（`frontend/app/layouts/default.vue`）、`desktop/scripts/make-update-feed.mjs` / `publish-release.mjs` 的仓库默认值改为 `lihaifeng01/huobao-drama`；`publish-release.mjs` 的 `gh release` 命令都显式带 `--repo`（可用 `GITHUB_REPO` 覆盖）。
+  - 新增 `.github/workflows/docker-publish.yml`：推 `v*` 标签构建 amd64+arm64 镜像，推到 GHCR；配了 `DOCKERHUB_USERNAME`/`DOCKERHUB_TOKEN` secrets 时同时推 `lhf/huobao-drama`。Release 里没有 `latest.json` 时上传一份只含版本号的清单（`platforms: {}`）。
+  - 五份 README：新增「关于本仓库」与「本仓库新增功能」，下载/克隆/Star History 链接换成本仓库，移除上游 COS 镜像下载链接，Docker 示例改用 `latest` 标签。
+- **设计取舍**
+  - 上游 COS 源发布的是上游版本，留着会让本仓库的 Docker/桌面版提示上游新版、Watchtower 拉的却是本仓库镜像，版本对不上，所以直接去掉；国内镜像需要时自建 COS，用 `HUOBAO_UPDATE_FEED` 指过去。
+  - `publish-release.mjs` 的 COS 通道（`COS_BASE_URL` 默认仍是上游域名）没改；要用这个通道得有自己的桶，先设好 `COS_BASE_URL` 和腾讯云凭据。
+  - 工作流生成的「仅版本号」清单只在缺失时上传，桌面版 `npm run publish` 会用 `--clobber` 覆盖成完整清单。若某版本只发了 Docker，桌面版检查到新版但没有对应平台的安装包。
+- **注意事项**：GitHub 上「脱离 fork 网络」需在仓库 Settings 里操作或联系 GitHub Support，代码里做不了；版本号仍沿用上游 4.0.9 起步。
+- **验证**：`cd backend && npm run typecheck` 通过；工作流未在 GitHub 上实际运行过。
+
 ### 2026-10-29 · AI 改写后的剧本可以编辑并自动保存
 - **分支**：`dev`
 - **现象**：「AI 改写」这一步的剧本本来就是可输入的文本框，但没有保存按钮，也不会自动保存。手动改的内容只有在「跳过改写」或「提取资产」时才会顺带保存；直接切到其他步骤或刷新页面，改动就丢了。而且提取资产时调用 `saveScr()` 没有等待，后端可能读到改之前的旧剧本。
