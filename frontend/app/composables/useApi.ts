@@ -1,5 +1,15 @@
 const BASE = '/api/v1'
 
+/**
+ * 登录态失效（接口返回 401）时跳到登录页；auth 自身的接口不处理，交给登录页展示错误
+ */
+function handleUnauthorized(path: string, status: number) {
+  if (status !== 401 || path.startsWith('/auth/') || typeof window === 'undefined') return
+  if (window.location.pathname === '/login' || window.location.pathname === '/setup') return
+  const redirect = encodeURIComponent(window.location.pathname + window.location.search)
+  window.location.href = `/login?redirect=${redirect}`
+}
+
 async function req<T = any>(method: string, path: string, body?: any): Promise<T> {
   const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json' } }
   if (body) opts.body = JSON.stringify(body)
@@ -11,6 +21,7 @@ async function req<T = any>(method: string, path: string, body?: any): Promise<T
     const resp = await fetch(`${BASE}${path}`, opts)
     const json = await resp.json()
     const ms = Math.round(performance.now() - start)
+    handleUnauthorized(path, resp.status)
 
     if (!resp.ok || (json.code && json.code >= 400)) {
       console.log(`%c[API] %c${method} ${path} %c${resp.status} %c${ms}ms`, 'color:#888', 'color:#ef5350', 'color:#ef5350;font-weight:bold', 'color:#888', json.message || '')
@@ -38,9 +49,43 @@ export const api = {
 export const dramaAPI = {
   list: () => api.get<{ items: any[] }>('/dramas'),
   get: (id: number) => api.get(`/dramas/${id}`),
+  // data.member_ids：新建时选的项目成员
   create: (data: any) => api.post('/dramas', data),
   update: (id: number, data: any) => api.put(`/dramas/${id}`, data),
   del: (id: number) => api.del(`/dramas/${id}`),
+  // 覆盖项目成员（仅创建人与超级管理员），返回 { creator, members, can_manage_members }
+  setMembers: (id: number, memberIds: number[]) => api.put(`/dramas/${id}/members`, { member_ids: memberIds }),
+}
+
+export type UserRole = 'super_admin' | 'admin' | 'user'
+export interface AuthUser {
+  id: number
+  username: string
+  display_name: string
+  role: UserRole
+  status?: 'active' | 'disabled'
+  last_login_at?: string | null
+  created_at?: string
+}
+
+export const authAPI = {
+  status: () => api.get<{ initialized: boolean; user: AuthUser | null }>('/auth/status'),
+  setup: (d: { username: string; password: string; display_name?: string }) => api.post<AuthUser>('/auth/setup', d),
+  register: (d: { username: string; password: string; display_name?: string }) => api.post<AuthUser>('/auth/register', d),
+  login: (d: { username: string; password: string }) => api.post<AuthUser>('/auth/login', d),
+  logout: () => api.post('/auth/logout'),
+  updateProfile: (displayName: string) => api.put('/auth/profile', { display_name: displayName }),
+  changePassword: (oldPassword: string, newPassword: string) => api.put('/auth/password', { old_password: oldPassword, new_password: newPassword }),
+}
+
+// 账号管理（超级管理员）；options 为成员选择器用，所有登录用户可调
+export const userAPI = {
+  options: () => api.get<AuthUser[]>('/users/options'),
+  list: () => api.get<AuthUser[]>('/users'),
+  create: (d: { username: string; password: string; display_name?: string; role?: UserRole }) => api.post<AuthUser>('/users', d),
+  update: (id: number, d: { role?: UserRole; status?: 'active' | 'disabled'; display_name?: string }) => api.put<AuthUser>(`/users/${id}`, d),
+  resetPassword: (id: number, password: string) => api.put(`/users/${id}/password`, { password }),
+  del: (id: number) => api.del(`/users/${id}`),
 }
 
 export const episodeAPI = {
@@ -135,6 +180,7 @@ async function uploadReq<T = any>(path: string, file: File, fields?: Record<stri
   console.log(`%c[API] %cPOST %c${path} %c${file.name}`, 'color:#888', 'color:#4fc3f7;font-weight:bold', 'color:#ccc', 'color:#888')
   const resp = await fetch(`${BASE}${path}`, { method: 'POST', body: fd })
   const json = await resp.json()
+  handleUnauthorized(path, resp.status)
   if (!resp.ok || (json.code && json.code >= 400)) {
     console.log(`%c[API] %cPOST ${path} %c${resp.status}`, 'color:#888', 'color:#ef5350', 'color:#ef5350;font-weight:bold')
     throw new Error(json.message || `${resp.status}`)
@@ -152,6 +198,7 @@ function uploadWithProgress<T = any>(path: string, file: File, onProgress?: (rat
     xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress?.(e.loaded / e.total) }
     xhr.onerror = () => reject(new Error('上传失败，请检查网络'))
     xhr.onload = () => {
+      handleUnauthorized(path, xhr.status)
       let json: any = null
       try { json = JSON.parse(xhr.responseText) } catch { /* 非 JSON */ }
       if (xhr.status >= 400 || !json || (json.code && json.code >= 400)) reject(new Error(json?.message || `${xhr.status}`))

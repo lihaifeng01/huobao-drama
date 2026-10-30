@@ -37,11 +37,13 @@
       "projects": "プロジェクト",
       "library": "素材",
       "tools": "ツール",
-      "settings": "設定"
+      "settings": "設定",
+      "users": "アカウント"
     },
     "banner": {
       "missing": "{types}モデルが未設定のため、AI 機能は使用できません",
-      "goSettings": "設定へ"
+      "goSettings": "設定へ",
+      "askAdmin": "管理者に設定を依頼してください"
     },
     "theme": {
       "label": "テーマを切り替え",
@@ -1271,5 +1273,95 @@
         "failed": "失敗"
       }
     }
+  },
+  "auth": {
+    "username": "ユーザー名",
+    "usernamePlaceholder": "ユーザー名を入力",
+    "usernameRule": "3〜32 文字（漢字・英数字・_ . -）",
+    "displayName": "表示名",
+    "displayNamePlaceholder": "チームに表示される名前",
+    "optional": "（任意）",
+    "password": "パスワード",
+    "passwordPlaceholder": "パスワードを入力",
+    "passwordRule": "6 文字以上",
+    "confirmPassword": "パスワード（確認）",
+    "passwordMismatch": "パスワードが一致しません",
+    "failed": "操作に失敗しました。もう一度お試しください",
+    "noAccount": "アカウントをお持ちでない方",
+    "hasAccount": "アカウントをお持ちの方",
+    "logout": "ログアウト",
+    "login": {
+      "title": "ログイン",
+      "desc": "ログインすると参加しているプロジェクトを開けます。",
+      "submit": "ログイン"
+    },
+    "register": {
+      "title": "アカウント登録",
+      "desc": "登録すると一般ユーザーになります。プロジェクトを作成したり、招待されて参加したりできます。",
+      "submit": "登録"
+    },
+    "setup": {
+      "title": "スーパー管理者を作成",
+      "desc": "初回利用です。まずスーパー管理者アカウントを作成してください。スーパー管理者はすべてのプロジェクトとアカウントを管理でき、他のアカウントを管理者に設定できます。",
+      "submit": "作成して開始"
+    },
+    "role": {
+      "super_admin": "スーパー管理者",
+      "admin": "管理者",
+      "user": "一般ユーザー"
+    },
+    "changePassword": {
+      "title": "パスワード変更",
+      "old": "現在のパスワード",
+      "new": "新しいパスワード",
+      "hint": "変更すると、他の端末ではログアウトされます。",
+      "done": "パスワードを変更しました"
+    }
+  },
+  "members": {
+    "title": "プロジェクトメンバー",
+    "searchPlaceholder": "ユーザー名・表示名で検索",
+    "noMatch": "一致するアカウントがありません",
+    "noUsers": "他のアカウントはまだありません",
+    "selectedCount": "{n} 人を選択",
+    "createHint": "このプロジェクトと素材はメンバーだけが見られます。作成後もあなたとスーパー管理者が変更できます。",
+    "teamTitle": "メンバー：{names}",
+    "count": "{n} 人",
+    "creator": "作成者",
+    "unknownCreator": "不明",
+    "manageDesc": "このプロジェクトと素材はメンバーだけが見られます。",
+    "readonlyDesc": "メンバーを変更できるのは作成者とスーパー管理者だけです。",
+    "none": "他のメンバーはいません",
+    "saved": "メンバーを更新しました"
+  },
+  "users": {
+    "title": "アカウント管理",
+    "sub": "アカウントのロール設定、無効化、削除を行います。",
+    "create": "アカウント作成",
+    "col": {
+      "user": "アカウント",
+      "role": "ロール",
+      "status": "状態",
+      "lastLogin": "最終ログイン",
+      "actions": "操作"
+    },
+    "me": "（自分）",
+    "status": {
+      "active": "有効",
+      "disabled": "無効"
+    },
+    "disable": "無効にする",
+    "enable": "有効にする",
+    "resetPassword": "パスワード再設定",
+    "roleNote": "管理者は設定（AI サービス、プロンプト、スキルなど）を使えます。一般ユーザーは使えません。プロジェクトは作成者・メンバー・スーパー管理者だけが見られます。",
+    "resetTitle": "「{name}」のパスワードを再設定",
+    "resetHint": "再設定後、このアカウントは新しいパスワードで再ログインが必要です。",
+    "deleteTitle": "アカウント削除",
+    "deleteMessage": "アカウント「{name}」を削除しますか？ログインできなくなります。作成したプロジェクトは残り、スーパー管理者が引き続き管理できます。",
+    "neverLoggedIn": "未ログイン",
+    "roleChanged": "ロールを更新しました",
+    "created": "アカウントを作成しました",
+    "passwordReset": "パスワードを再設定しました",
+    "deleted": "アカウントを削除しました"
   }
 }

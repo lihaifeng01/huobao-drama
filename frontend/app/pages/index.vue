@@ -12,7 +12,7 @@
         <span class="tag tag-accent">{{ t('index.hero.styleCount', { n: stylePresets.length }) }}</span>
       </div>
       <div class="head-actions">
-        <button class="btn btn-icon tour-help-btn" :title="t('tour.helpTitle')" @click="startTour('index', INDEX_TOUR, t)">
+        <button class="btn btn-icon tour-help-btn" :title="t('tour.helpTitle')" @click="startTour('index', indexTour(), t)">
           <CircleHelp :size="15" :stroke-width="1.8" />
         </button>
         <button class="btn btn-primary" @click="showCreate = true">
@@ -112,7 +112,7 @@
                 </button>
               </template>
               <AppMenuItem @click="activeMenuId = null; openDrama(d)">{{ t('index.openProject') }}</AppMenuItem>
-              <AppMenuItem danger @click="activeMenuId = null; dramaToDelete = d">{{ t('index.deleteProject') }}</AppMenuItem>
+              <AppMenuItem v-if="d.can_manage_members" danger @click="activeMenuId = null; dramaToDelete = d">{{ t('index.deleteProject') }}</AppMenuItem>
             </AppMenu>
           </div>
         </div>
@@ -125,6 +125,10 @@
           <div class="project-foot dim">
             <Clock :size="11" :stroke-width="1.8" />
             {{ fmtDate(d.updated_at || d.updatedAt) }}
+            <span class="project-team" :title="teamTitle(d)">
+              <UsersRound :size="11" :stroke-width="1.8" />
+              {{ (d.members?.length || 0) + 1 }}
+            </span>
           </div>
         </div>
       </article>
@@ -173,6 +177,11 @@
               <BaseSelect v-model="form.aspect_ratio" :options="aspectRatioOptions" :placeholder="t('index.createDialog.aspectRatioPlaceholder')" />
               <span class="field-hint">{{ t('index.createDialog.aspectRatioHint') }}</span>
             </label>
+            <div class="field">
+              <span class="field-label">{{ t('members.title') }}</span>
+              <MemberPicker v-model="form.member_ids" :exclude-ids="currentUserId ? [currentUserId] : []" />
+              <span class="field-hint">{{ t('members.createHint') }}</span>
+            </div>
           </div>
           <div class="dialog-foot">
             <button type="button" class="btn" @click="showCreate = false">{{ t('common.cancel') }}</button>
@@ -201,8 +210,9 @@
 import { toast } from 'vue-sonner'
 import { toastError } from '~/composables/useToast'
 import { useI18n } from 'vue-i18n'
-import { Clock, CircleHelp } from 'lucide-vue-next'
+import { Clock, CircleHelp, UsersRound } from 'lucide-vue-next'
 import { dramaAPI, stylePresetAPI } from '~/composables/useApi'
+import { useAuth } from '~/composables/useAuth'
 import BaseSelect from '~/components/BaseSelect.vue'
 import { startTour, autoTour } from '~/composables/useTour'
 
@@ -221,7 +231,13 @@ const sortOptions = computed(() => ([
 const activeMenuId = ref(null)
 const dramaToDelete = ref(null)
 const deletingDrama = ref(false)
-const form = ref({ title: '', style: '', aspect_ratio: '16:9' })
+const form = ref({ title: '', style: '', aspect_ratio: '16:9', member_ids: [] })
+const currentUserId = computed(() => useAuth().state.user?.id)
+// 卡片上的人数 = 创建人 + 成员；悬停显示名单
+function teamTitle(d) {
+  const names = [d.creator?.display_name, ...(d.members || []).map(m => m.display_name)].filter(Boolean)
+  return t('members.teamTitle', { names: names.join(t('common.listJoin')) })
+}
 const stylePresets = ref([])
 const styleSelectOptions = computed(() => stylePresets.value.map(p => ({ label: p.name, value: p.value })))
 const selectedStyleDesc = computed(() => stylePresets.value.find(p => p.value === form.value.style)?.description || '')
@@ -371,7 +387,11 @@ const INDEX_TOUR = [
   { element: '.nav-link[href="/settings"]', titleKey: 'tour.index.settings.title', descKey: 'tour.index.settings.desc', popoverSide: 'bottom' },
   { element: '.head-actions .btn-primary', titleKey: 'tour.index.create.title', descKey: 'tour.index.create.desc', popoverSide: 'bottom', popoverAlign: 'end' },
 ]
-onMounted(() => setTimeout(() => autoTour('index', INDEX_TOUR, t), 600))
+// 普通用户顶栏没有「设置」，跳过这一步
+function indexTour() {
+  return useAuth().isAdmin.value ? INDEX_TOUR : INDEX_TOUR.filter(s => !s.element.includes('/settings'))
+}
+onMounted(() => setTimeout(() => autoTour('index', indexTour(), t), 600))
 </script>
 
 <style scoped>
@@ -566,6 +586,12 @@ onMounted(() => setTimeout(() => autoTour('index', INDEX_TOUR, t), 600))
   font-size: 11px;
   color: var(--text-3);
   white-space: nowrap;
+}
+.project-team {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
 /* 骨架卡片 */

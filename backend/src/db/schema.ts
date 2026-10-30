@@ -18,6 +18,7 @@ export const dramas = sqliteTable('dramas', {
   thumbnail: text('thumbnail'),
   tags: text('tags'),
   metadata: text('metadata'),
+  createdBy: integer('created_by'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),
@@ -383,3 +384,31 @@ export const libraryFiles = sqliteTable('library_files', {
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),
 })
+
+// 账号：role = super_admin | admin | user；status = active | disabled
+export const users = sqliteTable('users', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  username: text('username').notNull(),
+  displayName: text('display_name'),
+  passwordHash: text('password_hash').notNull(),
+  role: text('role').notNull().default('user'),
+  status: text('status').notNull().default('active'),
+  lastLoginAt: text('last_login_at'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+})
+
+export const userSessions = sqliteTable('user_sessions', {
+  tokenHash: text('token_hash').primaryKey(),
+  userId: integer('user_id').notNull(),
+  createdAt: text('created_at').notNull(),
+  expiresAt: text('expires_at').notNull(),
+})
+
+// 项目成员（创建人记在 dramas.created_by）
+export const dramaMembers = sqliteTable('drama_members', {
+  dramaId: integer('drama_id').notNull(),
+  userId: integer('user_id').notNull(),
+  createdAt: text('created_at').notNull(),
+}, (t) => [primaryKey({ columns: [t.dramaId, t.userId] })])

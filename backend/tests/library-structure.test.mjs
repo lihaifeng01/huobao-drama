@@ -17,7 +17,8 @@ test('library tables are created at startup and mapped in drizzle', () => {
 
 test('library route aggregates project folders, user folders and uploaded files', () => {
   const route = read('src/routes/library.ts')
-  const index = read('src/index.ts')
+  // 路由表在 api.ts（index.ts 只挂载 /api/v1）
+  const index = read('src/api.ts')
 
   assert.match(index, /api\.route\('\/library', library\)/)
   // 仅角色 / 场景两类

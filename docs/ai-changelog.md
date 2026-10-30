@@ -69,6 +69,35 @@
 
 ## 变更条目
 
+### 2026-10-30 · 新增：账号体系与团队协作（项目成员）
+- **分支**：`feat/accounts`（从 `dev` 拉出，未合并）
+- **改动**
+  - 账号：三种角色 `super_admin`（唯一）/ `admin` / `user`。首次打开页面没有任何账号时跳 `/setup` 创建超级管理员；也可用环境变量 `HUOBAO_ADMIN_USERNAME` / `HUOBAO_ADMIN_PASSWORD` 在启动时预置。之后 `/login` 页可登录或自助注册（注册即普通用户，暂无验证码）。
+  - 超级管理员在顶栏「账号」页（`/users`）新建账号、改角色（管理员 ⇄ 普通用户）、禁用 / 启用、重置密码、删除。用户菜单里可改自己的密码、退出登录。
+  - 普通用户顶栏没有「设置」，进 `/settings` 被路由守卫送回首页；后端对设置类接口返回 403。
+  - 团队协作：新建项目时可选项目成员（`MemberPicker`）；项目详情页头部「N 人」按钮打开成员弹窗，创建人和超级管理员可改，其他成员只读。项目只对创建人、成员、超级管理员可见，删除项目也仅限创建人和超级管理员。
+  - 全局素材库的「项目文件夹」只列出当前用户可见的项目。
+- **关键文件**：`backend/src/services/auth.ts`（密码、会话）、`backend/src/services/project-access.ts`（实体 → 项目归属、成员判断）、`backend/src/middleware/auth.ts`（三道中间件）、`backend/src/routes/auth.ts`、`backend/src/routes/users.ts`、`backend/src/api.ts`（从 `index.ts` 拆出的 `/api/v1` 路由表）；前端 `composables/useAuth.ts`、`middleware/auth.global.ts`、`components/AuthCard.vue`、`components/MemberPicker.vue`、`pages/{login,setup,users}.vue`。新表 `users`、`user_sessions`、`drama_members`，`dramas` 加列 `created_by`。
+- **设计取舍**
+  - 会话用 httpOnly cookie（`huobao_session`，SameSite=Lax，30 天、剩余不足一半自动续期），库里只存 token 的 sha256。选 cookie 而不是前端存 token：`<img>` / `<video>` / XHR 上传 / 原生 fetch 都不用改就能带上；桌面版每次启动端口不同，但 cookie 不区分端口，登录态照样保留。也接受 `Authorization: Bearer`，方便脚本调用。密码用 Node 自带的 scrypt，不引新依赖。
+  - 鉴权集中在 `/api/v1` 上的三道中间件，而不是逐个路由改：`authGuard`（公开的只有 `/auth/status|login|register|setup`，`/health` 挂在 api 之外）→ `settingsGuard`（按路径 + 方法判断是否要管理员）→ `projectGuard`。`projectGuard` 从路径参数（`/episodes/:id` 等）、查询参数和 JSON 请求体里的 `drama_id / episode_id / storyboard_id / character_id / scene_id / prop_id / character_ids / storyboard_ids / prop_ids / source_ids` 收集引用，经 `dramaOf()` 归到项目，任何一个不可访问就 403。读 body 用 `c.req.json()`，Hono 会缓存，业务路由再读不受影响。实体不存在时放行，让业务路由照原样报 404/400。
+  - 「设置相关」的划分：`prompts / skills / storage / server-update / users` 整块仅管理员；`ai-configs`、`style-presets` 读放开（工作台模型下拉、新建项目要用），写仅管理员；普通用户读 `ai-configs` 时 `api_key` 置空、`settings` / `custom`（可能含自定义请求头凭据）置 null。`/settings/content-language` 改仅管理员，`tours-seen` 谁都能写。账号管理仅超级管理员，普通管理员不能管账号。
+  - 成员不含创建人：创建人记在 `dramas.created_by`，`drama_members` 只放其他人，`setMembers` 会剔除创建人。老项目（`created_by` 为空）在创建超级管理员时统一归到超级管理员名下。
+  - 用户名 `COLLATE NOCASE` 唯一，软删除的账号也占用名字（避免同名新账号继承旧项目成员关系的误解）。
+  - 日志中间件打印请求体前会把 `*password` 字段替换成 `***`。
+- **注意事项**
+  - **`/static` 没有鉴权**：图片、视频按 uuid 命名，知道地址就能访问。要防外链需要另做签名 URL，这次没做。
+  - **工具页（生成字幕 / 视频合成）的任务是全局共享的**，没有按用户隔离，所有登录用户都能看到。「我的文件夹」（素材库里用户自建的文件夹和上传）同样是全员共享，只有「项目文件夹」按成员过滤。
+  - 新手引导记录 `tours-seen`、AI 内容语言仍是全局设置，不分用户。普通用户切换界面语言时写内容语言会 403（`useUnifiedLanguage` 本来就吞掉这个错误），只切界面。
+  - 桌面版也要先创建超级管理员再登录（同一套代码）。如果以后希望桌面版免登录，可以在主进程注入环境变量自动建号并自动登录。
+  - 删除账号后，他创建的项目只有超级管理员能管理成员；暂时没有「转让项目」。
+  - 前端 `useApi` 遇到 401（`/auth/*` 除外）会整页跳到 `/login?redirect=...`；登录页只接受站内路径作为 redirect。
+  - 新加需要项目权限的接口时：路径带实体 id 的，在 `middleware/auth.ts` 的 `PATH_RULES` 加一条；body 里引用实体的字段名如果不在 `REF_FIELDS` 里，也要补上。返回全量列表的接口要自己按 `accessibleDramaIds()` 过滤（参考 `GET /tasks`、`GET /library/:category`）。
+  - 路由表挪到了 `backend/src/api.ts`，几个结构测试原来读 `index.ts` 断言路由挂载，已改为读 `api.ts`（否定断言改为同时读两个文件）。
+- **验证**
+  - 新增 `backend/tests/auth.test.ts`（走完整中间件链）：未初始化拒绝注册、setup 只能一次、老项目归属、注册 / 登录 / 大小写、设置接口 403 与 API Key 脱敏、角色修改权限、成员选择器、建项目选成员、成员能操作而非成员 403（项目、角色、素材库项目文件夹、生成任务）、任务列表过滤、创建人和超级管理员改成员、禁用账号会话立即失效、改密码让其他会话失效、退出登录。后端 TS 测试共 42 项通过；`.mjs` 结构测试仍是 12 个失败，前端结构测试仍是 25 个失败（名单不变）。
+  - 本地端到端（Playwright，临时数据目录）：首次访问跳初始化页 → 创建超级管理员；注册三个普通用户，普通用户顶栏无「设置」、访问 `/settings` 和 `/users` 被送回首页；alice 建项目选 bob，bob 可见且成员弹窗只读，carol 看不到项目、素材库里也没有该项目文件夹；alice 中途加入 carol 后 carol 可见；退出登录后访问首页跳登录页。另外验证了环境变量预置超级管理员（重复启动不重复创建）。
+
 ### 2026-10-30 · Docker Hub 镜像名改为 `lihaifeng1995/huobao-drama`
 - **分支**：`dev`
 - **改动**：Docker Hub 用户名是 `lihaifeng1995`，`lhf/huobao-drama` 不是本人命名空间。README、`docker-compose.yml`、`scripts/docker-build.sh`、`CLAUDE.md` 全部改为 `lihaifeng1995/huobao-drama`；工作流默认镜像名改为 `<DOCKERHUB_USERNAME>/huobao-drama`，仍可用仓库变量 `DOCKERHUB_IMAGE` 覆盖。

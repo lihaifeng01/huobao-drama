@@ -25,6 +25,12 @@
           </span>
         </div>
       </div>
+      <button class="btn head-action team-btn" :title="t('members.title')" @click="openMembers">
+        <span class="team-stack">
+          <span v-for="u in teamPreview" :key="u.id" class="team-avatar">{{ initialOf(u) }}</span>
+        </span>
+        {{ t('members.count', { n: (drama.members?.length || 0) + 1 }) }}
+      </button>
       <button class="btn btn-primary head-action" @click="openAddEpisode">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -623,6 +629,50 @@
       </div>
     </div>
     </Teleport>
+    <!-- 项目成员：创建人与超级管理员可修改，其他成员只读 -->
+    <div v-if="membersDialog.open" class="overlay" @click.self="membersDialog.open = false">
+      <div class="dialog members-dialog">
+        <div class="dialog-head">
+          <div>
+            <h2 class="dialog-title">{{ t('members.title') }}</h2>
+            <p class="members-desc">{{ drama.can_manage_members ? t('members.manageDesc') : t('members.readonlyDesc') }}</p>
+          </div>
+        </div>
+        <div class="dialog-body members-body">
+          <div class="members-section">
+            <div class="members-label">{{ t('members.creator') }}</div>
+            <div class="member-row">
+              <span class="team-avatar lg">{{ initialOf(drama.creator) }}</span>
+              <span class="member-name">{{ drama.creator?.display_name || t('members.unknownCreator') }}</span>
+              <span v-if="drama.creator" class="member-username">{{ drama.creator.username }}</span>
+            </div>
+          </div>
+          <div class="members-section">
+            <div class="members-label">{{ t('members.title') }}</div>
+            <MemberPicker
+              v-if="drama.can_manage_members"
+              v-model="membersDialog.selected"
+              :exclude-ids="drama.creator ? [drama.creator.id] : []"
+            />
+            <template v-else>
+              <div v-for="m in drama.members" :key="m.id" class="member-row">
+                <span class="team-avatar lg">{{ initialOf(m) }}</span>
+                <span class="member-name">{{ m.display_name }}</span>
+                <span class="member-username">{{ m.username }}</span>
+              </div>
+              <p v-if="!drama.members?.length" class="members-empty">{{ t('members.none') }}</p>
+            </template>
+          </div>
+        </div>
+        <div class="dialog-foot">
+          <button type="button" class="btn" @click="membersDialog.open = false">{{ drama.can_manage_members ? t('common.cancel') : t('common.close') }}</button>
+          <button v-if="drama.can_manage_members" type="button" class="btn btn-primary" :disabled="membersDialog.saving" @click="saveMembers">
+            {{ membersDialog.saving ? t('common.loading') : t('common.save') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <ConfirmDialog
       :open="!!episodeToDelete"
       :title="t('detail.ep.deleteTitle')"
@@ -718,6 +768,32 @@ async function load() {
     drama.value = await dramaAPI.get(dramaId)
   } catch (e) {
     toastError(e)
+  }
+}
+
+// ---------- 项目成员 ----------
+const membersDialog = reactive({ open: false, selected: [], saving: false })
+// 头部头像叠放：创建人在前，最多 3 个
+const teamPreview = computed(() => [drama.value?.creator, ...(drama.value?.members || [])].filter(Boolean).slice(0, 3))
+function initialOf(u) {
+  return String(u?.display_name || u?.username || '?').trim().slice(0, 1).toUpperCase()
+}
+function openMembers() {
+  membersDialog.selected = (drama.value?.members || []).map(m => m.id)
+  membersDialog.saving = false
+  membersDialog.open = true
+}
+async function saveMembers() {
+  membersDialog.saving = true
+  try {
+    const team = await dramaAPI.setMembers(dramaId, membersDialog.selected)
+    Object.assign(drama.value, team)
+    membersDialog.open = false
+    toast.success(t('members.saved'))
+  } catch (e) {
+    toastError(e)
+  } finally {
+    membersDialog.saving = false
   }
 }
 
@@ -1077,6 +1153,30 @@ onMounted(load)
 }
 .head-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .head-action { flex-shrink: 0; }
+
+/* 项目成员 */
+.team-btn { margin-left: auto; gap: 8px; }
+.team-btn + .head-action { margin-left: 0; }
+.team-stack { display: inline-flex; }
+.team-avatar {
+  width: 20px; height: 20px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--accent-gradient); color: var(--on-accent);
+  font-size: 10px; font-weight: 700;
+  box-shadow: 0 0 0 2px var(--surface-raised);
+}
+.team-stack .team-avatar + .team-avatar { margin-left: -6px; }
+.team-avatar.lg { width: 26px; height: 26px; font-size: 11.5px; box-shadow: none; }
+.members-dialog { width: 460px; max-width: calc(100vw - 32px); }
+.members-desc { margin: 4px 0 0; font-size: 12.5px; color: var(--text-3); }
+.members-body { display: flex; flex-direction: column; gap: 16px; }
+.members-section { display: flex; flex-direction: column; gap: 8px; }
+.members-label { font-size: 12px; font-weight: 600; color: var(--text-2); }
+.member-row { display: flex; align-items: center; gap: 9px; padding: 2px 0; }
+.member-name { font-size: 13px; font-weight: 600; color: var(--text-0); }
+.member-username { font-size: 11.5px; color: var(--text-3); }
+.members-empty { margin: 0; font-size: 12.5px; color: var(--text-3); }
 
 .back-btn {
   width: 30px; height: 30px; flex-shrink: 0;

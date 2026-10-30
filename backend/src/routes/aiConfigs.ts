@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import type { Context } from 'hono'
 import { eq } from 'drizzle-orm'
 import { db, getInsertId, schema } from '../db/index.js'
 import { success, notFound, created, badRequest, now } from '../utils/response.js'
@@ -8,6 +9,7 @@ import { isOfficialProvider, parseConfigTemperature } from '../services/ai.js'
 import { applyCustomHeaders, normalizeCustomOptions, normalizeUrlMode, parseCustomOptions, parseUrlMode, withUrlMode } from '../services/adapters/custom.js'
 import type { CustomOptions } from '../services/adapters/types.js'
 import { buildAsrProbe } from '../services/adapters/aliyun-asr.js'
+import { isAdmin } from '../services/auth.js'
 import { redactUrl, logTaskError, logTaskProgress, logTaskSuccess } from '../utils/task-logger.js'
 
 const app = new Hono()
@@ -29,6 +31,11 @@ function withParsedFields(r: any) {
     custom: parseCustomOptions(r.settings),
     url_mode: parseUrlMode(r.settings),
   }
+}
+
+/** 普通用户只为选模型读配置，不下发 API Key 和自定义请求头（可能含凭据） */
+function forViewer(c: Context, r: ReturnType<typeof withParsedFields>) {
+  return isAdmin(c.get('user')) ? r : { ...r, api_key: '', settings: null, custom: null }
 }
 
 const BASE_URL_MODE_ERROR = 'Base URL 原样使用模式需要以 http:// 或 https:// 开头的 Base URL'
@@ -155,7 +162,7 @@ app.get('/', async (c) => {
   let rows = await db.select().from(schema.aiServiceConfigs)
   if (serviceType) rows = rows.filter(r => r.serviceType === serviceType)
 
-  const parsed = rows.map(withParsedFields)
+  const parsed = rows.map(withParsedFields).map(r => forViewer(c, r))
   return success(c, parsed)
 })
 
@@ -312,7 +319,7 @@ app.get('/:id', async (c) => {
   const id = Number(c.req.param('id'))
   const [row] = await db.select().from(schema.aiServiceConfigs).where(eq(schema.aiServiceConfigs.id, id))
   if (!row) return notFound(c)
-  return success(c, withParsedFields(row))
+  return success(c, forViewer(c, withParsedFields(row)))
 })
 
 // PUT /ai-configs/:id

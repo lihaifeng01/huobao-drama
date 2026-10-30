@@ -6,6 +6,7 @@ import { generateImage, generateVideo, recoverVideoTask } from '../services/gene
 import { safeTaskError } from '../services/video-download.js'
 import { getActiveConfig, getConfigById } from '../services/ai.js'
 import { getDramaStylePrompt } from '../services/style-preset.js'
+import { accessibleDramaIds, taskDramaId } from '../services/project-access.js'
 import { logTaskError, logTaskPayload, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
 
 const app = new Hono()
@@ -252,6 +253,16 @@ app.get('/', async (c) => {
   if (type) rows = rows.filter(r => r.type === type)
   if (storyboardId) rows = rows.filter(r => r.storyboardId === Number(storyboardId))
   if (dramaId) rows = rows.filter(r => r.dramaId === Number(dramaId))
+
+  // 只返回当前用户所在项目的任务（指定了 drama_id / storyboard_id 时已由 projectGuard 校验）
+  const visible = await accessibleDramaIds(c.get('user'))
+  if (visible && !dramaId && !storyboardId) {
+    const keep = await Promise.all(rows.map(async r => {
+      const d = await taskDramaId(r)
+      return d != null && visible.has(d)
+    }))
+    rows = rows.filter((_, i) => keep[i])
+  }
 
   return success(c, rows)
 })

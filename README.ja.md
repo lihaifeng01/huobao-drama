@@ -134,6 +134,7 @@ data/       — 生成アセットと SQLite データベース
 | `FRONTEND_DIST` | `frontend/dist` | フロントエンド静的ビルドディレクトリ |
 | `FFMPEG_BIN` / `FFPROBE_BIN` | npm 内蔵バイナリ | カスタム ffmpeg/ffprobe の実行ファイルパス |
 | `PUBLIC_BASE_URL` | — | Seedance がローカル参照リソースを使う際に必要な公開 URL（サーバーデプロイ用） |
+| `HUOBAO_ADMIN_USERNAME` / `HUOBAO_ADMIN_PASSWORD` | — | アカウントがない初回起動時にスーパー管理者を自動作成（未設定なら初回アクセス時に画面で作成） |
 
 > **説明**：AI サービスの API Key、Base URL、モデルパラメータはすべて Web UI の「設定」ページで設定してデータベースに保存します。設定ファイルや環境変数では管理しません。
 

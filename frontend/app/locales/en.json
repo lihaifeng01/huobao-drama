@@ -37,11 +37,13 @@
       "projects": "Projects",
       "library": "Assets",
       "tools": "Tools",
-      "settings": "Settings"
+      "settings": "Settings",
+      "users": "Accounts"
     },
     "banner": {
       "missing": "{types} model not configured yet. AI features are unavailable.",
-      "goSettings": "Go to Settings"
+      "goSettings": "Go to Settings",
+      "askAdmin": "Ask an administrator to configure it"
     },
     "theme": {
       "label": "Toggle theme",
@@ -1271,5 +1273,95 @@
         "failed": "Failed"
       }
     }
+  },
+  "auth": {
+    "username": "Username",
+    "usernamePlaceholder": "Enter your username",
+    "usernameRule": "3–32 characters: letters, digits, Chinese, or _ . -",
+    "displayName": "Display name",
+    "displayNamePlaceholder": "The name your team sees",
+    "optional": "(optional)",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "passwordRule": "At least 6 characters",
+    "confirmPassword": "Confirm password",
+    "passwordMismatch": "The passwords do not match",
+    "failed": "Something went wrong. Please try again.",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "logout": "Sign out",
+    "login": {
+      "title": "Sign in",
+      "desc": "Sign in to open the projects you belong to.",
+      "submit": "Sign in"
+    },
+    "register": {
+      "title": "Create account",
+      "desc": "New accounts are regular users. You can create projects or be invited to one.",
+      "submit": "Sign up"
+    },
+    "setup": {
+      "title": "Create the super admin",
+      "desc": "First run: create the super admin account. The super admin can manage every project and account, and can promote other accounts to admin.",
+      "submit": "Create and continue"
+    },
+    "role": {
+      "super_admin": "Super admin",
+      "admin": "Admin",
+      "user": "User"
+    },
+    "changePassword": {
+      "title": "Change password",
+      "old": "Current password",
+      "new": "New password",
+      "hint": "Sessions on your other devices will be signed out.",
+      "done": "Password changed"
+    }
+  },
+  "members": {
+    "title": "Project members",
+    "searchPlaceholder": "Search by username or display name",
+    "noMatch": "No matching accounts",
+    "noUsers": "No other accounts yet",
+    "selectedCount": "{n} selected",
+    "createHint": "Only members can see this project and its assets. You and the super admin can change this later.",
+    "teamTitle": "Members: {names}",
+    "count": "{n} people",
+    "creator": "Owner",
+    "unknownCreator": "Unknown",
+    "manageDesc": "Only members can see this project and its assets.",
+    "readonlyDesc": "Only the owner and the super admin can change project members.",
+    "none": "No other members",
+    "saved": "Project members updated"
+  },
+  "users": {
+    "title": "Accounts",
+    "sub": "Set account roles, or disable and delete accounts.",
+    "create": "New account",
+    "col": {
+      "user": "Account",
+      "role": "Role",
+      "status": "Status",
+      "lastLogin": "Last sign-in",
+      "actions": "Actions"
+    },
+    "me": "(me)",
+    "status": {
+      "active": "Active",
+      "disabled": "Disabled"
+    },
+    "disable": "Disable",
+    "enable": "Enable",
+    "resetPassword": "Reset password",
+    "roleNote": "Admins can use Settings (AI services, prompts, skills, and so on); regular users cannot. A project is visible only to its owner, its members, and the super admin.",
+    "resetTitle": "Reset password for \"{name}\"",
+    "resetHint": "The account must sign in again with the new password.",
+    "deleteTitle": "Delete account",
+    "deleteMessage": "Delete the account \"{name}\"? It will no longer be able to sign in. Projects it created are kept and the super admin can still manage them.",
+    "neverLoggedIn": "Never",
+    "roleChanged": "Role updated",
+    "created": "Account created",
+    "passwordReset": "Password reset",
+    "deleted": "Account deleted"
   }
 }

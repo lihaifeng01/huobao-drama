@@ -5,10 +5,11 @@ import { db, getInsertId, schema } from '../db/index.js'
 import { success, created, badRequest, notFound, now } from '../utils/response.js'
 import { toSnakeCase } from '../utils/transform.js'
 import { saveUploadedFile, generateImageThumb, getAbsolutePath } from '../utils/storage.js'
+import { accessibleDramaIds } from '../services/project-access.js'
 
 /**
  * 全局素材库 — 项目之外聚合查看角色/场景素材
- * - 项目文件夹：每个未删除项目自动对应一个，内容实时取自该项目的 characters / scenes（只读）
+ * - 项目文件夹：每个未删除项目自动对应一个，内容实时取自该项目的 characters / scenes（只读），只对项目成员可见
  * - 我的文件夹：用户自建，可多级嵌套（parent_id），存放用户上传的素材文件
  * - 根目录文件：folder_id 为空的上传文件
  */
@@ -139,9 +140,12 @@ app.get('/:category', async (c) => {
   const category = parseCategory(c.req.param('category'))
   if (!category) return badRequest(c, '素材分类无效')
 
-  const dramas = await db.select().from(schema.dramas)
+  // 项目文件夹只对项目成员可见（超级管理员可见全部）
+  const visible = await accessibleDramaIds(c.get('user'))
+  const dramas = (await db.select().from(schema.dramas)
     .where(isNull(schema.dramas.deletedAt))
-    .orderBy(desc(schema.dramas.updatedAt))
+    .orderBy(desc(schema.dramas.updatedAt)))
+    .filter(d => !visible || visible.has(d.id))
   const rows = await projectRows(category, dramas.map(d => d.id))
   const projectFolders = dramas.map((d) => {
     const items = rows.filter(r => r.dramaId === d.id)

@@ -169,6 +169,7 @@ No config files — everything is set via environment variables (all have defaul
 | `FRONTEND_DIST` | `frontend/dist` | Frontend static build directory |
 | `FFMPEG_BIN` / `FFPROBE_BIN` | bundled npm binaries | Custom ffmpeg/ffprobe executable paths |
 | `PUBLIC_BASE_URL` | — | Public URL Seedance needs to reference local assets (server deployments) |
+| `HUOBAO_ADMIN_USERNAME` / `HUOBAO_ADMIN_PASSWORD` | — | Create the super admin on first start when no account exists; otherwise you create it on first page visit |
 
 > **Note**: AI service API keys, base URLs, and model parameters are all configured in the web UI "Settings" page and stored in the database — never in config files or environment variables.
 

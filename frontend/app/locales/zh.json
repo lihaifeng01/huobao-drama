@@ -37,11 +37,13 @@
       "projects": "项目",
       "library": "素材",
       "tools": "工具",
-      "settings": "设置"
+      "settings": "设置",
+      "users": "账号"
     },
     "banner": {
       "missing": "尚未配置{types}模型,AI 功能无法使用",
-      "goSettings": "前往设置"
+      "goSettings": "前往设置",
+      "askAdmin": "请联系管理员配置"
     },
     "theme": {
       "label": "切换主题",
@@ -1271,5 +1273,95 @@
         "failed": "失败"
       }
     }
+  },
+  "auth": {
+    "username": "用户名",
+    "usernamePlaceholder": "请输入用户名",
+    "usernameRule": "3–32 位，中文、字母、数字或 _ . -",
+    "displayName": "显示名称",
+    "displayNamePlaceholder": "团队里大家看到的名字",
+    "optional": "（选填）",
+    "password": "密码",
+    "passwordPlaceholder": "请输入密码",
+    "passwordRule": "至少 6 位",
+    "confirmPassword": "确认密码",
+    "passwordMismatch": "两次输入的密码不一致",
+    "failed": "操作失败，请重试",
+    "noAccount": "还没有账号？",
+    "hasAccount": "已有账号？",
+    "logout": "退出登录",
+    "login": {
+      "title": "登录",
+      "desc": "登录后进入你参与的项目。",
+      "submit": "登录"
+    },
+    "register": {
+      "title": "注册账号",
+      "desc": "注册后为普通用户，可新建项目或被邀请加入项目。",
+      "submit": "注册"
+    },
+    "setup": {
+      "title": "创建超级管理员",
+      "desc": "首次使用，请先创建超级管理员账号。超级管理员可以管理所有项目和账号，并可把其他账号设为普通管理员。",
+      "submit": "创建并进入"
+    },
+    "role": {
+      "super_admin": "超级管理员",
+      "admin": "管理员",
+      "user": "普通用户"
+    },
+    "changePassword": {
+      "title": "修改密码",
+      "old": "原密码",
+      "new": "新密码",
+      "hint": "修改后，其他设备上的登录会失效。",
+      "done": "密码已修改"
+    }
+  },
+  "members": {
+    "title": "项目成员",
+    "searchPlaceholder": "搜索用户名或显示名称",
+    "noMatch": "没有匹配的账号",
+    "noUsers": "暂无其他账号",
+    "selectedCount": "已选 {n} 人",
+    "createHint": "只有成员能看到这个项目和它的素材。创建后你和超级管理员可以随时修改。",
+    "teamTitle": "项目成员：{names}",
+    "count": "{n} 人",
+    "creator": "创建人",
+    "unknownCreator": "未知",
+    "manageDesc": "只有成员能看到这个项目和它的素材。",
+    "readonlyDesc": "只有创建人和超级管理员可以修改项目成员。",
+    "none": "暂无其他成员",
+    "saved": "项目成员已更新"
+  },
+  "users": {
+    "title": "账号管理",
+    "sub": "设置账号角色，禁用或删除账号。",
+    "create": "新建账号",
+    "col": {
+      "user": "账号",
+      "role": "角色",
+      "status": "状态",
+      "lastLogin": "最近登录",
+      "actions": "操作"
+    },
+    "me": "（我）",
+    "status": {
+      "active": "正常",
+      "disabled": "已禁用"
+    },
+    "disable": "禁用",
+    "enable": "启用",
+    "resetPassword": "重置密码",
+    "roleNote": "管理员可以使用设置（AI 服务、提示词、技能等）；普通用户不能使用设置。项目只对创建人、项目成员和超级管理员可见。",
+    "resetTitle": "重置「{name}」的密码",
+    "resetHint": "重置后该账号需要用新密码重新登录。",
+    "deleteTitle": "删除账号",
+    "deleteMessage": "确定删除账号「{name}」？删除后无法登录，其创建的项目会保留，超级管理员仍可管理。",
+    "neverLoggedIn": "从未登录",
+    "roleChanged": "角色已更新",
+    "created": "账号已创建",
+    "passwordReset": "密码已重置",
+    "deleted": "账号已删除"
   }
 }

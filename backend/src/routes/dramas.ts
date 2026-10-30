@@ -1,10 +1,33 @@
 import { Hono } from 'hono'
 import { and, eq, isNull, like, desc } from 'drizzle-orm'
 import { db, getInsertId, schema } from '../db/index.js'
-import { success, badRequest, notFound, created, now } from '../utils/response.js'
+import { success, badRequest, notFound, created, forbidden, now } from '../utils/response.js'
 import { toSnakeCase, toSnakeCaseArray } from '../utils/transform.js'
+import { findUser, publicUser, type UserRow } from '../services/auth.js'
+import { accessibleDramaIds, canManageDrama, listMembers, setMembers } from '../services/project-access.js'
 
 const app = new Hono()
+
+type DramaRow = typeof schema.dramas.$inferSelect
+
+/** 当前用户可见的未删除项目（超级管理员看全部，其他人只看自己创建或参与的） */
+async function visibleDramas(user: UserRow) {
+  const rows = await db.select().from(schema.dramas)
+    .where(isNull(schema.dramas.deletedAt))
+    .orderBy(desc(schema.dramas.updatedAt))
+  const ids = await accessibleDramaIds(user)
+  return ids ? rows.filter(d => ids.has(d.id)) : rows
+}
+
+/** 创建人 + 成员 + 当前用户能否管理成员 */
+async function teamInfo(drama: DramaRow, user: UserRow) {
+  const creator = drama.createdBy ? await findUser(drama.createdBy) : undefined
+  return {
+    creator: creator ? publicUser(creator) : null,
+    members: (await listMembers(drama.id)).map(publicUser),
+    can_manage_members: canManageDrama(user, drama),
+  }
+}
 
 // GET /dramas - List dramas
 app.get('/', async (c) => {
@@ -13,10 +36,8 @@ app.get('/', async (c) => {
   const status = c.req.query('status')
   const keyword = c.req.query('keyword')
 
-  const allRows = await db.select().from(schema.dramas)
-    .where(isNull(schema.dramas.deletedAt))
-    .orderBy(desc(schema.dramas.updatedAt))
-  let filtered = allRows
+  const user = c.get('user')
+  let filtered = await visibleDramas(user)
 
   if (status) filtered = filtered.filter(d => d.status === status)
   if (keyword) filtered = filtered.filter(d => d.title.includes(keyword))
@@ -35,6 +56,7 @@ app.get('/', async (c) => {
       .where(and(eq(schema.scenes.dramaId, drama.id), isNull(schema.scenes.deletedAt)))
     return {
       ...toSnakeCase(drama),
+      ...await teamInfo(drama, user),
       tags: drama.tags ? JSON.parse(drama.tags) : [],
       total_episodes: eps.length,
       episodes: toSnakeCaseArray(eps),
@@ -52,6 +74,7 @@ app.get('/', async (c) => {
 // POST /dramas - Create drama
 app.post('/', async (c) => {
   const body = await c.req.json()
+  const user = c.get('user')
   const ts = now()
   const res = await db.insert(schema.dramas).values({
     title: body.title,
@@ -62,12 +85,14 @@ app.post('/', async (c) => {
     tags: body.tags ? JSON.stringify(body.tags) : null,
     metadata: body.metadata,
     status: 'draft',
+    createdBy: user.id,
     createdAt: ts,
     updatedAt: ts,
   })
 
   const [result] = await db.select().from(schema.dramas)
     .where(eq(schema.dramas.id, getInsertId(res)))
+  await setMembers(result.id, user.id, body.member_ids)
 
   // 不再预建集 — 用户通过「添加集」流程创建（该流程会锁定图片/视频生成配置）
   return created(c, toSnakeCase(result))
@@ -76,7 +101,7 @@ app.post('/', async (c) => {
 
 // GET /dramas/stats — must be before /:id
 app.get('/stats', async (c) => {
-  const all = await db.select().from(schema.dramas).where(isNull(schema.dramas.deletedAt))
+  const all = await visibleDramas(c.get('user'))
   const byStatus = Object.entries(
     all.reduce((acc, d) => {
       acc[d.status || 'draft'] = (acc[d.status || 'draft'] || 0) + 1
@@ -103,6 +128,7 @@ app.get('/:id', async (c) => {
 
   return success(c, {
     ...toSnakeCase(drama),
+    ...await teamInfo(drama, c.get('user')),
     tags: drama.tags ? JSON.parse(drama.tags) : [],
     episodes: toSnakeCaseArray(eps),
     characters: toSnakeCaseArray(chars),
@@ -128,9 +154,25 @@ app.put('/:id', async (c) => {
   return success(c)
 })
 
-// DELETE /dramas/:id - Soft delete
+// PUT /dramas/:id/members — 覆盖项目成员 { member_ids }，仅创建人与超级管理员
+app.put('/:id/members', async (c) => {
+  const id = Number(c.req.param('id'))
+  const [drama] = await db.select().from(schema.dramas).where(and(eq(schema.dramas.id, id), isNull(schema.dramas.deletedAt)))
+  if (!drama) return notFound(c, '项目不存在')
+  const user = c.get('user')
+  if (!canManageDrama(user, drama)) return forbidden(c, '只有项目创建人和超级管理员可以修改项目成员')
+  const body = await c.req.json().catch(() => ({}))
+  if (!Array.isArray(body.member_ids)) return badRequest(c, 'member_ids 必须是数组')
+  await setMembers(id, drama.createdBy, body.member_ids)
+  return success(c, await teamInfo(drama, user))
+})
+
+// DELETE /dramas/:id - Soft delete（仅创建人与超级管理员）
 app.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'))
+  const [drama] = await db.select().from(schema.dramas).where(eq(schema.dramas.id, id))
+  if (!drama) return notFound(c, '项目不存在')
+  if (!canManageDrama(c.get('user'), drama)) return forbidden(c, '只有项目创建人和超级管理员可以删除项目')
   await db.update(schema.dramas).set({ deletedAt: now() }).where(eq(schema.dramas.id, id))
   return success(c)
 })
@@ -144,7 +186,10 @@ app.put('/:id/characters', async (c) => {
 
   for (const char of chars) {
     if (char.id) {
-      await db.update(schema.characters).set({ ...char, updatedAt: ts }).where(eq(schema.characters.id, char.id))
+      // 只能改本项目的行，且不允许借此把行挪到别的项目
+      const { id: _id, dramaId: _d, drama_id: _dd, ...fields } = char
+      await db.update(schema.characters).set({ ...fields, updatedAt: ts })
+        .where(and(eq(schema.characters.id, char.id), eq(schema.characters.dramaId, dramaId)))
     } else {
       await db.insert(schema.characters).values({ ...char, dramaId, createdAt: ts, updatedAt: ts })
     }
@@ -161,7 +206,9 @@ app.put('/:id/episodes', async (c) => {
 
   for (const ep of episodes) {
     if (ep.id) {
-      await db.update(schema.episodes).set({ ...ep, updatedAt: ts }).where(eq(schema.episodes.id, ep.id))
+      const { id: _id, dramaId: _d, drama_id: _dd, ...fields } = ep
+      await db.update(schema.episodes).set({ ...fields, updatedAt: ts })
+        .where(and(eq(schema.episodes.id, ep.id), eq(schema.episodes.dramaId, dramaId)))
     } else {
       await db.insert(schema.episodes).values({
         ...ep,
