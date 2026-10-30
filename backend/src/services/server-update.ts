@@ -11,12 +11,12 @@ import { readFileSync } from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
-// 双源：COS（国内直连）优先，GitHub（海外）兜底；HUOBAO_UPDATE_FEED 可整体覆盖
+// 本仓库已从上游 chatfire-AI/huobao-drama 独立，默认只读本仓库 GitHub Releases 的清单
+// （上游 COS 源发布的是上游版本，不能再混用）；HUOBAO_UPDATE_FEED 可整体覆盖（如自建国内镜像）
 const FEED_URLS = process.env.HUOBAO_UPDATE_FEED
   ? [process.env.HUOBAO_UPDATE_FEED]
   : [
-    'https://installer.chatfire.site/huobao-drama/latest.json',
-    'https://github.com/chatfire-AI/huobao-drama/releases/latest/download/latest.json',
+    'https://github.com/lihaifeng01/huobao-drama/releases/latest/download/latest.json',
   ]
 
 const WATCHTOWER_URL = process.env.HUOBAO_WATCHTOWER_URL?.replace(/\/+$/, '')

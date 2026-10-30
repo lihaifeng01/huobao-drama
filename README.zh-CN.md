@@ -7,7 +7,7 @@
 [![Node Version](https://img.shields.io/badge/Node.js-20+-339933?style=flat&logo=node.js)](https://nodejs.org)
 [![Vue Version](https://img.shields.io/badge/Vue-3.x-4FC08D?style=flat&logo=vue.js)](https://vuejs.org)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
-[![下载](https://img.shields.io/github/v/release/chatfire-AI/huobao-drama?style=flat&logo=github&label=%E4%B8%8B%E8%BD%BD)](https://github.com/chatfire-AI/huobao-drama/releases/latest)
+[![下载](https://img.shields.io/github/v/release/lihaifeng01/huobao-drama?style=flat&logo=github&label=%E4%B8%8B%E8%BD%BD)](https://github.com/lihaifeng01/huobao-drama/releases/latest)
 
 [中英双语](README.md) | **简体中文** | [English](README.en.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
@@ -19,10 +19,53 @@
 
 部署完成后在「设置 → 火宝快捷配置」粘贴 Key，一键写入三条推荐配置，开箱即用
 
-<h3>📥 <a href="https://github.com/chatfire-AI/huobao-drama/releases/latest">下载桌面版（macOS / Windows）</a></h3>
+<h3>📥 <a href="https://github.com/lihaifeng01/huobao-drama/releases/latest">下载桌面版（macOS / Windows）</a></h3>
 <h3>🌐 <a href="https://www.firemux.cn">官方网站</a></h3>
 
 </div>
+
+---
+
+## 🍴 关于本仓库
+
+本仓库基于 [chatfire-AI/huobao-drama](https://github.com/chatfire-AI/huobao-drama)（v4.0.9）独立维护，不再作为 GitHub fork，后续独立发版（桌面安装包、Docker 镜像）。上游的全部功能保留，并在此基础上新增了下方功能。
+
+- **许可证不变**：沿用上游 [CC BY-NC-SA 4.0](LICENSE)（署名 · 非商业 · 相同方式共享），原作者版权声明保留
+- **发布渠道**：安装包与版本清单在本仓库 [GitHub Releases](https://github.com/lihaifeng01/huobao-drama/releases)；Docker 镜像为 `lhf/huobao-drama` 与 `ghcr.io/lihaifeng01/huobao-drama`
+- **应用内更新**：桌面版与 Docker 版默认只检查本仓库的 `latest.json`，不会再提示上游版本（可用 `HUOBAO_UPDATE_FEED` 改为自建镜像）
+- **同步上游**：`git remote add upstream https://github.com/chatfire-AI/huobao-drama.git && git fetch upstream && git merge upstream/master`
+
+### ✨ 本仓库新增功能
+
+**剧本**
+- **AI 改写后的剧本可编辑并自动保存**：改写结果不满意可直接手改，停止输入后自动保存
+- **「跳过改写」「重新改写」前弹窗确认**：避免覆盖已手动修改的剧本
+- **前情摘要**：为每集生成剧情摘要，作为前情提要注入后续集的 Agent，保证跨集剧情连续
+
+**角色与素材**
+- **全局素材库**：新增「素材」页，跨项目聚合角色/场景素材，支持多级文件夹；项目内可直接从素材库选图
+- **角色别名与合并重复角色**：同一角色的不同称呼可归并，重复提取的角色可一键合并
+- **角色造型**：一个角色可有多套服装/妆发，按集或按镜头选择
+- **已定妆资产锁定视觉设定**：定妆后角色/场景外观不再被后续提取覆盖；分镜参考图角色优先，超出模型参考图上限时提示
+
+**字幕**
+- **字幕制作**：调用阿里云百炼录音文件识别生成 SRT，并压制出字幕版视频；导出页可切换「使用字幕版」
+- **剧集工作台可选字幕模型**；生成视频时在提示词最前面约束模型「不要自带字幕」，避免与压制字幕重叠
+- Docker 镜像内置中文字体；字幕长句均分换行，避免末行过短
+
+**工具页**
+- **生成字幕（独立工具）**：上传任意视频自动识别字幕（也可导入 SRT/VTT），可调字号与位置后合成，不依赖项目
+- **视频合成**：多个视频片段拖动排序后合成，尺寸/帧率/音轨不一致自动统一
+
+**AI 服务接入**
+- **中转站适配（自定义配置）**：文本/图片/视频服务可自定义提交 URL、轮询 URL、鉴权方式、额外请求头/请求体、视频请求体模板与响应解析路径（详见 [CHANGELOG.md](CHANGELOG.md)）
+- **URL 模式**：可选「原样使用 Base URL」，适配固定 URL + 官方请求参数的中转站
+- **硅基流动图片兼容**：请求体对照官方文档校正；模型不支持参考图时自动降级为纯文字生成并提示
+
+**其他**
+- 设置页弹窗支持点击 × 关闭；弹窗内再打开的确认框/素材选择器不再被遮挡
+- Docker 打包脚本 `scripts/docker-build.sh`（国内镜像源、多加速站自动切换、导出 tar.gz）；GitHub Actions 推送标签自动发布多架构镜像
+
 
 ---
 
@@ -133,7 +176,7 @@ data/       — 生成资源文件与 SQLite 数据库
 
 ```bash
 # 克隆项目
-git clone https://github.com/chatfire-AI/huobao-drama.git
+git clone https://github.com/lihaifeng01/huobao-drama.git
 cd huobao-drama
 
 # 安装后端依赖
@@ -285,20 +328,20 @@ cd backend && npx tsx scripts/import-mysql-to-sqlite.ts
 
 ### 🖥️ 桌面应用（推荐）
 
-**⬇️ 预编译安装包下载：[国内镜像（腾讯云，推荐）](https://installer.chatfire.site/huobao-drama/v4.0.5/) · [GitHub Releases（海外）](https://github.com/chatfire-AI/huobao-drama/releases/latest)**
+**⬇️ 预编译安装包下载：[GitHub Releases](https://github.com/lihaifeng01/huobao-drama/releases/latest)**
 
 | 平台 | 下载文件 |
 |---|---|
-| macOS（Apple Silicon，M 系列） | `HuobaoDrama-4.0.5-arm64.dmg` |
-| macOS（Intel） | `HuobaoDrama-4.0.5.dmg` |
-| Windows | `HuobaoDrama.Setup.4.0.5.exe` |
+| macOS（Apple Silicon，M 系列） | `HuobaoDrama-<版本>-arm64.dmg` |
+| macOS（Intel） | `HuobaoDrama-<版本>.dmg` |
+| Windows | `HuobaoDrama.Setup.<版本>.exe` |
 
-> 国内用户请用腾讯云镜像直链下载（GitHub 在国内访问不稳定）。应用内更新器同样国内源优先、GitHub 兜底。
+> 文件名中的版本号以 Release 页面为准。应用内更新器默认读取本仓库 GitHub Releases 的 `latest.json`；如需国内镜像，可自建 COS 并用 `HUOBAO_UPDATE_FEED` 指向其 `latest.json`。
 
 **命令行安装（推荐，免修复）**：用 curl 下载不会触发 macOS 隔离属性，安装后双击即开，不会遇到「已损坏」提示（Apple Silicon 把 `arm64` 文件名换成对应版本，Intel 用无后缀 dmg）：
 
 ```bash
-curl -L -o /tmp/HuobaoDrama.dmg https://installer.chatfire.site/huobao-drama/v4.0.5/HuobaoDrama-4.0.5-arm64.dmg \
+curl -L -o /tmp/HuobaoDrama.dmg https://github.com/lihaifeng01/huobao-drama/releases/download/v<版本>/HuobaoDrama-<版本>-arm64.dmg \
   && hdiutil attach -nobrowse /tmp/HuobaoDrama.dmg \
   && cp -R /Volumes/HuobaoDrama*/HuobaoDrama.app /Applications/ \
   && hdiutil detach /Volumes/HuobaoDrama*
@@ -418,14 +461,14 @@ server {
 **方式一：预构建镜像（免克隆、免构建）**：多架构镜像（`linux/amd64` + `linux/arm64`），x86 服务器与 ARM 设备自动匹配
 
 ```bash
-docker pull lhf/huobao-drama:4.0.6
+docker pull lhf/huobao-drama:latest
 
 docker run -d \
   --name huobao-drama \
   -p 5679:5679 \
   -v huobao-data:/app/data \
   --restart unless-stopped \
-  lhf/huobao-drama:4.0.6
+  lhf/huobao-drama:latest
 ```
 
 **方式二：docker compose（源码构建 + Watchtower 应用内更新）**：根目录提供一体化 `Dockerfile`（前端 generate + 后端依赖/运行时三阶段，后端与服务器部署一致走 tsx）与 `docker-compose.yml`（应用 + Watchtower）：
@@ -435,7 +478,7 @@ docker run -d \
 cp .env.example .env   # 修改 WATCHTOWER_TOKEN
 
 # 2. 构建并启动（发布时注入版本号，供「关于更新」比对）
-HUOBAO_VERSION=4.0.5 docker compose up -d --build
+HUOBAO_VERSION=4.0.9 docker compose up -d --build
 
 # 3. 访问 http://localhost:5679
 ```
@@ -443,7 +486,8 @@ HUOBAO_VERSION=4.0.5 docker compose up -d --build
 - **数据持久化**：命名卷 `huobao-data` 挂载 `/app/data`（SQLite + 生成的图片/视频 + workspace/skills，更新镜像不丢数据）
 - **应用内更新**：compose 自带 [Watchtower](https://containrrr.dev/watchtower/) sidecar（`--label-enable` 只更新标记容器，`--cleanup` 清旧镜像，每天自检一次）。设置页「关于更新」可检查新版本并「立即更新」——后端经 Watchtower HTTP API 触发，拉新镜像重建容器，几分钟后刷新页面即可
 - **手动模式**：`docker-compose.yml` 中删除 app 的 `HUOBAO_WATCHTOWER_*` 两个环境变量（或整个 watchtower 服务）后，「关于更新」退化为新版本提示 + 手动命令 `docker compose pull && docker compose up -d`
-- **发布镜像**：`docker buildx build --platform linux/amd64,linux/arm64 --build-arg HUOBAO_VERSION=x.y.z -t lhf/huobao-drama:x.y.z -t lhf/huobao-drama:latest --push .`，版本清单与桌面版共用 GitHub Releases 的 `latest.json`（可用 `HUOBAO_UPDATE_FEED` 覆盖）
+- **发布镜像（GitHub Actions）**：推送 `v*` 标签（如 `git tag v4.1.0 && git push origin v4.1.0`）即由 [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml) 构建多架构镜像并推送到 `ghcr.io/lihaifeng01/huobao-drama`；配置仓库 Secrets `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` 后同时推送 `lhf/huobao-drama`，并确保该版本 Release 含 `latest.json`
+- **本地发布镜像**：`docker buildx build --platform linux/amd64,linux/arm64 --build-arg HUOBAO_VERSION=x.y.z -t lhf/huobao-drama:x.y.z -t lhf/huobao-drama:latest --push .`，版本清单与桌面版共用 GitHub Releases 的 `latest.json`（可用 `HUOBAO_UPDATE_FEED` 覆盖）
 
 ---
 

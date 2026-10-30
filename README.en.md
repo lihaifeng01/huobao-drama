@@ -7,7 +7,7 @@
 [![Node Version](https://img.shields.io/badge/Node.js-20+-339933?style=flat&logo=node.js)](https://nodejs.org)
 [![Vue Version](https://img.shields.io/badge/Vue-3.x-4FC08D?style=flat&logo=vue.js)](https://vuejs.org)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
-[![Download](https://img.shields.io/github/v/release/chatfire-AI/huobao-drama?style=flat&logo=github&label=Download)](https://github.com/chatfire-AI/huobao-drama/releases/latest)
+[![Download](https://img.shields.io/github/v/release/lihaifeng01/huobao-drama?style=flat&logo=github&label=Download)](https://github.com/lihaifeng01/huobao-drama/releases/latest)
 
 [中英双语](README.md) | **English** | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
@@ -19,10 +19,53 @@
 
 After deploying, paste the key in "Settings → Huobao Quick Setup" to write three recommended configs in one click
 
-<h3>📥 <a href="https://github.com/chatfire-AI/huobao-drama/releases/latest">Download Desktop App (macOS / Windows)</a></h3>
+<h3>📥 <a href="https://github.com/lihaifeng01/huobao-drama/releases/latest">Download Desktop App (macOS / Windows)</a></h3>
 <h3>🌐 <a href="https://www.firemux.cn">Official Website</a></h3>
 
 </div>
+
+---
+
+## 🍴 About This Repository
+
+This repository is independently maintained, based on [chatfire-AI/huobao-drama](https://github.com/chatfire-AI/huobao-drama) (v4.0.9). It is no longer a GitHub fork and ships its own releases (desktop installers, Docker images). All upstream features are kept, plus the additions below.
+
+- **License unchanged**: upstream [CC BY-NC-SA 4.0](LICENSE) (attribution · non-commercial · share-alike) still applies; the original copyright notice is kept
+- **Release channels**: installers and the update manifest live in this repo's [GitHub Releases](https://github.com/lihaifeng01/huobao-drama/releases); Docker images are `lhf/huobao-drama` and `ghcr.io/lihaifeng01/huobao-drama`
+- **In-app updates**: desktop and Docker builds only check this repo's `latest.json` and no longer offer upstream versions (point `HUOBAO_UPDATE_FEED` at your own mirror if needed)
+- **Syncing upstream**: `git remote add upstream https://github.com/chatfire-AI/huobao-drama.git && git fetch upstream && git merge upstream/master`
+
+### ✨ Features Added in This Repository
+
+**Script**
+- **Editable AI-rewritten scripts with auto-save**: tweak the rewrite by hand; it saves automatically once you stop typing
+- **Confirm before "Skip rewrite" / "Rewrite again"**: prevents overwriting a hand-edited script
+- **Previously-on summaries**: each episode gets a plot summary that is injected into later episodes' agents for cross-episode continuity
+
+**Characters & Assets**
+- **Global asset library**: a new "Assets" tab aggregates character/scene assets across projects, with nested folders; pick images from it inside any project
+- **Character aliases & merging duplicates**: alternate names map to one character, and duplicated characters can be merged
+- **Character looks**: multiple outfits/hairstyles per character, selectable per episode or per shot
+- **Locked visuals for finalized assets**: finalized character/scene looks are not overwritten by later extraction; storyboard reference images prioritize characters and warn when over the model's limit
+
+**Subtitles**
+- **Subtitle production**: Alibaba Cloud Bailian speech recognition → SRT → burned-in subtitled video; the export page can switch to the subtitled version
+- **Subtitle model picker in the episode workspace**; video prompts now start with a "no built-in subtitles" constraint so model-drawn captions don't clash with burned-in ones
+- Chinese fonts bundled in the Docker image; long subtitle lines are split evenly to avoid a tiny last line
+
+**Tools**
+- **Generate subtitles (standalone)**: upload any video to transcribe it (or import SRT/VTT), adjust font size and position, then burn in — no project needed
+- **Video merge**: reorder clips by drag and merge them; differing sizes, frame rates and audio tracks are normalized automatically
+
+**AI Providers**
+- **Relay/proxy support (custom config)**: custom submit/poll URLs, auth style, extra headers/body fields, video body templates and response paths for text/image/video services (see [CHANGELOG.md](CHANGELOG.md))
+- **URL mode**: optionally use the Base URL verbatim, for relays with a fixed URL and official request formats
+- **SiliconFlow image compatibility**: request body aligned with the official docs; falls back to text-only generation (with a notice) when reference images aren't supported
+
+**Misc**
+- Settings dialogs close via ×; confirm dialogs and pickers opened inside another dialog are no longer hidden behind it
+- Docker build script `scripts/docker-build.sh` (China mirrors, automatic fallback across registry mirrors, tar.gz export); GitHub Actions publishes multi-arch images on tag push
+
 
 ---
 
@@ -133,7 +176,7 @@ No config files — everything is set via environment variables (all have defaul
 
 ```bash
 # Clone the repository
-git clone https://github.com/chatfire-AI/huobao-drama.git
+git clone https://github.com/lihaifeng01/huobao-drama.git
 cd huobao-drama
 
 # Install backend dependencies
@@ -284,20 +327,20 @@ The episode list shows the production status of every episode — click "Enter S
 
 ### 🖥️ Desktop App (recommended)
 
-**⬇️ Prebuilt installers: [GitHub Releases](https://github.com/chatfire-AI/huobao-drama/releases/latest) · [Mirror for China (Tencent COS)](https://installer.chatfire.site/huobao-drama/v4.0.5/)**
+**⬇️ Prebuilt installers: [GitHub Releases](https://github.com/lihaifeng01/huobao-drama/releases/latest)**
 
 | Platform | File to download |
 |---|---|
-| macOS (Apple Silicon, M-series) | `HuobaoDrama-4.0.5-arm64.dmg` |
-| macOS (Intel) | `HuobaoDrama-4.0.5.dmg` |
-| Windows | `HuobaoDrama.Setup.4.0.5.exe` |
+| macOS (Apple Silicon, M-series) | `HuobaoDrama-<version>-arm64.dmg` |
+| macOS (Intel) | `HuobaoDrama-<version>.dmg` |
+| Windows | `HuobaoDrama.Setup.<version>.exe` |
 
-> China users: use the COS mirror above (GitHub is slow/unreachable in mainland China). The in-app updater also checks the COS mirror first, then falls back to GitHub.
+> Version numbers in file names follow the Release page. The in-app updater reads `latest.json` from this repo's GitHub Releases by default; point `HUOBAO_UPDATE_FEED` at your own mirror if needed.
 
 **Command-line install (recommended, no Gatekeeper fix needed)**: downloading via curl never sets macOS's quarantine attribute, so the app opens cleanly with no "damaged" prompt (use the `-arm64.dmg` for Apple Silicon, the plain dmg for Intel):
 
 ```bash
-curl -L -o /tmp/HuobaoDrama.dmg https://installer.chatfire.site/huobao-drama/v4.0.5/HuobaoDrama-4.0.5-arm64.dmg \
+curl -L -o /tmp/HuobaoDrama.dmg https://github.com/lihaifeng01/huobao-drama/releases/download/v<version>/HuobaoDrama-<version>-arm64.dmg \
   && hdiutil attach -nobrowse /tmp/HuobaoDrama.dmg \
   && cp -R /Volumes/HuobaoDrama*/HuobaoDrama.app /Applications/ \
   && hdiutil detach /Volumes/HuobaoDrama*
@@ -419,14 +462,14 @@ server {
 **Option A — prebuilt image (no clone, no build):** multi-arch (`linux/amd64` + `linux/arm64`), x86 servers and ARM devices match automatically
 
 ```bash
-docker pull lhf/huobao-drama:4.0.6
+docker pull lhf/huobao-drama:latest
 
 docker run -d \
   --name huobao-drama \
   -p 5679:5679 \
   -v huobao-data:/app/data \
   --restart unless-stopped \
-  lhf/huobao-drama:4.0.6
+  lhf/huobao-drama:latest
 ```
 
 **Option B — docker compose (source build + Watchtower in-app updates):** the repo root provides an all-in-one `Dockerfile` (three stages: frontend generate + backend dependencies + runtime; the backend runs via tsx just like server deployment) and `docker-compose.yml` (app + Watchtower):
@@ -436,7 +479,7 @@ docker run -d \
 cp .env.example .env   # edit WATCHTOWER_TOKEN
 
 # 2. Build and start (inject a version at publish time for "About & Updates" comparison)
-HUOBAO_VERSION=4.0.5 docker compose up -d --build
+HUOBAO_VERSION=4.0.9 docker compose up -d --build
 
 # 3. Visit http://localhost:5679
 ```
@@ -444,7 +487,8 @@ HUOBAO_VERSION=4.0.5 docker compose up -d --build
 - **Data persistence**: the named volume `huobao-data` mounts `/app/data` (SQLite + generated images/videos + workspace/skills) — image updates don't lose data
 - **In-app updates**: the compose file ships a [Watchtower](https://containrrr.dev/watchtower/) sidecar (`--label-enable` only updates labeled containers, `--cleanup` removes old images, daily self-check). "Settings → About & Updates" can check for new versions and "Update Now" — the backend triggers it via the Watchtower HTTP API, which pulls the new image and rebuilds the container; refresh the page after a few minutes
 - **Manual mode**: remove the app's two `HUOBAO_WATCHTOWER_*` env vars (or the whole watchtower service) from `docker-compose.yml` — "About & Updates" then degrades to a new-version notice + manual `docker compose pull && docker compose up -d`
-- **Publishing images**: `docker buildx build --platform linux/amd64,linux/arm64 --build-arg HUOBAO_VERSION=x.y.z -t lhf/huobao-drama:x.y.z -t lhf/huobao-drama:latest --push .` — the version manifest is shared with the desktop app via `latest.json` on GitHub Releases (overridable with `HUOBAO_UPDATE_FEED`)
+- **Publishing images (GitHub Actions)**: pushing a `v*` tag (e.g. `git tag v4.1.0 && git push origin v4.1.0`) runs [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml), which builds multi-arch images and pushes them to `ghcr.io/lihaifeng01/huobao-drama`; set the `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` repo secrets to also push `lhf/huobao-drama`. It also makes sure the release contains a `latest.json`
+- **Publishing locally**: `docker buildx build --platform linux/amd64,linux/arm64 --build-arg HUOBAO_VERSION=x.y.z -t lhf/huobao-drama:x.y.z -t lhf/huobao-drama:latest --push .` — the version manifest is shared with the desktop app via `latest.json` on GitHub Releases (overridable with `HUOBAO_UPDATE_FEED`)
 
 ---
 
@@ -640,4 +684,4 @@ This project has been recognized with a link from the [LINUX DO](https://linux.d
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/chart?repos=chatfire-ai/huobao-drama&type=date&legend=top-left)](https://www.star-history.com/?repos=chatfire-ai%2Fhuobao-drama&type=date&legend=top-left)
+[![Star History Chart](https://api.star-history.com/chart?repos=lihaifeng01/huobao-drama&type=date&legend=top-left)](https://www.star-history.com/?repos=lihaifeng01%2Fhuobao-drama&type=date&legend=top-left)

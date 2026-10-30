@@ -7,7 +7,7 @@
 [![Node Version](https://img.shields.io/badge/Node.js-20+-339933?style=flat&logo=node.js)](https://nodejs.org)
 [![Vue Version](https://img.shields.io/badge/Vue-3.x-4FC08D?style=flat&logo=vue.js)](https://vuejs.org)
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
-[![ダウンロード](https://img.shields.io/github/v/release/chatfire-AI/huobao-drama?style=flat&logo=github&label=%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89)](https://github.com/chatfire-AI/huobao-drama/releases/latest)
+[![ダウンロード](https://img.shields.io/github/v/release/lihaifeng01/huobao-drama?style=flat&logo=github&label=%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89)](https://github.com/lihaifeng01/huobao-drama/releases/latest)
 
 [中英双语](README.md) | [English](README.en.md) | [简体中文](README.zh-CN.md) | **日本語** | [한국어](README.ko.md)
 
@@ -19,10 +19,18 @@
 
 デプロイ後、「設定 → 火宝クイック設定」に Key を貼るだけで、3 つの推奨設定をワンクリックで書き込み
 
-<h3>📥 <a href="https://github.com/chatfire-AI/huobao-drama/releases/latest">デスクトップ版をダウンロード（macOS / Windows）</a></h3>
+<h3>📥 <a href="https://github.com/lihaifeng01/huobao-drama/releases/latest">デスクトップ版をダウンロード（macOS / Windows）</a></h3>
 <h3>🌐 <a href="https://www.firemux.cn">公式サイト</a></h3>
 
 </div>
+
+---
+
+## 🍴 このリポジトリについて
+
+本リポジトリは [chatfire-AI/huobao-drama](https://github.com/chatfire-AI/huobao-drama)（v4.0.9）をベースに独立して保守しており、GitHub の fork ではありません。デスクトップ版インストーラーと Docker イメージ（`lhf/huobao-drama` / `ghcr.io/lihaifeng01/huobao-drama`）は本リポジトリから独自にリリースします。ライセンスは上流と同じ [CC BY-NC-SA 4.0](LICENSE) です。
+
+追加機能（素材ライブラリ、キャラクターの別名・統合・衣装、前回のあらすじ、字幕制作、ツールページ〈字幕生成・動画結合〉、中継サーバー対応など）の一覧は [README.en.md「Features Added in This Repository」](README.en.md#-features-added-in-this-repository) を参照してください。
 
 ---
 
@@ -133,7 +141,7 @@ data/       — 生成アセットと SQLite データベース
 
 ```bash
 # リポジトリをクローン
-git clone https://github.com/chatfire-AI/huobao-drama.git
+git clone https://github.com/lihaifeng01/huobao-drama.git
 cd huobao-drama
 
 # バックエンドの依存をインストール
@@ -284,20 +292,20 @@ cd backend && npx tsx scripts/import-mysql-to-sqlite.ts
 
 ### 🖥️ デスクトップアプリ（推奨）
 
-**⬇️ ビルド済みインストーラー: [GitHub Releases](https://github.com/chatfire-AI/huobao-drama/releases/latest) · [中国向けミラー（Tencent COS）](https://installer.chatfire.site/huobao-drama/v4.0.5/)**
+**⬇️ ビルド済みインストーラー: [GitHub Releases](https://github.com/lihaifeng01/huobao-drama/releases/latest)**
 
 | プラットフォーム | ダウンロードファイル |
 |---|---|
-| macOS（Apple Silicon、M シリーズ） | `HuobaoDrama-4.0.5-arm64.dmg` |
-| macOS（Intel） | `HuobaoDrama-4.0.5.dmg` |
-| Windows | `HuobaoDrama.Setup.4.0.5.exe` |
+| macOS（Apple Silicon、M シリーズ） | `HuobaoDrama-<version>-arm64.dmg` |
+| macOS（Intel） | `HuobaoDrama-<version>.dmg` |
+| Windows | `HuobaoDrama.Setup.<version>.exe` |
 
-> 中国本土では GitHub が不安定なため、Tencent COS ミラーをご利用ください。アプリ内アップデーターも COS を優先し、GitHub にフォールバックします。
+> ファイル名のバージョンは Release ページに従ってください。アプリ内アップデーターは既定で本リポジトリの GitHub Releases の `latest.json` を参照します（`HUOBAO_UPDATE_FEED` で変更可能）。
 
 **コマンドラインインストール（推奨・修復不要）**：curl でのダウンロードは macOS の隔離属性が付かないため、「壊れている」警告なしでそのまま起動できます（Apple Silicon は `-arm64.dmg`、Intel は無印の dmg）：
 
 ```bash
-curl -L -o /tmp/HuobaoDrama.dmg https://installer.chatfire.site/huobao-drama/v4.0.5/HuobaoDrama-4.0.5-arm64.dmg \
+curl -L -o /tmp/HuobaoDrama.dmg https://github.com/lihaifeng01/huobao-drama/releases/download/v<version>/HuobaoDrama-<version>-arm64.dmg \
   && hdiutil attach -nobrowse /tmp/HuobaoDrama.dmg \
   && cp -R /Volumes/HuobaoDrama*/HuobaoDrama.app /Applications/ \
   && hdiutil detach /Volumes/HuobaoDrama*
@@ -419,14 +427,14 @@ server {
 **方法 A — ビルド済みイメージ（クローン・ビルド不要）**：マルチアーキテクチャ（`linux/amd64` + `linux/arm64`）、x86 サーバーと ARM デバイスの両方に自動対応
 
 ```bash
-docker pull lhf/huobao-drama:4.0.6
+docker pull lhf/huobao-drama:latest
 
 docker run -d \
   --name huobao-drama \
   -p 5679:5679 \
   -v huobao-data:/app/data \
   --restart unless-stopped \
-  lhf/huobao-drama:4.0.6
+  lhf/huobao-drama:latest
 ```
 
 **方法 B — docker compose（ソースビルド + Watchtower アプリ内更新）**：リポジトリルートにオールインワンの `Dockerfile`（フロントエンド generate + バックエンド依存/ランタイムの 3 ステージ。バックエンドはサーバーデプロイと同様に tsx で実行）と `docker-compose.yml`（アプリ + Watchtower）を用意：
@@ -436,7 +444,7 @@ docker run -d \
 cp .env.example .env   # WATCHTOWER_TOKEN を変更
 
 # 2. ビルドして起動（リリース時にバージョンを注入し、「关于更新」での比較に使用）
-HUOBAO_VERSION=4.0.5 docker compose up -d --build
+HUOBAO_VERSION=4.0.9 docker compose up -d --build
 
 # 3. http://localhost:5679 にアクセス
 ```
