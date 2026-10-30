@@ -9,7 +9,7 @@
 
 services:
   app:
-    image: lhf/huobao-drama:latest
+    image: lihaifeng1995/huobao-drama:latest
     build:
       context: .
       args:

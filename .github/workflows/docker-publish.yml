@@ -3,8 +3,8 @@
 # 触发：推送 v* 标签（如 git tag v4.1.0 && git push origin v4.1.0），或在 Actions 页手动运行
 # 推送目标：
 #   - GHCR：ghcr.io/<owner>/huobao-drama（用内置 GITHUB_TOKEN，无需配置）
-#   - Docker Hub：lhf/huobao-drama（仓库 Settings → Secrets 配置 DOCKERHUB_USERNAME / DOCKERHUB_TOKEN 后启用）
-#     镜像名可用仓库变量 DOCKERHUB_IMAGE 覆盖
+#   - Docker Hub：<DOCKERHUB_USERNAME>/huobao-drama（即 lihaifeng1995/huobao-drama；仓库 Settings → Secrets
+#     配置 DOCKERHUB_USERNAME / DOCKERHUB_TOKEN 后启用），镜像名可用仓库变量 DOCKERHUB_IMAGE 覆盖
 # 同时保证该版本 Release 里有 latest.json（Docker 版「关于更新」读它比对版本）；
 # 桌面版 publish-release.mjs 会以完整清单（含安装包）覆盖它。
 name: Docker Publish
@@ -23,7 +23,8 @@ permissions:
   packages: write
 
 env:
-  DOCKERHUB_IMAGE: ${{ vars.DOCKERHUB_IMAGE || 'lhf/huobao-drama' }}
+  # 默认 <DOCKERHUB_USERNAME>/huobao-drama，仓库变量 DOCKERHUB_IMAGE 可覆盖
+  DOCKERHUB_IMAGE: ${{ vars.DOCKERHUB_IMAGE || format('{0}/huobao-drama', secrets.DOCKERHUB_USERNAME) }}
   HAS_DOCKERHUB: ${{ secrets.DOCKERHUB_TOKEN != '' }}
 
 jobs:

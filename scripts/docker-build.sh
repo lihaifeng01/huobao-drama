@@ -5,7 +5,7 @@
 #   scripts/docker-build.sh [版本号]       版本号缺省取 desktop/package.json 的 version
 #
 # 环境变量：
-#   IMAGE_NAME  镜像名            默认 lhf/huobao-drama
+#   IMAGE_NAME  镜像名            默认 lihaifeng1995/huobao-drama
 #   PLATFORM    目标平台          默认 linux/amd64（多平台如 linux/amd64,linux/arm64 仅支持 PUSH=1）
 #   CN_MIRROR   国内镜像源 1/0    默认 1
 #   SAVE        导出 tar.gz 1/0   默认 1（输出到 dist/docker/）
@@ -17,7 +17,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 VERSION="${1:-$(node -p "require('./desktop/package.json').version")}"
-IMAGE_NAME="${IMAGE_NAME:-lhf/huobao-drama}"
+IMAGE_NAME="${IMAGE_NAME:-lihaifeng1995/huobao-drama}"
 PLATFORM="${PLATFORM:-linux/amd64}"
 CN_MIRROR="${CN_MIRROR:-1}"
 SAVE="${SAVE:-1}"

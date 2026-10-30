@@ -46,8 +46,8 @@ This repository is independently maintained, based on [chatfire-AI/huobao-drama]
 
 - **许可证不变**：沿用上游 [CC BY-NC-SA 4.0](LICENSE)（署名 · 非商业 · 相同方式共享），原作者版权声明保留<br>
   **License unchanged**: upstream [CC BY-NC-SA 4.0](LICENSE) (attribution · non-commercial · share-alike) still applies; the original copyright notice is kept
-- **发布渠道**：安装包与版本清单在本仓库 [GitHub Releases](https://github.com/lihaifeng01/huobao-drama/releases)；Docker 镜像为 `lhf/huobao-drama` 与 `ghcr.io/lihaifeng01/huobao-drama`<br>
-  **Release channels**: installers and the update manifest live in this repo's [GitHub Releases](https://github.com/lihaifeng01/huobao-drama/releases); Docker images are `lhf/huobao-drama` and `ghcr.io/lihaifeng01/huobao-drama`
+- **发布渠道**：安装包与版本清单在本仓库 [GitHub Releases](https://github.com/lihaifeng01/huobao-drama/releases)；Docker 镜像为 `lihaifeng1995/huobao-drama` 与 `ghcr.io/lihaifeng01/huobao-drama`<br>
+  **Release channels**: installers and the update manifest live in this repo's [GitHub Releases](https://github.com/lihaifeng01/huobao-drama/releases); Docker images are `lihaifeng1995/huobao-drama` and `ghcr.io/lihaifeng01/huobao-drama`
 - **应用内更新**：桌面版与 Docker 版默认只检查本仓库的 `latest.json`，不会再提示上游版本（可用 `HUOBAO_UPDATE_FEED` 改为自建镜像）<br>
   **In-app updates**: desktop and Docker builds only check this repo's `latest.json` and no longer offer upstream versions (point `HUOBAO_UPDATE_FEED` at your own mirror if needed)
 - **同步上游**：`git remote add upstream https://github.com/chatfire-AI/huobao-drama.git && git fetch upstream && git merge upstream/master`<br>
@@ -596,7 +596,7 @@ server {
 **Option A — prebuilt image (no clone, no build):** multi-arch (`linux/amd64` + `linux/arm64`), x86 servers and ARM devices match automatically
 
 ```bash
-docker pull lhf/huobao-drama:latest
+docker pull lihaifeng1995/huobao-drama:latest
 # 或 GitHub 容器仓库 / or from GitHub Container Registry: ghcr.io/lihaifeng01/huobao-drama:latest
 
 docker run -d \
@@ -604,7 +604,7 @@ docker run -d \
   -p 5679:5679 \
   -v huobao-data:/app/data \
   --restart unless-stopped \
-  lhf/huobao-drama:latest
+  lihaifeng1995/huobao-drama:latest
 ```
 
 **方式二：docker compose（源码构建 + Watchtower 应用内更新）**：根目录提供一体化 `Dockerfile`（前端 generate + 后端依赖/运行时三阶段，后端与服务器部署一致走 tsx）与 `docker-compose.yml`（应用 + Watchtower）：<br>
@@ -629,15 +629,15 @@ HUOBAO_VERSION=4.0.9 docker compose up -d --build
 - **手动模式**：`docker-compose.yml` 中删除 app 的 `HUOBAO_WATCHTOWER_*` 两个环境变量（或整个 watchtower 服务）后，「关于更新」退化为新版本提示 + 手动命令 `docker compose pull && docker compose up -d`<br>
   **Manual mode**: remove the app's two `HUOBAO_WATCHTOWER_*` env vars (or the whole watchtower service) from `docker-compose.yml` — "About & Updates" then degrades to a new-version notice + manual `docker compose pull && docker compose up -d`
 
-- **发布镜像（GitHub Actions，推荐）**：推送 `v*` 标签即由 [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml) 构建 `linux/amd64` + `linux/arm64` 镜像并推送到 `ghcr.io/lihaifeng01/huobao-drama`；在仓库 Settings → Secrets 配置 `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` 后同时推送 `lhf/huobao-drama`（镜像名可用仓库变量 `DOCKERHUB_IMAGE` 覆盖）。工作流还会确保该版本 Release 里有 `latest.json`，供 Docker 版「关于更新」比对版本<br>
-  **Publishing images (GitHub Actions, recommended)**: pushing a `v*` tag runs [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml), which builds `linux/amd64` + `linux/arm64` images and pushes them to `ghcr.io/lihaifeng01/huobao-drama`; add `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` under Settings → Secrets to also push `lhf/huobao-drama` (override the name with the `DOCKERHUB_IMAGE` repo variable). The workflow also makes sure the release contains a `latest.json` for the Docker "About & Updates" check
+- **发布镜像（GitHub Actions，推荐）**：推送 `v*` 标签即由 [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml) 构建 `linux/amd64` + `linux/arm64` 镜像并推送到 `ghcr.io/lihaifeng01/huobao-drama`；在仓库 Settings → Secrets 配置 `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` 后同时推送 `lihaifeng1995/huobao-drama`（镜像名可用仓库变量 `DOCKERHUB_IMAGE` 覆盖）。工作流还会确保该版本 Release 里有 `latest.json`，供 Docker 版「关于更新」比对版本<br>
+  **Publishing images (GitHub Actions, recommended)**: pushing a `v*` tag runs [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml), which builds `linux/amd64` + `linux/arm64` images and pushes them to `ghcr.io/lihaifeng01/huobao-drama`; add `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` under Settings → Secrets to also push `lihaifeng1995/huobao-drama` (override the name with the `DOCKERHUB_IMAGE` repo variable). The workflow also makes sure the release contains a `latest.json` for the Docker "About & Updates" check
 
   ```bash
   git tag v4.1.0 && git push origin v4.1.0
   ```
 
-- **本地发布镜像**：`scripts/docker-build.sh [版本号]`（默认 linux/amd64、国内源、导出 tar.gz；`PUSH=1 PLATFORM=linux/amd64,linux/arm64` 直接推送），或 `docker buildx build --platform linux/amd64,linux/arm64 --build-arg HUOBAO_VERSION=x.y.z -t lhf/huobao-drama:x.y.z -t lhf/huobao-drama:latest --push .`<br>
-  **Publishing locally**: `scripts/docker-build.sh [version]` (defaults: linux/amd64, China mirrors, tar.gz export; `PUSH=1 PLATFORM=linux/amd64,linux/arm64` pushes directly), or `docker buildx build --platform linux/amd64,linux/arm64 --build-arg HUOBAO_VERSION=x.y.z -t lhf/huobao-drama:x.y.z -t lhf/huobao-drama:latest --push .`
+- **本地发布镜像**：`scripts/docker-build.sh [版本号]`（默认 linux/amd64、国内源、导出 tar.gz；`PUSH=1 PLATFORM=linux/amd64,linux/arm64` 直接推送），或 `docker buildx build --platform linux/amd64,linux/arm64 --build-arg HUOBAO_VERSION=x.y.z -t lihaifeng1995/huobao-drama:x.y.z -t lihaifeng1995/huobao-drama:latest --push .`<br>
+  **Publishing locally**: `scripts/docker-build.sh [version]` (defaults: linux/amd64, China mirrors, tar.gz export; `PUSH=1 PLATFORM=linux/amd64,linux/arm64` pushes directly), or `docker buildx build --platform linux/amd64,linux/arm64 --build-arg HUOBAO_VERSION=x.y.z -t lihaifeng1995/huobao-drama:x.y.z -t lihaifeng1995/huobao-drama:latest --push .`
 
 ---
 

@@ -28,7 +28,7 @@
 
 ## 🍴 このリポジトリについて
 
-本リポジトリは [chatfire-AI/huobao-drama](https://github.com/chatfire-AI/huobao-drama)（v4.0.9）をベースに独立して保守しており、GitHub の fork ではありません。デスクトップ版インストーラーと Docker イメージ（`lhf/huobao-drama` / `ghcr.io/lihaifeng01/huobao-drama`）は本リポジトリから独自にリリースします。ライセンスは上流と同じ [CC BY-NC-SA 4.0](LICENSE) です。
+本リポジトリは [chatfire-AI/huobao-drama](https://github.com/chatfire-AI/huobao-drama)（v4.0.9）をベースに独立して保守しており、GitHub の fork ではありません。デスクトップ版インストーラーと Docker イメージ（`lihaifeng1995/huobao-drama` / `ghcr.io/lihaifeng01/huobao-drama`）は本リポジトリから独自にリリースします。ライセンスは上流と同じ [CC BY-NC-SA 4.0](LICENSE) です。
 
 追加機能（素材ライブラリ、キャラクターの別名・統合・衣装、前回のあらすじ、字幕制作、ツールページ〈字幕生成・動画結合〉、中継サーバー対応など）の一覧は [README.en.md「Features Added in This Repository」](README.en.md#-features-added-in-this-repository) を参照してください。
 
@@ -427,14 +427,14 @@ server {
 **方法 A — ビルド済みイメージ（クローン・ビルド不要）**：マルチアーキテクチャ（`linux/amd64` + `linux/arm64`）、x86 サーバーと ARM デバイスの両方に自動対応
 
 ```bash
-docker pull lhf/huobao-drama:latest
+docker pull lihaifeng1995/huobao-drama:latest
 
 docker run -d \
   --name huobao-drama \
   -p 5679:5679 \
   -v huobao-data:/app/data \
   --restart unless-stopped \
-  lhf/huobao-drama:latest
+  lihaifeng1995/huobao-drama:latest
 ```
 
 **方法 B — docker compose（ソースビルド + Watchtower アプリ内更新）**：リポジトリルートにオールインワンの `Dockerfile`（フロントエンド generate + バックエンド依存/ランタイムの 3 ステージ。バックエンドはサーバーデプロイと同様に tsx で実行）と `docker-compose.yml`（アプリ + Watchtower）を用意：
@@ -452,7 +452,7 @@ HUOBAO_VERSION=4.0.9 docker compose up -d --build
 - **データ永続化**：名前付きボリューム `huobao-data` を `/app/data` にマウント（SQLite + 生成画像/動画 + workspace/skills）。イメージ更新でもデータを失いません
 - **アプリ内更新**：compose に [Watchtower](https://containrrr.dev/watchtower/) sidecar を同梱（`--label-enable` でラベル付きコンテナのみ更新、`--cleanup` で旧イメージ削除、毎日セルフチェック）。「設定 → 关于更新」で新バージョンの確認と「今すぐ更新」が可能。バックエンドが Watchtower HTTP API 経由でトリガーし、新イメージを pull してコンテナを再構築。数分後にページを更新すれば完了です
 - **手動モード**：`docker-compose.yml` から app の `HUOBAO_WATCHTOWER_*` の 2 つの環境変数（または watchtower サービス全体）を削除すると、「关于更新」は新バージョン通知 + 手動コマンド `docker compose pull && docker compose up -d` に退化します
-- **イメージの公開**：`docker buildx build --platform linux/amd64,linux/arm64 --build-arg HUOBAO_VERSION=x.y.z -t lhf/huobao-drama:x.y.z -t lhf/huobao-drama:latest --push .`。バージョンマニフェストはデスクトップ版と GitHub Releases の `latest.json` を共用（`HUOBAO_UPDATE_FEED` で上書き可能）
+- **イメージの公開**：`docker buildx build --platform linux/amd64,linux/arm64 --build-arg HUOBAO_VERSION=x.y.z -t lihaifeng1995/huobao-drama:x.y.z -t lihaifeng1995/huobao-drama:latest --push .`。バージョンマニフェストはデスクトップ版と GitHub Releases の `latest.json` を共用（`HUOBAO_UPDATE_FEED` で上書き可能）
 
 ---
 

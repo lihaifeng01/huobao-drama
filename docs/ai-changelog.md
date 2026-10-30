@@ -69,6 +69,11 @@
 
 ## 变更条目
 
+### 2026-10-30 · Docker Hub 镜像名改为 `lihaifeng1995/huobao-drama`
+- **分支**：`dev`
+- **改动**：Docker Hub 用户名是 `lihaifeng1995`，`lhf/huobao-drama` 不是本人命名空间。README、`docker-compose.yml`、`scripts/docker-build.sh`、`CLAUDE.md` 全部改为 `lihaifeng1995/huobao-drama`；工作流默认镜像名改为 `<DOCKERHUB_USERNAME>/huobao-drama`，仍可用仓库变量 `DOCKERHUB_IMAGE` 覆盖。
+- **注意事项**：之前用 `lhf/huobao-drama` 部署的 compose 要改 `image:` 后重新 `docker compose pull && up -d`，Watchtower 只认原镜像名。下方旧条目里的 `lhf/huobao-drama` 是历史记录，不再适用。
+
 ### 2026-10-30 · 从上游 fork 独立：发布地址指向本仓库，新增 Docker 自动发布
 - **分支**：`dev`
 - **改动**

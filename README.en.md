@@ -31,7 +31,7 @@ After deploying, paste the key in "Settings → Huobao Quick Setup" to write thr
 This repository is independently maintained, based on [chatfire-AI/huobao-drama](https://github.com/chatfire-AI/huobao-drama) (v4.0.9). It is no longer a GitHub fork and ships its own releases (desktop installers, Docker images). All upstream features are kept, plus the additions below.
 
 - **License unchanged**: upstream [CC BY-NC-SA 4.0](LICENSE) (attribution · non-commercial · share-alike) still applies; the original copyright notice is kept
-- **Release channels**: installers and the update manifest live in this repo's [GitHub Releases](https://github.com/lihaifeng01/huobao-drama/releases); Docker images are `lhf/huobao-drama` and `ghcr.io/lihaifeng01/huobao-drama`
+- **Release channels**: installers and the update manifest live in this repo's [GitHub Releases](https://github.com/lihaifeng01/huobao-drama/releases); Docker images are `lihaifeng1995/huobao-drama` and `ghcr.io/lihaifeng01/huobao-drama`
 - **In-app updates**: desktop and Docker builds only check this repo's `latest.json` and no longer offer upstream versions (point `HUOBAO_UPDATE_FEED` at your own mirror if needed)
 - **Syncing upstream**: `git remote add upstream https://github.com/chatfire-AI/huobao-drama.git && git fetch upstream && git merge upstream/master`
 
@@ -462,14 +462,14 @@ server {
 **Option A — prebuilt image (no clone, no build):** multi-arch (`linux/amd64` + `linux/arm64`), x86 servers and ARM devices match automatically
 
 ```bash
-docker pull lhf/huobao-drama:latest
+docker pull lihaifeng1995/huobao-drama:latest
 
 docker run -d \
   --name huobao-drama \
   -p 5679:5679 \
   -v huobao-data:/app/data \
   --restart unless-stopped \
-  lhf/huobao-drama:latest
+  lihaifeng1995/huobao-drama:latest
 ```
 
 **Option B — docker compose (source build + Watchtower in-app updates):** the repo root provides an all-in-one `Dockerfile` (three stages: frontend generate + backend dependencies + runtime; the backend runs via tsx just like server deployment) and `docker-compose.yml` (app + Watchtower):
@@ -487,8 +487,8 @@ HUOBAO_VERSION=4.0.9 docker compose up -d --build
 - **Data persistence**: the named volume `huobao-data` mounts `/app/data` (SQLite + generated images/videos + workspace/skills) — image updates don't lose data
 - **In-app updates**: the compose file ships a [Watchtower](https://containrrr.dev/watchtower/) sidecar (`--label-enable` only updates labeled containers, `--cleanup` removes old images, daily self-check). "Settings → About & Updates" can check for new versions and "Update Now" — the backend triggers it via the Watchtower HTTP API, which pulls the new image and rebuilds the container; refresh the page after a few minutes
 - **Manual mode**: remove the app's two `HUOBAO_WATCHTOWER_*` env vars (or the whole watchtower service) from `docker-compose.yml` — "About & Updates" then degrades to a new-version notice + manual `docker compose pull && docker compose up -d`
-- **Publishing images (GitHub Actions)**: pushing a `v*` tag (e.g. `git tag v4.1.0 && git push origin v4.1.0`) runs [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml), which builds multi-arch images and pushes them to `ghcr.io/lihaifeng01/huobao-drama`; set the `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` repo secrets to also push `lhf/huobao-drama`. It also makes sure the release contains a `latest.json`
-- **Publishing locally**: `docker buildx build --platform linux/amd64,linux/arm64 --build-arg HUOBAO_VERSION=x.y.z -t lhf/huobao-drama:x.y.z -t lhf/huobao-drama:latest --push .` — the version manifest is shared with the desktop app via `latest.json` on GitHub Releases (overridable with `HUOBAO_UPDATE_FEED`)
+- **Publishing images (GitHub Actions)**: pushing a `v*` tag (e.g. `git tag v4.1.0 && git push origin v4.1.0`) runs [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml), which builds multi-arch images and pushes them to `ghcr.io/lihaifeng01/huobao-drama`; set the `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` repo secrets to also push `lihaifeng1995/huobao-drama`. It also makes sure the release contains a `latest.json`
+- **Publishing locally**: `docker buildx build --platform linux/amd64,linux/arm64 --build-arg HUOBAO_VERSION=x.y.z -t lihaifeng1995/huobao-drama:x.y.z -t lihaifeng1995/huobao-drama:latest --push .` — the version manifest is shared with the desktop app via `latest.json` on GitHub Releases (overridable with `HUOBAO_UPDATE_FEED`)
 
 ---
 
