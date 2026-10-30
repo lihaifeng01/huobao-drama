@@ -69,6 +69,57 @@
 
 ## 变更条目
 
+### 2026-10-30 · 账号体系补充：用户隔离、免登 / 登录两种模式、项目转让
+- **分支**：`feat/accounts`（未合并）
+- **改动**
+  - **按用户隔离**：`library_folders`、`library_files`、`subtitle_tool_jobs`、`merge_tool_jobs` 加 `user_id` 列。素材库的「我的文件夹」和上传素材、工具页的字幕任务和合成记录，都只能看到、操作自己的；访问别人的返回 404（和不存在一样，不泄露存在性）。同一用户、同一父目录下文件夹不重名，不同用户可以同名。超级管理员也只看自己的（这些是个人空间，不是项目数据）。
+  - **两种模式**（`HUOBAO_AUTH_MODE`）：`login` 需要登录；`none` 免登，所有请求都以本机超级管理员身份执行。未配置时 `HUOBAO_DESKTOP=1`（桌面版主进程注入）为 `none`，其余为 `login`；桌面主进程也显式传 `HUOBAO_AUTH_MODE`（默认 none，可被启动环境覆盖）。`/auth/status` 返回 `mode`，前端在 none 模式下隐藏用户菜单、「账号」页、新建项目的成员选择和项目头部的成员按钮，`/login`、`/setup`、`/users` 送回首页；后端在 none 模式下 `setup / register / login / password` 返回 400。
+  - **转让项目**：`PUT /dramas/:id/owner { user_id }`，仅创建人与超级管理员。接收人成为创建人（从成员表移除），原创建人自动留作成员。项目成员弹窗底部有「转让项目」，带确认框。
+- **关键文件**：`backend/src/services/auth.ts`（`authMode` / `localUser` / `needsSetup` / `claimOrphans` / `initAuth`）、`backend/src/routes/tools.ts`、`backend/src/routes/library.ts`、`backend/src/services/{subtitle-tool,merge-tool}.ts`（`getJob` / `listJobs` 增加可选 `userId`）、`backend/src/services/project-access.ts`（`transferDrama`）、`desktop/src/main.ts`、`frontend/app/composables/useAuth.ts`（`isMultiUser`）。
+- **设计取舍**
+  - 免登模式的本机用户就是一个**没有密码**的超级管理员（用户名 `admin`），不是虚拟用户：这样项目的 `created_by`、素材的 `user_id` 都是真实 id。之后切到登录模式，`needsSetup()` 把「超级管理员没有密码」也视为未初始化，初始化页会**认领**这个账号（改用户名、设密码，id 不变），所有数据原样保留。空密码的账号 `verifyPassword` 永远返回 false，不能被登录。
+  - 没有归属的老数据（升级前的项目、文件夹、素材、工具任务）由 `claimOrphans()` 归到超级管理员：创建 / 认领超级管理员时、每次启动时（登录模式下已有超级管理员）、免登模式建本机用户时都会执行，幂等。
+  - 隔离在路由层做：服务函数的 `userId` 参数是可选的，路由传 `c.get('user')?.id`。现有的 `subtitle-tool.test.ts` / `merge-tool.test.ts` 直接挂路由、不经过鉴权中间件，这时 `userId` 为 undefined、不做过滤，测试不用改。
+  - 合成工具的片段上传（`/tools/merge-clips`）只存文件不建记录，没有归属；合成时只校验路径在 `static/tool-merge/` 下。知道别人片段的地址理论上能拿来合成——和 `/static` 无鉴权是同一类问题，见待办。
+  - 转让后原创建人留作成员，避免「转让完自己就进不去了」；需要彻底移除可以由新创建人在成员里取消勾选。
+- **注意事项**
+  - 免登模式下没有任何访问控制，**不要把免登模式的服务暴露到公网**（桌面版后端只监听本机端口）。服务器部署想单人免登可以设 `HUOBAO_AUTH_MODE=none`，但要自己保证网络隔离。
+  - 免登模式里仍可以通过接口调用 `/users` 建其他账号，只是前端不显示；这些账号只在切到登录模式后才有用。
+- **验证**
+  - `backend/tests/auth.test.ts` 新增一项：我的文件夹 / 上传素材 / 字幕任务 / 合成任务的隔离（列表、详情、改、删），项目转让（成员不能转、不能转给自己、接收人不存在、转让后权限交换、超级管理员转回）。
+  - 新增 `backend/tests/auth-mode.test.ts`：模式默认值与覆盖；免登模式下无 cookie 可用全部接口、老数据归属本机用户、登录相关接口 400；切到登录模式后未初始化、初始化页认领同一 id、数据保留。
+  - 后端 TS 测试共 45 项通过；`.mjs` 结构测试仍是 12 个失败（`library-structure` 里 `folderNameTaken` 的签名断言同步改成带 `userId` 的新签名）；前端结构测试仍是 25 个失败，名单不变。
+  - 本地端到端（Playwright，两个临时数据目录分别跑两种模式）：免登模式直接进首页，无用户菜单和「账号」，`/login`、`/setup`、`/users` 回首页，设置页可进，新建项目无成员选择、详情页无成员按钮；登录模式下 alice 把项目转给 bob，之后 alice 是成员且看不到转让区，bob 可管理；alice 建的文件夹 bob 看不到。
+
+### 2026-10-30 · 新增：账号体系与团队协作（项目成员）
+- **分支**：`feat/accounts`（从 `dev` 拉出，未合并）
+- **改动**
+  - 账号：三种角色 `super_admin`（唯一）/ `admin` / `user`。首次打开页面没有任何账号时跳 `/setup` 创建超级管理员；也可用环境变量 `HUOBAO_ADMIN_USERNAME` / `HUOBAO_ADMIN_PASSWORD` 在启动时预置。之后 `/login` 页可登录或自助注册（注册即普通用户，暂无验证码）。
+  - 超级管理员在顶栏「账号」页（`/users`）新建账号、改角色（管理员 ⇄ 普通用户）、禁用 / 启用、重置密码、删除。用户菜单里可改自己的密码、退出登录。
+  - 普通用户顶栏没有「设置」，进 `/settings` 被路由守卫送回首页；后端对设置类接口返回 403。
+  - 团队协作：新建项目时可选项目成员（`MemberPicker`）；项目详情页头部「N 人」按钮打开成员弹窗，创建人和超级管理员可改，其他成员只读。项目只对创建人、成员、超级管理员可见，删除项目也仅限创建人和超级管理员。
+  - 全局素材库的「项目文件夹」只列出当前用户可见的项目。
+- **关键文件**：`backend/src/services/auth.ts`（密码、会话）、`backend/src/services/project-access.ts`（实体 → 项目归属、成员判断）、`backend/src/middleware/auth.ts`（三道中间件）、`backend/src/routes/auth.ts`、`backend/src/routes/users.ts`、`backend/src/api.ts`（从 `index.ts` 拆出的 `/api/v1` 路由表）；前端 `composables/useAuth.ts`、`middleware/auth.global.ts`、`components/AuthCard.vue`、`components/MemberPicker.vue`、`pages/{login,setup,users}.vue`。新表 `users`、`user_sessions`、`drama_members`，`dramas` 加列 `created_by`。
+- **设计取舍**
+  - 会话用 httpOnly cookie（`huobao_session`，SameSite=Lax，30 天、剩余不足一半自动续期），库里只存 token 的 sha256。选 cookie 而不是前端存 token：`<img>` / `<video>` / XHR 上传 / 原生 fetch 都不用改就能带上；桌面版每次启动端口不同，但 cookie 不区分端口，登录态照样保留。也接受 `Authorization: Bearer`，方便脚本调用。密码用 Node 自带的 scrypt，不引新依赖。
+  - 鉴权集中在 `/api/v1` 上的三道中间件，而不是逐个路由改：`authGuard`（公开的只有 `/auth/status|login|register|setup`，`/health` 挂在 api 之外）→ `settingsGuard`（按路径 + 方法判断是否要管理员）→ `projectGuard`。`projectGuard` 从路径参数（`/episodes/:id` 等）、查询参数和 JSON 请求体里的 `drama_id / episode_id / storyboard_id / character_id / scene_id / prop_id / character_ids / storyboard_ids / prop_ids / source_ids` 收集引用，经 `dramaOf()` 归到项目，任何一个不可访问就 403。读 body 用 `c.req.json()`，Hono 会缓存，业务路由再读不受影响。实体不存在时放行，让业务路由照原样报 404/400。
+  - 「设置相关」的划分：`prompts / skills / storage / server-update / users` 整块仅管理员；`ai-configs`、`style-presets` 读放开（工作台模型下拉、新建项目要用），写仅管理员；普通用户读 `ai-configs` 时 `api_key` 置空、`settings` / `custom`（可能含自定义请求头凭据）置 null。`/settings/content-language` 改仅管理员，`tours-seen` 谁都能写。账号管理仅超级管理员，普通管理员不能管账号。
+  - 成员不含创建人：创建人记在 `dramas.created_by`，`drama_members` 只放其他人，`setMembers` 会剔除创建人。老项目（`created_by` 为空）在创建超级管理员时统一归到超级管理员名下。
+  - 用户名 `COLLATE NOCASE` 唯一，软删除的账号也占用名字（避免同名新账号继承旧项目成员关系的误解）。
+  - 日志中间件打印请求体前会把 `*password` 字段替换成 `***`。
+- **注意事项**
+  - **`/static` 没有鉴权**：图片、视频按 uuid 命名，知道地址就能访问。要防外链需要另做签名 URL，这次没做。
+  - **工具页（生成字幕 / 视频合成）的任务是全局共享的**，没有按用户隔离，所有登录用户都能看到。「我的文件夹」（素材库里用户自建的文件夹和上传）同样是全员共享，只有「项目文件夹」按成员过滤。 → 已改为按用户隔离，见同日「账号体系补充」条目
+  - 新手引导记录 `tours-seen`、AI 内容语言仍是全局设置，不分用户。普通用户切换界面语言时写内容语言会 403（`useUnifiedLanguage` 本来就吞掉这个错误），只切界面。
+  - 桌面版也要先创建超级管理员再登录（同一套代码）。如果以后希望桌面版免登录，可以在主进程注入环境变量自动建号并自动登录。 → 已支持免登模式（桌面版默认），见同日「账号体系补充」条目
+  - 删除账号后，他创建的项目只有超级管理员能管理成员；暂时没有「转让项目」。 → 已支持转让，见同日「账号体系补充」条目
+  - 前端 `useApi` 遇到 401（`/auth/*` 除外）会整页跳到 `/login?redirect=...`；登录页只接受站内路径作为 redirect。
+  - 新加需要项目权限的接口时：路径带实体 id 的，在 `middleware/auth.ts` 的 `PATH_RULES` 加一条；body 里引用实体的字段名如果不在 `REF_FIELDS` 里，也要补上。返回全量列表的接口要自己按 `accessibleDramaIds()` 过滤（参考 `GET /tasks`、`GET /library/:category`）。
+  - 路由表挪到了 `backend/src/api.ts`，几个结构测试原来读 `index.ts` 断言路由挂载，已改为读 `api.ts`（否定断言改为同时读两个文件）。
+- **验证**
+  - 新增 `backend/tests/auth.test.ts`（走完整中间件链）：未初始化拒绝注册、setup 只能一次、老项目归属、注册 / 登录 / 大小写、设置接口 403 与 API Key 脱敏、角色修改权限、成员选择器、建项目选成员、成员能操作而非成员 403（项目、角色、素材库项目文件夹、生成任务）、任务列表过滤、创建人和超级管理员改成员、禁用账号会话立即失效、改密码让其他会话失效、退出登录。后端 TS 测试共 42 项通过；`.mjs` 结构测试仍是 12 个失败，前端结构测试仍是 25 个失败（名单不变）。
+  - 本地端到端（Playwright，临时数据目录）：首次访问跳初始化页 → 创建超级管理员；注册三个普通用户，普通用户顶栏无「设置」、访问 `/settings` 和 `/users` 被送回首页；alice 建项目选 bob，bob 可见且成员弹窗只读，carol 看不到项目、素材库里也没有该项目文件夹；alice 中途加入 carol 后 carol 可见；退出登录后访问首页跳登录页。另外验证了环境变量预置超级管理员（重复启动不重复创建）。
+
 ### 2026-10-30 · Docker Hub 镜像名改为 `lihaifeng1995/huobao-drama`
 - **分支**：`dev`
 - **改动**：Docker Hub 用户名是 `lihaifeng1995`，`lhf/huobao-drama` 不是本人命名空间。README、`docker-compose.yml`、`scripts/docker-build.sh`、`CLAUDE.md` 全部改为 `lihaifeng1995/huobao-drama`；工作流默认镜像名改为 `<DOCKERHUB_USERNAME>/huobao-drama`，仍可用仓库变量 `DOCKERHUB_IMAGE` 覆盖。
@@ -433,6 +484,10 @@
 ---
 
 ## 待办 / 已讨论未实施
+
+账号体系相关（2026-10-30 用户决定暂不做，先记录）：
+
+- **`/static` 图片 / 视频鉴权**：生成的图片、视频、上传素材、工具产物都在 `/static` 下，按 uuid 命名但没有鉴权，知道地址就能访问，也不区分项目成员。可选做法：给 `/static` 加中间件按 cookie 会话校验登录（`<img>` / `<video>` 会自动带 cookie，改动最小，但做不到按项目区分）；或者签发带过期时间的签名 URL（能按项目 / 用户控制，但所有返回路径的接口都要改，缩略图、海报帧、下载链接也要一起处理）。合成工具的片段地址（`static/tool-merge/`）也属于这一类：知道地址就能拿来合成。
 
 来自 2026-10-25 关于「跨集角色一致性」的讨论，第 1–5 项（含前情摘要）已在上面实施：
 

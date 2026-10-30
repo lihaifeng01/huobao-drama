@@ -5,12 +5,13 @@ import { db, getInsertId, schema } from '../db/index.js'
 import { success, created, badRequest, notFound, now } from '../utils/response.js'
 import { toSnakeCase } from '../utils/transform.js'
 import { saveUploadedFile, generateImageThumb, getAbsolutePath } from '../utils/storage.js'
+import { accessibleDramaIds } from '../services/project-access.js'
 
 /**
  * 全局素材库 — 项目之外聚合查看角色/场景素材
- * - 项目文件夹：每个未删除项目自动对应一个，内容实时取自该项目的 characters / scenes（只读）
- * - 我的文件夹：用户自建，可多级嵌套（parent_id），存放用户上传的素材文件
- * - 根目录文件：folder_id 为空的上传文件
+ * - 项目文件夹：每个未删除项目自动对应一个，内容实时取自该项目的 characters / scenes（只读），只对项目成员可见
+ * - 我的文件夹：用户自建，可多级嵌套（parent_id），存放用户上传的素材文件；按用户隔离（user_id）
+ * - 根目录文件：folder_id 为空的上传文件，同样按用户隔离
  */
 const app = new Hono()
 
@@ -23,6 +24,15 @@ const NAME_MAX = 100
 
 type FolderRow = typeof schema.libraryFolders.$inferSelect
 type FileRow = typeof schema.libraryFiles.$inferSelect
+
+/** 当前用户 id；未挂鉴权中间件的测试里为 undefined，不做隔离 */
+function uid(c: any): number | undefined {
+  return c.get('user')?.id
+}
+
+function ownerCond<T extends typeof schema.libraryFolders | typeof schema.libraryFiles>(table: T, userId?: number) {
+  return userId !== undefined ? eq(table.userId, userId) : undefined
+}
 
 function parseCategory(raw: string | undefined): Category | null {
   return CATEGORIES.includes(raw as Category) ? raw as Category : null
@@ -37,26 +47,27 @@ function extOf(name: string): string {
   return i >= 0 ? name.slice(i).toLowerCase() : ''
 }
 
-async function findFolder(id: number, category?: Category) {
+async function findFolder(id: number, category?: Category, userId?: number) {
   const conds = [eq(schema.libraryFolders.id, id), isNull(schema.libraryFolders.deletedAt)]
   if (category) conds.push(eq(schema.libraryFolders.category, category))
+  if (userId !== undefined) conds.push(eq(schema.libraryFolders.userId, userId))
   const [folder] = await db.select().from(schema.libraryFolders).where(and(...conds))
   return folder
 }
 
-/** 同一父目录下文件夹不重名 */
-async function folderNameTaken(category: Category, parentId: number | null, name: string, exceptId?: number) {
+/** 同一用户、同一父目录下文件夹不重名 */
+async function folderNameTaken(category: Category, userId: number | undefined, parentId: number | null, name: string, exceptId?: number) {
   const rows = await db.select().from(schema.libraryFolders)
-    .where(and(eq(schema.libraryFolders.category, category), eq(schema.libraryFolders.name, name), isNull(schema.libraryFolders.deletedAt)))
+    .where(and(eq(schema.libraryFolders.category, category), eq(schema.libraryFolders.name, name), isNull(schema.libraryFolders.deletedAt), ownerCond(schema.libraryFolders, userId)))
   return rows.some(r => (r.parentId ?? null) === parentId && r.id !== exceptId)
 }
 
-async function loadCategory(category: Category) {
+async function loadCategory(category: Category, userId?: number) {
   const folders = await db.select().from(schema.libraryFolders)
-    .where(and(eq(schema.libraryFolders.category, category), isNull(schema.libraryFolders.deletedAt)))
+    .where(and(eq(schema.libraryFolders.category, category), isNull(schema.libraryFolders.deletedAt), ownerCond(schema.libraryFolders, userId)))
     .orderBy(desc(schema.libraryFolders.updatedAt))
   const files = await db.select().from(schema.libraryFiles)
-    .where(and(eq(schema.libraryFiles.category, category), isNull(schema.libraryFiles.deletedAt)))
+    .where(and(eq(schema.libraryFiles.category, category), isNull(schema.libraryFiles.deletedAt), ownerCond(schema.libraryFiles, userId)))
     .orderBy(desc(schema.libraryFiles.createdAt))
   return { folders, files }
 }
@@ -139,9 +150,12 @@ app.get('/:category', async (c) => {
   const category = parseCategory(c.req.param('category'))
   if (!category) return badRequest(c, '素材分类无效')
 
-  const dramas = await db.select().from(schema.dramas)
+  // 项目文件夹只对项目成员可见（超级管理员可见全部）
+  const visible = await accessibleDramaIds(c.get('user'))
+  const dramas = (await db.select().from(schema.dramas)
     .where(isNull(schema.dramas.deletedAt))
-    .orderBy(desc(schema.dramas.updatedAt))
+    .orderBy(desc(schema.dramas.updatedAt)))
+    .filter(d => !visible || visible.has(d.id))
   const rows = await projectRows(category, dramas.map(d => d.id))
   const projectFolders = dramas.map((d) => {
     const items = rows.filter(r => r.dramaId === d.id)
@@ -154,7 +168,7 @@ app.get('/:category', async (c) => {
     }
   })
 
-  const { folders, files } = await loadCategory(category)
+  const { folders, files } = await loadCategory(category, uid(c))
   return success(c, {
     project_folders: projectFolders,
     folders: folders.filter(f => !f.parentId).map(f => folderCard(folders, files, f)),
@@ -166,7 +180,7 @@ app.get('/:category', async (c) => {
 app.get('/:category/folders', async (c) => {
   const category = parseCategory(c.req.param('category'))
   if (!category) return badRequest(c, '素材分类无效')
-  const { folders } = await loadCategory(category)
+  const { folders } = await loadCategory(category, uid(c))
   return success(c, folders.map(f => ({ id: f.id, parent_id: f.parentId ?? null, name: f.name })))
 })
 
@@ -174,9 +188,9 @@ app.get('/:category/folders', async (c) => {
 app.get('/:category/folders/:id', async (c) => {
   const category = parseCategory(c.req.param('category'))
   if (!category) return badRequest(c, '素材分类无效')
-  const folder = await findFolder(Number(c.req.param('id')), category)
+  const folder = await findFolder(Number(c.req.param('id')), category, uid(c))
   if (!folder) return notFound(c, '文件夹不存在')
-  const { folders, files } = await loadCategory(category)
+  const { folders, files } = await loadCategory(category, uid(c))
   return success(c, {
     folder: toSnakeCase(folder),
     path: folderPath(folders, folder.id),
@@ -209,20 +223,20 @@ app.post('/:category/folders', async (c) => {
   if (!name) return badRequest(c, '文件夹名称必填')
   let parentId: number | null = null
   if (body.parent_id) {
-    const parent = await findFolder(Number(body.parent_id), category)
+    const parent = await findFolder(Number(body.parent_id), category, uid(c))
     if (!parent) return badRequest(c, '上级文件夹不存在')
     parentId = parent.id
   }
-  if (await folderNameTaken(category, parentId, name)) return badRequest(c, '文件夹名称已存在')
+  if (await folderNameTaken(category, uid(c), parentId, name)) return badRequest(c, '文件夹名称已存在')
   const ts = now()
-  const res = await db.insert(schema.libraryFolders).values({ category, parentId, name, createdAt: ts, updatedAt: ts })
+  const res = await db.insert(schema.libraryFolders).values({ userId: uid(c) ?? null, category, parentId, name, createdAt: ts, updatedAt: ts })
   const folder = await findFolder(getInsertId(res))
   return created(c, toSnakeCase(folder!))
 })
 
 // PUT /library/folders/:id — 重命名 / 移动（parent_id 为 null 移到顶层；不能移入自身或其子文件夹）
 app.put('/folders/:id', async (c) => {
-  const folder = await findFolder(Number(c.req.param('id')))
+  const folder = await findFolder(Number(c.req.param('id')), undefined, uid(c))
   if (!folder) return notFound(c, '文件夹不存在')
   const category = folder.category as Category
   const body = await c.req.json()
@@ -238,24 +252,24 @@ app.put('/folders/:id', async (c) => {
     if (body.parent_id === null || body.parent_id === '') {
       parentId = null
     } else {
-      const parent = await findFolder(Number(body.parent_id), category)
+      const parent = await findFolder(Number(body.parent_id), category, uid(c))
       if (!parent) return badRequest(c, '上级文件夹不存在')
-      const { folders } = await loadCategory(category)
+      const { folders } = await loadCategory(category, uid(c))
       if (subtreeIds(folders, folder.id).has(parent.id)) return badRequest(c, '不能移动到自身或其子文件夹')
       parentId = parent.id
     }
     updates.parentId = parentId
   }
-  if (await folderNameTaken(category, parentId, name, folder.id)) return badRequest(c, '文件夹名称已存在')
+  if (await folderNameTaken(category, uid(c), parentId, name, folder.id)) return badRequest(c, '文件夹名称已存在')
   await db.update(schema.libraryFolders).set(updates).where(eq(schema.libraryFolders.id, folder.id))
   return success(c)
 })
 
 // DELETE /library/folders/:id — 软删除文件夹及其全部子文件夹、文件
 app.delete('/folders/:id', async (c) => {
-  const folder = await findFolder(Number(c.req.param('id')))
+  const folder = await findFolder(Number(c.req.param('id')), undefined, uid(c))
   if (!folder) return notFound(c, '文件夹不存在')
-  const { folders } = await loadCategory(folder.category as Category)
+  const { folders } = await loadCategory(folder.category as Category, uid(c))
   const ids = [...subtreeIds(folders, folder.id)]
   const ts = now()
   await db.update(schema.libraryFiles).set({ deletedAt: ts, updatedAt: ts })
@@ -275,7 +289,7 @@ app.post('/:category/files', async (c) => {
 
   let folderId: number | null = null
   if (body['folder_id']) {
-    const folder = await findFolder(Number(body['folder_id']), category)
+    const folder = await findFolder(Number(body['folder_id']), category, uid(c))
     if (!folder) return badRequest(c, '文件夹不存在')
     folderId = folder.id
   }
@@ -295,6 +309,7 @@ app.post('/:category/files', async (c) => {
   const name = cleanName(body['name']) || cleanName(file.name.replace(/\.[^.]+$/, '')) || file.name
   const ts = now()
   const res = await db.insert(schema.libraryFiles).values({
+    userId: uid(c) ?? null,
     category,
     folderId,
     name,
@@ -315,7 +330,7 @@ app.post('/:category/files', async (c) => {
 app.put('/files/:id', async (c) => {
   const id = Number(c.req.param('id'))
   const [file] = await db.select().from(schema.libraryFiles)
-    .where(and(eq(schema.libraryFiles.id, id), isNull(schema.libraryFiles.deletedAt)))
+    .where(and(eq(schema.libraryFiles.id, id), isNull(schema.libraryFiles.deletedAt), ownerCond(schema.libraryFiles, uid(c))))
   if (!file) return notFound(c, '文件不存在')
   const body = await c.req.json()
   const updates: Record<string, any> = { updatedAt: now() }
@@ -329,7 +344,7 @@ app.put('/files/:id', async (c) => {
     if (body.folder_id === null || body.folder_id === '') {
       updates.folderId = null
     } else {
-      const folder = await findFolder(Number(body.folder_id), file.category as Category)
+      const folder = await findFolder(Number(body.folder_id), file.category as Category, uid(c))
       if (!folder) return badRequest(c, '文件夹不存在')
       updates.folderId = folder.id
     }
@@ -341,6 +356,9 @@ app.put('/files/:id', async (c) => {
 // DELETE /library/files/:id — 软删除
 app.delete('/files/:id', async (c) => {
   const id = Number(c.req.param('id'))
+  const [file] = await db.select().from(schema.libraryFiles)
+    .where(and(eq(schema.libraryFiles.id, id), isNull(schema.libraryFiles.deletedAt), ownerCond(schema.libraryFiles, uid(c))))
+  if (!file) return notFound(c, '文件不存在')
   await db.update(schema.libraryFiles).set({ deletedAt: now(), updatedAt: now() }).where(eq(schema.libraryFiles.id, id))
   return success(c)
 })

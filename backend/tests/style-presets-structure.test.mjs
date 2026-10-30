@@ -21,7 +21,7 @@ test('drama creation records a fixed aspect ratio for video generation', () => {
 })
 
 test('style presets route is mounted and implements CRUD', () => {
-  const entry = read('src/index.ts')
+  const entry = read('src/api.ts') // 路由表在 api.ts
   const route = read('src/routes/stylePresets.ts')
 
   assert.match(entry, /api\.route\('\/style-presets', stylePresets\)/)

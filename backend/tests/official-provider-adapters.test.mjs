@@ -130,7 +130,7 @@ test('AI config probe uses provider-specific auth schemes', () => {
 
 test('removed providers no longer ship adapters or webhook routes', () => {
   const registry = read('src/services/adapters/registry.ts')
-  const index = read('src/index.ts')
+  const index = read('src/index.ts') + read('src/api.ts')
 
   assert.doesNotMatch(registry, /ali-image|ali-video|vidu-video/)
   assert.doesNotMatch(registry, /AliImageAdapter|AliVideoAdapter|ViduVideoAdapter/)
