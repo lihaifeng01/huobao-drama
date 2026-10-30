@@ -25,7 +25,7 @@
           </span>
         </div>
       </div>
-      <button class="btn head-action team-btn" :title="t('members.title')" @click="openMembers">
+      <button v-if="isMultiUser" class="btn head-action team-btn" :title="t('members.title')" @click="openMembers">
         <span class="team-stack">
           <span v-for="u in teamPreview" :key="u.id" class="team-avatar">{{ initialOf(u) }}</span>
         </span>
@@ -663,6 +663,17 @@
               <p v-if="!drama.members?.length" class="members-empty">{{ t('members.none') }}</p>
             </template>
           </div>
+          <!-- 转让项目：接收人成为创建人，自己留作成员 -->
+          <div v-if="drama.can_manage_members" class="members-section transfer-section">
+            <div class="members-label">{{ t('members.transfer.title') }}</div>
+            <div class="transfer-row">
+              <div class="transfer-select">
+                <BaseSelect v-model="transfer.userId" :options="transferOptions" :placeholder="t('members.transfer.placeholder')" />
+              </div>
+              <button type="button" class="btn" :disabled="!transfer.userId" @click="transfer.confirming = true">{{ t('members.transfer.action') }}</button>
+            </div>
+            <p class="members-empty">{{ t('members.transfer.hint') }}</p>
+          </div>
         </div>
         <div class="dialog-foot">
           <button type="button" class="btn" @click="membersDialog.open = false">{{ drama.can_manage_members ? t('common.cancel') : t('common.close') }}</button>
@@ -673,6 +684,15 @@
       </div>
     </div>
 
+    <ConfirmDialog
+      :open="transfer.confirming"
+      :title="t('members.transfer.confirmTitle')"
+      :message="t('members.transfer.confirmMessage', { title: drama.title, name: transferTargetName })"
+      :confirm-text="t('members.transfer.action')"
+      :loading="transfer.saving"
+      @confirm="confirmTransfer"
+      @cancel="transfer.confirming = false"
+    />
     <ConfirmDialog
       :open="!!episodeToDelete"
       :title="t('detail.ep.deleteTitle')"
@@ -688,7 +708,8 @@
 import { toast } from 'vue-sonner'
 import { toastError } from '~/composables/useToast'
 import { useI18n } from 'vue-i18n'
-import { dramaAPI, episodeAPI, characterAPI, sceneAPI, propAPI, uploadAPI } from '~/composables/useApi'
+import { dramaAPI, episodeAPI, characterAPI, sceneAPI, propAPI, uploadAPI, userAPI } from '~/composables/useApi'
+import { useAuth } from '~/composables/useAuth'
 import { parseAliases } from '~/composables/useCharacterIdentity'
 import BaseSelect from '~/components/BaseSelect.vue'
 
@@ -772,7 +793,13 @@ async function load() {
 }
 
 // ---------- 项目成员 ----------
+const { isMultiUser } = useAuth()
 const membersDialog = reactive({ open: false, selected: [], saving: false })
+const transfer = reactive({ userId: '', users: [], confirming: false, saving: false })
+const transferOptions = computed(() => transfer.users
+  .filter(u => u.id !== drama.value?.creator?.id)
+  .map(u => ({ label: `${u.display_name}（${u.username}）`, value: u.id })))
+const transferTargetName = computed(() => transfer.users.find(u => u.id === transfer.userId)?.display_name || '')
 // 头部头像叠放：创建人在前，最多 3 个
 const teamPreview = computed(() => [drama.value?.creator, ...(drama.value?.members || [])].filter(Boolean).slice(0, 3))
 function initialOf(u) {
@@ -782,6 +809,22 @@ function openMembers() {
   membersDialog.selected = (drama.value?.members || []).map(m => m.id)
   membersDialog.saving = false
   membersDialog.open = true
+  transfer.userId = ''
+  if (drama.value?.can_manage_members) userAPI.options().then(list => { transfer.users = list }).catch(toastError)
+}
+async function confirmTransfer() {
+  transfer.saving = true
+  try {
+    const team = await dramaAPI.transfer(dramaId, transfer.userId)
+    Object.assign(drama.value, team)
+    transfer.confirming = false
+    membersDialog.open = false
+    toast.success(t('members.transfer.done', { name: team.creator?.display_name || '' }))
+  } catch (e) {
+    toastError(e)
+  } finally {
+    transfer.saving = false
+  }
 }
 async function saveMembers() {
   membersDialog.saving = true
@@ -1177,6 +1220,9 @@ onMounted(load)
 .member-name { font-size: 13px; font-weight: 600; color: var(--text-0); }
 .member-username { font-size: 11.5px; color: var(--text-3); }
 .members-empty { margin: 0; font-size: 12.5px; color: var(--text-3); }
+.transfer-section { padding-top: 14px; border-top: 1px solid var(--border); }
+.transfer-row { display: flex; gap: 8px; align-items: center; }
+.transfer-select { flex: 1; min-width: 0; }
 
 .back-btn {
   width: 30px; height: 30px; flex-shrink: 0;

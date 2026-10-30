@@ -1332,7 +1332,16 @@
     "manageDesc": "只有成员能看到这个项目和它的素材。",
     "readonlyDesc": "只有创建人和超级管理员可以修改项目成员。",
     "none": "暂无其他成员",
-    "saved": "项目成员已更新"
+    "saved": "项目成员已更新",
+    "transfer": {
+      "title": "转让项目",
+      "placeholder": "选择接收人",
+      "action": "转让",
+      "hint": "接收人成为项目创建人；你会保留为项目成员，但不能再修改成员或转让。",
+      "confirmTitle": "转让项目",
+      "confirmMessage": "确定把「{title}」转让给 {name}？转让后你将不能再修改项目成员或删除项目。",
+      "done": "已转让给 {name}"
+    }
   },
   "users": {
     "title": "账号管理",
@@ -1357,7 +1366,7 @@
     "resetTitle": "重置「{name}」的密码",
     "resetHint": "重置后该账号需要用新密码重新登录。",
     "deleteTitle": "删除账号",
-    "deleteMessage": "确定删除账号「{name}」？删除后无法登录，其创建的项目会保留，超级管理员仍可管理。",
+    "deleteMessage": "确定删除账号「{name}」？删除后无法登录。其创建的项目会保留，超级管理员可以把它们转让给其他人。",
     "neverLoggedIn": "从未登录",
     "roleChanged": "角色已更新",
     "created": "账号已创建",

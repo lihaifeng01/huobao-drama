@@ -1,5 +1,6 @@
 /**
  * 全局路由守卫：未初始化 → /setup；未登录 → /login；普通用户不能进设置页、账号管理页
+ * 免登模式：登录 / 初始化 / 账号管理页都没有意义，送回首页
  */
 import { PUBLIC_ROUTES, useAuth } from '~/composables/useAuth'
 
@@ -12,6 +13,9 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return
   }
 
+  if (state.mode === 'none') {
+    return ['/login', '/setup', '/users'].includes(to.path) ? navigateTo('/') : undefined
+  }
   if (!state.initialized) return to.path === '/setup' ? undefined : navigateTo('/setup')
   if (to.path === '/setup') return navigateTo(state.user ? '/' : '/login')
 

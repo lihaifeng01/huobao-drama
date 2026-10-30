@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url'
 
 import api from './api.js'
 import { requestLogger, errorHandler } from './middleware/logger.js'
-import { bootstrapSuperAdminFromEnv } from './services/auth.js'
+import { initAuth } from './services/auth.js'
 import { resumeInterruptedTasks } from './services/generation.js'
 import { resetInterruptedSubtitles } from './services/subtitle.js'
 import { resetInterruptedToolJobs } from './services/subtitle-tool.js'
@@ -54,7 +54,7 @@ app.get('*', serveStatic({ root: distPath, path: 'index.html' }))
 const port = Number(process.env.PORT || 5679)
 console.log(`🚀 Huobao Drama TS server on http://localhost:${port}`)
 
-await bootstrapSuperAdminFromEnv()
+await initAuth()
 await resumeInterruptedTasks()
 await resetInterruptedSubtitles()
 await resetInterruptedToolJobs()

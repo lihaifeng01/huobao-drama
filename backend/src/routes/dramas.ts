@@ -4,7 +4,7 @@ import { db, getInsertId, schema } from '../db/index.js'
 import { success, badRequest, notFound, created, forbidden, now } from '../utils/response.js'
 import { toSnakeCase, toSnakeCaseArray } from '../utils/transform.js'
 import { findUser, publicUser, type UserRow } from '../services/auth.js'
-import { accessibleDramaIds, canManageDrama, listMembers, setMembers } from '../services/project-access.js'
+import { accessibleDramaIds, canManageDrama, listMembers, setMembers, transferDrama } from '../services/project-access.js'
 
 const app = new Hono()
 
@@ -165,6 +165,22 @@ app.put('/:id/members', async (c) => {
   if (!Array.isArray(body.member_ids)) return badRequest(c, 'member_ids 必须是数组')
   await setMembers(id, drama.createdBy, body.member_ids)
   return success(c, await teamInfo(drama, user))
+})
+
+// PUT /dramas/:id/owner — 转让项目 { user_id }，仅创建人与超级管理员；原创建人自动留作成员
+app.put('/:id/owner', async (c) => {
+  const id = Number(c.req.param('id'))
+  const [drama] = await db.select().from(schema.dramas).where(and(eq(schema.dramas.id, id), isNull(schema.dramas.deletedAt)))
+  if (!drama) return notFound(c, '项目不存在')
+  const user = c.get('user')
+  if (!canManageDrama(user, drama)) return forbidden(c, '只有项目创建人和超级管理员可以转让项目')
+  const body = await c.req.json().catch(() => ({}))
+  const target = await findUser(Number(body.user_id))
+  if (!target || target.status !== 'active') return badRequest(c, '接收人不存在或已被禁用')
+  if (target.id === drama.createdBy) return badRequest(c, '该账号已经是项目创建人')
+  await transferDrama(drama, target.id)
+  const [updated] = await db.select().from(schema.dramas).where(eq(schema.dramas.id, id))
+  return success(c, await teamInfo(updated, user))
 })
 
 // DELETE /dramas/:id - Soft delete（仅创建人与超级管理员）

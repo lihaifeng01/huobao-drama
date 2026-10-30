@@ -200,6 +200,8 @@ function startBackend(): void {
     ...process.env,
     PORT: String(backendPort),
     HUOBAO_DESKTOP: '1',
+    // 桌面版默认免登（单机），可在启动环境里设 HUOBAO_AUTH_MODE=login 改为需要登录
+    HUOBAO_AUTH_MODE: process.env.HUOBAO_AUTH_MODE || 'none',
     // 数据目录单一来源：重启/迁移后只需改 currentDataDir
     HUOBAO_DATA_DIR: currentDataDir,
     SQLITE_PATH: path.join(currentDataDir, 'huobao.sqlite3'),

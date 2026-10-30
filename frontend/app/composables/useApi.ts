@@ -55,6 +55,8 @@ export const dramaAPI = {
   del: (id: number) => api.del(`/dramas/${id}`),
   // 覆盖项目成员（仅创建人与超级管理员），返回 { creator, members, can_manage_members }
   setMembers: (id: number, memberIds: number[]) => api.put(`/dramas/${id}/members`, { member_ids: memberIds }),
+  // 转让项目（仅创建人与超级管理员）；原创建人留作成员，返回同上
+  transfer: (id: number, userId: number) => api.put(`/dramas/${id}/owner`, { user_id: userId }),
 }
 
 export type UserRole = 'super_admin' | 'admin' | 'user'
@@ -69,7 +71,8 @@ export interface AuthUser {
 }
 
 export const authAPI = {
-  status: () => api.get<{ initialized: boolean; user: AuthUser | null }>('/auth/status'),
+  // mode：none = 免登（桌面版默认，本机超级管理员），login = 需要登录
+  status: () => api.get<{ mode: 'none' | 'login'; initialized: boolean; user: AuthUser | null }>('/auth/status'),
   setup: (d: { username: string; password: string; display_name?: string }) => api.post<AuthUser>('/auth/setup', d),
   register: (d: { username: string; password: string; display_name?: string }) => api.post<AuthUser>('/auth/register', d),
   login: (d: { username: string; password: string }) => api.post<AuthUser>('/auth/login', d),

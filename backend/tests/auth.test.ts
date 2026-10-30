@@ -36,7 +36,7 @@ test('setup, roles, settings guard, project membership and library visibility', 
   const bob = client()
 
   // 未初始化：只能走 setup，注册被拒
-  assert.deepEqual((await anon('GET', '/auth/status')).json.data, { initialized: false, user: null })
+  assert.deepEqual((await anon('GET', '/auth/status')).json.data, { mode: 'login', initialized: false, user: null })
   assert.equal((await anon('GET', '/dramas')).status, 401)
   assert.equal((await alice('POST', '/auth/register', { username: 'alice', password: 'secret1' })).status, 400)
 
@@ -155,4 +155,74 @@ test('setup, roles, settings guard, project membership and library visibility', 
   // 退出登录
   assert.equal((await carol('POST', '/auth/logout')).status, 200)
   assert.equal((await carol('GET', '/auth/me')).status, 401)
+})
+
+test('per-user isolation for library folders/files and tool jobs; project transfer', async () => {
+  const dave = client()
+  const erin = client()
+  await dave('POST', '/auth/register', { username: 'dave', password: 'secret4' })
+  await erin('POST', '/auth/register', { username: 'erin', password: 'secret5' })
+  const daveId = (await dave('GET', '/auth/me')).json.data.id
+  const erinId = (await erin('GET', '/auth/me')).json.data.id
+
+  // 我的文件夹：各看各的，同名不冲突，碰不到别人的
+  const folder = (await dave('POST', '/library/character/folders', { name: '主角' })).json.data
+  assert.equal((await erin('POST', '/library/character/folders', { name: '主角' })).status, 201)
+  assert.deepEqual((await dave('GET', '/library/character')).json.data.folders.map((f: any) => f.name), ['主角'])
+  assert.equal((await dave('GET', '/library/character/folders')).json.data.length, 1)
+  assert.equal((await erin('GET', `/library/character/folders/${folder.id}`)).status, 404)
+  assert.equal((await erin('PUT', `/library/folders/${folder.id}`, { name: 'x' })).status, 404)
+  assert.equal((await erin('DELETE', `/library/folders/${folder.id}`)).status, 404)
+
+  // 上传素材：只出现在自己的根目录 / 文件夹里，别人改不了删不了
+  const sharp = (await import('sharp')).default
+  const png = await sharp({ create: { width: 8, height: 8, channels: 3, background: '#f80' } }).png().toBuffer()
+  const fd = new FormData()
+  fd.append('file', new Blob([png]), 'hero.png')
+  // client() 只发 JSON，multipart 上传单独登录拿 cookie
+  const login = await api.request('/api/v1/auth/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'dave', password: 'secret4' }),
+  })
+  const daveCookie = login.headers.get('set-cookie')!.split(';')[0]
+  const up = await api.request('/api/v1/library/character/files', { method: 'POST', headers: { Cookie: daveCookie }, body: fd })
+  assert.equal(up.status, 201)
+  const file = ((await up.json()) as any).data
+  assert.equal((await dave('GET', '/library/character')).json.data.files.length, 1)
+  assert.equal((await erin('GET', '/library/character')).json.data.files.length, 0)
+  assert.equal((await erin('PUT', `/library/files/${file.id}`, { name: 'x' })).status, 404)
+  assert.equal((await erin('DELETE', `/library/files/${file.id}`)).status, 404)
+  assert.equal((await dave('PUT', `/library/files/${file.id}`, { folder_id: folder.id })).status, 200)
+  assert.equal((await dave('GET', `/library/character/folders/${folder.id}`)).json.data.files.length, 1)
+
+  // 工具任务：直接写库造一条 dave 的字幕任务和合成任务，erin 看不到也删不了
+  const ts = new Date().toISOString()
+  await db.insert(schema.subtitleToolJobs).values({ userId: daveId, name: 'a.mp4', videoUrl: 'static/x.mp4', status: 'idle', createdAt: ts, updatedAt: ts })
+  await db.insert(schema.mergeToolJobs).values({ userId: daveId, name: 'm', clips: '[]', status: 'completed', createdAt: ts, updatedAt: ts })
+  const subJobs = (await dave('GET', '/tools/subtitle-jobs')).json.data
+  const mergeJobs = (await dave('GET', '/tools/merge-jobs')).json.data
+  assert.equal(subJobs.length, 1)
+  assert.equal(mergeJobs.length, 1)
+  assert.equal((await erin('GET', '/tools/subtitle-jobs')).json.data.length, 0)
+  assert.equal((await erin('GET', '/tools/merge-jobs')).json.data.length, 0)
+  assert.equal((await erin('GET', `/tools/subtitle-jobs/${subJobs[0].id}`)).status, 404)
+  assert.equal((await erin('POST', `/tools/subtitle-jobs/${subJobs[0].id}/burn`, {})).status, 404)
+  assert.equal((await erin('DELETE', `/tools/subtitle-jobs/${subJobs[0].id}`)).status, 404)
+  assert.equal((await erin('DELETE', `/tools/merge-jobs/${mergeJobs[0].id}`)).status, 404)
+  assert.equal((await dave('DELETE', `/tools/merge-jobs/${mergeJobs[0].id}`)).status, 200)
+
+  // 转让项目：成员不能转；创建人转给 erin 后自己留作成员、不能再管理；超级管理员可以再转回
+  const drama = (await dave('POST', '/dramas', { title: '转让测试', member_ids: [erinId] })).json.data
+  assert.equal((await erin('PUT', `/dramas/${drama.id}/owner`, { user_id: erinId })).status, 403)
+  assert.equal((await dave('PUT', `/dramas/${drama.id}/owner`, { user_id: daveId })).status, 400)
+  assert.equal((await dave('PUT', `/dramas/${drama.id}/owner`, { user_id: 99999 })).status, 400)
+  const team = (await dave('PUT', `/dramas/${drama.id}/owner`, { user_id: erinId })).json.data
+  assert.equal(team.creator.username, 'erin')
+  assert.deepEqual(team.members.map((m: any) => m.username), ['dave'])
+  assert.equal(team.can_manage_members, false)
+  assert.equal((await dave('GET', `/dramas/${drama.id}`)).status, 200)
+  assert.equal((await dave('PUT', `/dramas/${drama.id}/members`, { member_ids: [] })).status, 403)
+  assert.equal((await erin('GET', `/dramas/${drama.id}`)).json.data.can_manage_members, true)
+  const root = client()
+  await root('POST', '/auth/login', { username: 'root', password: 'rootpass' })
+  assert.equal((await root('PUT', `/dramas/${drama.id}/owner`, { user_id: daveId })).json.data.creator.username, 'dave')
 })

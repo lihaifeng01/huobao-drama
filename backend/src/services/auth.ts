@@ -4,6 +4,10 @@
  * - 密码：scrypt + 随机盐，存 `scrypt$<salt hex>$<hash hex>`
  * - 会话：随机 token 放 httpOnly cookie，库里只存 sha256；30 天有效，剩余不足一半时自动续期
  * - 暂不做验证码 / 邮箱验证
+ * - 两种模式（HUOBAO_AUTH_MODE）：
+ *   login — 需要登录（Web / Docker 默认）
+ *   none  — 免登，所有请求都以本机超级管理员身份执行（桌面版默认，HUOBAO_DESKTOP=1）
+ *   免登模式自动建的超级管理员没有密码；切到 login 模式后初始化页会「认领」这个账号设置用户名密码，数据归属不变
  */
 import crypto from 'crypto'
 import type { Context } from 'hono'
@@ -18,6 +22,15 @@ export type UserRow = typeof schema.users.$inferSelect
 export const ROLES: Role[] = ['super_admin', 'admin', 'user']
 export const SESSION_COOKIE = 'huobao_session'
 const SESSION_TTL_MS = 30 * 24 * 3600 * 1000
+
+export type AuthMode = 'none' | 'login'
+
+/** 显式配置优先；未配置时桌面版免登、其余需要登录 */
+export function authMode(): AuthMode {
+  const raw = String(process.env.HUOBAO_AUTH_MODE || '').trim().toLowerCase()
+  if (raw === 'none' || raw === 'login') return raw
+  return process.env.HUOBAO_DESKTOP === '1' ? 'none' : 'login'
+}
 
 export class AuthError extends Error {
   constructor(message: string, public status: 400 | 401 | 403 | 404 = 400) { super(message) }
@@ -90,11 +103,6 @@ export async function findUserByName(username: string) {
   return u
 }
 
-export async function hasUsers(): Promise<boolean> {
-  const [row] = await db.select({ n: sql<number>`count(*)` }).from(schema.users)
-  return Number(row?.n || 0) > 0
-}
-
 export async function createUser(input: { username: unknown; password: unknown; displayName?: unknown; role?: Role }) {
   const username = cleanUsername(input.username)
   const password = cleanPassword(input.password)
@@ -114,27 +122,97 @@ export async function createUser(input: { username: unknown; password: unknown; 
   return (await findUser(getInsertId(res)))!
 }
 
+export async function findSuperAdmin() {
+  const [u] = await db.select().from(schema.users)
+    .where(and(eq(schema.users.role, 'super_admin'), isNull(schema.users.deletedAt)))
+  return u
+}
+
+/** 登录模式下是否还要走初始化页：没有超级管理员，或只有免登模式建的无密码超级管理员 */
+export async function needsSetup() {
+  const sa = await findSuperAdmin()
+  return !sa || !sa.passwordHash
+}
+
 /**
- * 创建超级管理员（仅在没有任何账号时允许），并把账号体系之前的老项目归到其名下
+ * 没有归属的老数据（账号体系之前的项目、我的文件夹 / 素材、工具任务）归到超级管理员名下（幂等）
+ */
+export async function claimOrphans(userId: number) {
+  await db.update(schema.dramas).set({ createdBy: userId }).where(isNull(schema.dramas.createdBy))
+  for (const table of [schema.libraryFolders, schema.libraryFiles, schema.subtitleToolJobs, schema.mergeToolJobs]) {
+    await db.update(table).set({ userId }).where(isNull(table.userId))
+  }
+}
+
+/**
+ * 创建超级管理员（仅在需要初始化时允许）。已有免登模式建的无密码超级管理员时，直接给它设用户名和密码
  */
 export async function createSuperAdmin(input: { username: unknown; password: unknown; displayName?: unknown }) {
-  if (await hasUsers()) throw new AuthError('系统已初始化', 403)
-  const user = await createUser({ ...input, role: 'super_admin' })
-  await db.update(schema.dramas).set({ createdBy: user.id }).where(isNull(schema.dramas.createdBy))
+  if (!await needsSetup()) throw new AuthError('系统已初始化', 403)
+  const existing = await findSuperAdmin()
+  let user: UserRow
+  if (existing) {
+    const username = cleanUsername(input.username)
+    const password = cleanPassword(input.password)
+    const [taken] = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.username, username))
+    if (taken && taken.id !== existing.id) throw new AuthError('用户名已存在')
+    await db.update(schema.users).set({
+      username,
+      displayName: cleanDisplayName(input.displayName),
+      passwordHash: hashPassword(password),
+      updatedAt: now(),
+    }).where(eq(schema.users.id, existing.id))
+    user = (await findUser(existing.id))!
+  } else {
+    user = await createUser({ ...input, role: 'super_admin' })
+  }
+  await claimOrphans(user.id)
   return user
 }
 
-/** Docker / 服务器部署：环境变量预置超级管理员，免去首次打开时的初始化页 */
-export async function bootstrapSuperAdminFromEnv() {
+/** 免登模式的「本机用户」：即超级管理员，不存在就建一个无密码的 */
+export async function localUser(): Promise<UserRow> {
+  const sa = await findSuperAdmin()
+  if (sa) return sa
+  const ts = now()
+  const res = await db.insert(schema.users).values({
+    username: 'admin',
+    displayName: null,
+    passwordHash: '',
+    role: 'super_admin',
+    status: 'active',
+    createdAt: ts,
+    updatedAt: ts,
+  })
+  const user = (await findUser(getInsertId(res)))!
+  await claimOrphans(user.id)
+  return user
+}
+
+/**
+ * 启动时调用：
+ * - 免登模式：确保本机用户存在
+ * - 登录模式：环境变量 HUOBAO_ADMIN_USERNAME / HUOBAO_ADMIN_PASSWORD 预置超级管理员（Docker 免去初始化页）
+ * - 已有超级管理员时把升级前没有归属的数据归给他
+ */
+export async function initAuth() {
+  console.log(`🔐 账号模式：${authMode() === 'none' ? '免登（本机超级管理员）' : '需要登录'}`)
+  if (authMode() === 'none') {
+    await localUser()
+    return
+  }
   const username = process.env.HUOBAO_ADMIN_USERNAME
   const password = process.env.HUOBAO_ADMIN_PASSWORD
-  if (!username || !password || await hasUsers()) return
-  try {
-    await createSuperAdmin({ username, password })
-    console.log(`👤 已按环境变量创建超级管理员「${username}」`)
-  } catch (err: any) {
-    console.error(`⚠️ 按环境变量创建超级管理员失败：${err.message}`)
+  if (username && password && await needsSetup()) {
+    try {
+      await createSuperAdmin({ username, password })
+      console.log(`👤 已按环境变量创建超级管理员「${username}」`)
+    } catch (err: any) {
+      console.error(`⚠️ 按环境变量创建超级管理员失败：${err.message}`)
+    }
   }
+  const sa = await findSuperAdmin()
+  if (sa) await claimOrphans(sa.id)
 }
 
 // ---------- 会话 ----------

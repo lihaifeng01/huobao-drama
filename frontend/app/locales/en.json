@@ -1332,7 +1332,16 @@
     "manageDesc": "Only members can see this project and its assets.",
     "readonlyDesc": "Only the owner and the super admin can change project members.",
     "none": "No other members",
-    "saved": "Project members updated"
+    "saved": "Project members updated",
+    "transfer": {
+      "title": "Transfer project",
+      "placeholder": "Choose the new owner",
+      "action": "Transfer",
+      "hint": "The new owner becomes the project owner. You stay on as a member but can no longer change members or transfer the project.",
+      "confirmTitle": "Transfer project",
+      "confirmMessage": "Transfer \"{title}\" to {name}? Afterwards you can no longer change project members or delete the project.",
+      "done": "Transferred to {name}"
+    }
   },
   "users": {
     "title": "Accounts",
@@ -1357,7 +1366,7 @@
     "resetTitle": "Reset password for \"{name}\"",
     "resetHint": "The account must sign in again with the new password.",
     "deleteTitle": "Delete account",
-    "deleteMessage": "Delete the account \"{name}\"? It will no longer be able to sign in. Projects it created are kept and the super admin can still manage them.",
+    "deleteMessage": "Delete the account \"{name}\"? It will no longer be able to sign in. Projects it created are kept, and the super admin can transfer them to someone else.",
     "neverLoggedIn": "Never",
     "roleChanged": "Role updated",
     "created": "Account created",

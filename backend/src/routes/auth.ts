@@ -4,26 +4,38 @@ import { eq } from 'drizzle-orm'
 import { db, schema } from '../db/index.js'
 import { success, created, badRequest, unauthorized, now } from '../utils/response.js'
 import {
-  AuthError, cleanDisplayName, cleanPassword, createSuperAdmin, createUser, endSession, findUserByName,
-  hasUsers, hashPassword, revokeSessions, serializeUser, sessionUser, startSession, verifyPassword,
+  AuthError, authMode, cleanDisplayName, cleanPassword, createSuperAdmin, createUser, endSession, findUserByName,
+  hashPassword, localUser, needsSetup, revokeSessions, serializeUser, sessionUser, startSession, verifyPassword,
 } from '../services/auth.js'
 
 /**
  * 登录 / 注册 / 初始化
  * - status、setup、login、register 为公开接口（见 middleware/auth.ts 的 PUBLIC_PATHS）
  * - 暂不做验证码
+ * - 免登模式（HUOBAO_AUTH_MODE=none）下只有 status / me / profile 有意义，其余返回 400
  */
 const app = new Hono()
+
+const NO_LOGIN = '当前为免登模式，无需登录'
+
+// 免登模式下拒绝登录相关操作
+app.use('/:action{setup|register|login|password}', async (c, next) => {
+  if (authMode() === 'none') return badRequest(c, NO_LOGIN)
+  return next()
+})
 
 function fail(c: Context, err: unknown) {
   if (err instanceof AuthError) return c.json({ code: err.status, message: err.message }, err.status)
   throw err
 }
 
-// GET /auth/status — 是否已初始化（有超级管理员）+ 当前登录用户
+// GET /auth/status — 模式 + 是否已初始化（有设好密码的超级管理员）+ 当前用户
 app.get('/status', async (c) => {
+  if (authMode() === 'none') {
+    return success(c, { mode: 'none', initialized: true, user: serializeUser(await localUser()) })
+  }
   const user = await sessionUser(c)
-  return success(c, { initialized: await hasUsers(), user: user ? serializeUser(user) : null })
+  return success(c, { mode: 'login', initialized: !await needsSetup(), user: user ? serializeUser(user) : null })
 })
 
 // POST /auth/setup — 首次使用：创建超级管理员并登录（已有账号时拒绝）
@@ -38,7 +50,7 @@ app.post('/setup', async (c) => {
 
 // POST /auth/register — 自助注册，角色固定为普通用户
 app.post('/register', async (c) => {
-  if (!await hasUsers()) return badRequest(c, '系统尚未初始化，请先创建超级管理员')
+  if (await needsSetup()) return badRequest(c, '系统尚未初始化，请先创建超级管理员')
   const body = await c.req.json().catch(() => ({}))
   try {
     const user = await createUser({ username: body.username, password: body.password, displayName: body.display_name, role: 'user' })

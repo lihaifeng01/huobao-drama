@@ -1,7 +1,7 @@
 /**
  * 项目（drama）访问控制
  * - 可见 / 可操作：超级管理员、创建人（dramas.created_by）、项目成员（drama_members）
- * - 修改成员、删除项目：仅创建人与超级管理员
+ * - 修改成员、转让、删除项目：仅创建人与超级管理员
  * - 剧集 / 分镜 / 角色 / 场景 / 道具 / 造型 / 生成任务都通过 dramaOf() 归到所属项目再判断
  */
 import { and, eq, inArray, isNull } from 'drizzle-orm'
@@ -107,4 +107,19 @@ export async function setMembers(dramaId: number, createdBy: number | null, user
     await db.insert(schema.dramaMembers).values(valid.map(userId => ({ dramaId, userId, createdAt: ts })))
   }
   return valid
+}
+
+/**
+ * 转让项目：接收人成为创建人（从成员表移除），原创建人留作普通成员，避免转让后自己失去访问
+ */
+export async function transferDrama(drama: { id: number; createdBy: number | null }, toUserId: number) {
+  const ts = now()
+  await db.update(schema.dramas).set({ createdBy: toUserId, updatedAt: ts }).where(eq(schema.dramas.id, drama.id))
+  await db.delete(schema.dramaMembers)
+    .where(and(eq(schema.dramaMembers.dramaId, drama.id), eq(schema.dramaMembers.userId, toUserId)))
+  if (drama.createdBy != null) {
+    const [already] = await db.select().from(schema.dramaMembers)
+      .where(and(eq(schema.dramaMembers.dramaId, drama.id), eq(schema.dramaMembers.userId, drama.createdBy)))
+    if (!already) await db.insert(schema.dramaMembers).values({ dramaId: drama.id, userId: drama.createdBy, createdAt: ts })
+  }
 }

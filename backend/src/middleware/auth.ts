@@ -1,11 +1,11 @@
 /**
  * 接口鉴权（挂在 /api/v1/* 上，路径判断均为去掉 /api/v1 前缀后的相对路径）
- * 1. authGuard：除公开接口外都要求登录，当前用户放进 c.get('user')
+ * 1. authGuard：除公开接口外都要求登录，当前用户放进 c.get('user')；免登模式下固定为本机超级管理员
  * 2. settingsGuard：设置相关接口仅管理员（super_admin / admin）可用；普通用户只能读工作台需要的配置
  * 3. projectGuard：项目相关接口按路径参数、请求体、查询参数里引用的实体归到项目，非项目成员 403
  */
 import type { Context, MiddlewareHandler } from 'hono'
-import { isAdmin, sessionUser, type UserRow } from '../services/auth.js'
+import { authMode, isAdmin, localUser, sessionUser, type UserRow } from '../services/auth.js'
 import { canAccessDrama, dramaOf, type EntityKind } from '../services/project-access.js'
 import { forbidden, unauthorized } from '../utils/response.js'
 
@@ -26,7 +26,7 @@ const PUBLIC_PATHS = new Set(['/health', '/auth/status', '/auth/login', '/auth/r
 
 export const authGuard: MiddlewareHandler = async (c, next) => {
   if (c.req.method === 'OPTIONS' || PUBLIC_PATHS.has(relPath(c))) return next()
-  const user = await sessionUser(c)
+  const user = authMode() === 'none' ? await localUser() : await sessionUser(c)
   if (!user) return unauthorized(c)
   c.set('user', user)
   return next()

@@ -23,6 +23,8 @@ services:
       HUOBAO_WATCHTOWER_TOKEN: ${WATCHTOWER_TOKEN:-please-change-me}
       # 发布清单（默认 GitHub Releases latest.json，与桌面版同一份）
       # HUOBAO_UPDATE_FEED: https://github.com/lihaifeng01/huobao-drama/releases/latest/download/latest.json
+      # 账号模式：login 需要登录（默认），none 免登（单人使用）
+      # HUOBAO_AUTH_MODE: login
       # 首次启动且没有账号时自动创建超级管理员；不设置则首次打开页面时创建
       # HUOBAO_ADMIN_USERNAME: admin
       # HUOBAO_ADMIN_PASSWORD: please-change-me

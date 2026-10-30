@@ -33,7 +33,7 @@
           <Settings :size="15" :stroke-width="1.8" />
           <span>{{ t('layout.nav.settings') }}</span>
         </NuxtLink>
-        <NuxtLink v-if="isSuperAdmin" to="/users" class="nav-link" :class="{ active: route.path === '/users' }">
+        <NuxtLink v-if="isSuperAdmin && isMultiUser" to="/users" class="nav-link" :class="{ active: route.path === '/users' }">
           <Users :size="15" :stroke-width="1.8" />
           <span>{{ t('layout.nav.users') }}</span>
         </NuxtLink>
@@ -52,7 +52,7 @@
         </a>
         <ThemeToggle />
         <LocaleSwitcher />
-        <AppMenu v-if="auth.state.user" v-model:open="userMenuOpen" placement="bottom-end" :min-width="180">
+        <AppMenu v-if="auth.state.user && isMultiUser" v-model:open="userMenuOpen" placement="bottom-end" :min-width="180">
           <template #trigger>
             <button type="button" class="user-trigger" :title="auth.state.user.username">
               <span class="user-avatar">{{ userInitial }}</span>
@@ -130,7 +130,7 @@ const route = useRoute()
 const showBrandImage = ref(true)
 
 const auth = useAuth()
-const { isAdmin, isSuperAdmin } = auth
+const { isAdmin, isSuperAdmin, isMultiUser } = auth
 const userMenuOpen = ref(false)
 const userInitial = computed(() => String(auth.state.user?.display_name || '?').trim().slice(0, 1).toUpperCase())
 function roleTagClass(role) {

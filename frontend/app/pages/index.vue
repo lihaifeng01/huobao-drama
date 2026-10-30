@@ -125,7 +125,7 @@
           <div class="project-foot dim">
             <Clock :size="11" :stroke-width="1.8" />
             {{ fmtDate(d.updated_at || d.updatedAt) }}
-            <span class="project-team" :title="teamTitle(d)">
+            <span v-if="isMultiUser" class="project-team" :title="teamTitle(d)">
               <UsersRound :size="11" :stroke-width="1.8" />
               {{ (d.members?.length || 0) + 1 }}
             </span>
@@ -177,7 +177,7 @@
               <BaseSelect v-model="form.aspect_ratio" :options="aspectRatioOptions" :placeholder="t('index.createDialog.aspectRatioPlaceholder')" />
               <span class="field-hint">{{ t('index.createDialog.aspectRatioHint') }}</span>
             </label>
-            <div class="field">
+            <div v-if="isMultiUser" class="field">
               <span class="field-label">{{ t('members.title') }}</span>
               <MemberPicker v-model="form.member_ids" :exclude-ids="currentUserId ? [currentUserId] : []" />
               <span class="field-hint">{{ t('members.createHint') }}</span>
@@ -233,6 +233,8 @@ const dramaToDelete = ref(null)
 const deletingDrama = ref(false)
 const form = ref({ title: '', style: '', aspect_ratio: '16:9', member_ids: [] })
 const currentUserId = computed(() => useAuth().state.user?.id)
+// 免登模式（桌面版）是单人使用，不显示项目成员
+const { isMultiUser } = useAuth()
 // 卡片上的人数 = 创建人 + 成员；悬停显示名单
 function teamTitle(d) {
   const names = [d.creator?.display_name, ...(d.members || []).map(m => m.display_name)].filter(Boolean)

@@ -510,6 +510,11 @@ const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: 'storyboards', column: 'subtitle_source_video', ddl: 'ALTER TABLE storyboards ADD COLUMN subtitle_source_video TEXT' },
   // 项目创建人（账号体系之前的老项目为空，创建超级管理员时归到超级管理员名下）
   { table: 'dramas', column: 'created_by', ddl: 'ALTER TABLE dramas ADD COLUMN created_by INTEGER' },
+  // 按用户隔离：我的文件夹 / 上传素材、字幕工具、视频合成工具（老数据为空，启动时归到超级管理员名下）
+  { table: 'library_folders', column: 'user_id', ddl: 'ALTER TABLE library_folders ADD COLUMN user_id INTEGER' },
+  { table: 'library_files', column: 'user_id', ddl: 'ALTER TABLE library_files ADD COLUMN user_id INTEGER' },
+  { table: 'subtitle_tool_jobs', column: 'user_id', ddl: 'ALTER TABLE subtitle_tool_jobs ADD COLUMN user_id INTEGER' },
+  { table: 'merge_tool_jobs', column: 'user_id', ddl: 'ALTER TABLE merge_tool_jobs ADD COLUMN user_id INTEGER' },
 ]
 
 /** 依赖增量列的索引，须在补列之后建 */
