@@ -25,6 +25,7 @@ import subtitles from './routes/subtitles.js'
 import tools from './routes/tools.js'
 import auth from './routes/auth.js'
 import users from './routes/users.js'
+import usage from './routes/usage.js'
 import { authGuard, settingsGuard, projectGuard } from './middleware/auth.js'
 
 const api = new Hono()
@@ -34,6 +35,7 @@ api.use('*', settingsGuard)
 api.use('*', projectGuard)
 api.route('/auth', auth)
 api.route('/users', users)
+api.route('/usage', usage)
 api.route('/dramas', dramas)
 api.route('/episodes', episodes)
 api.route('/storyboards', storyboards)

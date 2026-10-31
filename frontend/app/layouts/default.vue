@@ -28,6 +28,10 @@
           <Wrench :size="15" :stroke-width="1.8" />
           <span>{{ t('layout.nav.tools') }}</span>
         </NuxtLink>
+        <NuxtLink to="/usage" class="nav-link" :class="{ active: route.path === '/usage' }">
+          <BarChart3 :size="15" :stroke-width="1.8" />
+          <span>{{ t('layout.nav.usage') }}</span>
+        </NuxtLink>
         <!-- 设置仅管理员可见（普通用户后端也会拒绝设置类接口） -->
         <NuxtLink v-if="isAdmin" to="/settings" class="nav-link" :class="{ active: route.path === '/settings' }">
           <Settings :size="15" :stroke-width="1.8" />
@@ -117,7 +121,7 @@
 </template>
 
 <script setup>
-import { LayoutGrid, Images, Wrench, Settings, TriangleAlert, Github, Users } from 'lucide-vue-next'
+import { LayoutGrid, Images, Wrench, Settings, TriangleAlert, Github, Users, BarChart3 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import { aiConfigAPI, authAPI } from '~/composables/useApi'

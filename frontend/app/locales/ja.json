@@ -38,7 +38,8 @@
       "library": "素材",
       "tools": "ツール",
       "settings": "設定",
-      "users": "アカウント"
+      "users": "アカウント",
+      "usage": "使用量"
     },
     "banner": {
       "missing": "{types}モデルが未設定のため、AI 機能は使用できません",
@@ -316,7 +317,8 @@
       "styles": "スタイルプリセット",
       "storage": "保存場所",
       "about": "更新について",
-      "agents": "Agent 設定"
+      "agents": "Agent 設定",
+      "points": "ポイント"
     },
     "common": {
       "disabled": "無効",
@@ -1372,5 +1374,97 @@
     "created": "アカウントを作成しました",
     "passwordReset": "パスワードを再設定しました",
     "deleted": "アカウントを削除しました"
+  },
+  "points": {
+    "title": "ポイントルール",
+    "desc": "種類ごとの既定ポイントを設定し、モデルごとに個別に設定することもできます。使用記録はこのルールでポイントに換算されます。現在は記録のみで、残高からは差し引きません。",
+    "default": "既定",
+    "defaultHint": "モデルを空欄にすると既定値を使います",
+    "followDefault": "既定 {n}",
+    "unit": {
+      "image": "pt / 枚",
+      "video": "pt / 秒",
+      "subtitle": "pt / 分"
+    },
+    "notInConfig": "設定から削除済み",
+    "noModels": "この種類の AI サービスはまだ設定されていません",
+    "textNote": "テキストモデルはトークン使用量のみ記録し、ポイントは消費しません",
+    "unsaved": "未保存の変更があります",
+    "discard": "変更を破棄",
+    "saved": "ポイントルールを保存しました",
+    "invalid": "「{name}」のポイントは 0 以上の整数にしてください"
+  },
+  "usage": {
+    "title": "使用記録",
+    "subAdmin": "チームの AI サービス使用量と換算ポイントです。種類をクリックするとモデル別の使用量を表示します。",
+    "subSelf": "あなたの AI サービス使用量と換算ポイントです。種類をクリックするとモデル別の使用量を表示します。",
+    "range": {
+      "month": "今月",
+      "week": "過去 7 日",
+      "days30": "過去 30 日",
+      "all": "すべて"
+    },
+    "allMembers": "全メンバー",
+    "type": {
+      "image": "画像",
+      "video": "動画",
+      "subtitle": "字幕",
+      "text": "テキスト"
+    },
+    "calls": "{n} 回",
+    "pointsUnit": "ポイント",
+    "amount": "使用量 {q}",
+    "textOnly": "記録のみ（ポイントなし）",
+    "status": {
+      "pending": "処理中",
+      "succeeded": "成功",
+      "refunded": "失敗・返還済み",
+      "held": "復旧待ち",
+      "failed": "失敗"
+    },
+    "byModel": "{type} · モデル別",
+    "clearModel": "すべてのモデルを表示",
+    "col": {
+      "model": "モデル",
+      "count": "回数",
+      "succeeded": "成功",
+      "amount": "使用量",
+      "points": "ポイント",
+      "time": "日時",
+      "user": "メンバー",
+      "project": "プロジェクト",
+      "source": "用途",
+      "status": "状態"
+    },
+    "unknownModel": "不明なモデル",
+    "history": "使用明細",
+    "total": "全 {n} 件",
+    "empty": "記録はまだありません",
+    "usageMissingHint": "このサービスはトークン使用量を返しませんでした",
+    "prev": "前のページ",
+    "next": "次のページ",
+    "note": "ポイントは「設定 → ポイントルール」で換算します。成功・処理中・復旧待ちは計上し、返還済みの失敗は計上しません。復旧待ちとは、上流で課金済みの可能性があり、結果をまだ復旧できる動画タスクです。",
+    "qty": {
+      "image": "{n} 枚",
+      "video": "{n} 秒",
+      "subtitle": "{n} 分"
+    },
+    "source": {
+      "shot_image": "カット画像",
+      "shot_video": "カット動画",
+      "character_image": "キャラクター画像",
+      "look_image": "衣装画像",
+      "scene_image": "シーン画像",
+      "prop_image": "小道具画像",
+      "image": "画像生成",
+      "video": "動画生成",
+      "shot_subtitle": "カット字幕",
+      "tool_subtitle": "字幕ツール",
+      "agent": "AI チャット",
+      "extract": "素材抽出",
+      "episode_summary": "あらすじ",
+      "video_prompt": "動画プロンプト",
+      "image_prompt": "画像プロンプト"
+    }
   }
 }

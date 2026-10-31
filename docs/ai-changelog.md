@@ -69,6 +69,30 @@
 
 ## 变更条目
 
+### 2026-10-31 · 新增：用量统计与积分规则（积分一期：只统计，不扣）
+- **分支**：`feat/usage-points`（从 `dev` 拉出，未合并）
+- **改动**
+  - 所有付费调用都记一行 `usage_records`：图片、视频（`generation.ts`）、字幕识别（剧集字幕与字幕工具，`transcribeVideoCues`）、文本模型（5 处 `agent.generate` 经 `generateWithUsage`）。记录发起人、项目、厂商 / 模型、用途、用量和折合积分。
+  - 设置 →「积分规则」：管理员设置图片（每张）、视频（每秒）、字幕（每分钟）的默认积分，也能给 AI 服务配置里的单个模型单独设置（留空跟随默认）。文本只统计 token，不计积分。
+  - 顶栏「用量」→ 使用记录页：四个分类卡片（积分、次数、用量、失败数），点击分类展开该分类下每个模型的用量，再点模型筛选使用明细。时间范围：本月 / 近 7 天 / 近 30 天 / 全部。普通用户只看自己的，管理员可看全部或按成员筛选。
+  - `sys_task` 加 `user_id`（发起人）。
+- **关键文件**：`backend/src/services/{actor,usage}.ts`、`backend/src/agents/usage.ts`、`backend/src/routes/usage.ts`、`frontend/app/pages/usage.vue`、`frontend/app/components/PointRulesPanel.vue`。设计稿 `docs/design/usage-quota.md`（§0 是一期的实际做法）。
+- **设计取舍**
+  - 发起人用 `AsyncLocalStorage` 传递（`authGuard` 里 `runAsActor`），7 处 `generateImage` 调用点都不用改参数。后台续跑不依赖它：发起人写在 `sys_task.user_id` 和用量记录里。**进程内队列要在入队时取 `currentActorId()`**（镜头字幕队列就是这么做的），出队时已经不在原请求的上下文里，取到的会是别的请求的人或空。
+  - 失败是否计积分（`isRefundableTaskFailure`）：没有上游任务编号也没有结果地址 → 上游没接单，退还；`generation_failed`（含审核拦截）→ 退还；`submission_unknown`（服务中断时还在提交）、超时、转存失败、恢复失败 → 待恢复（`held`，计积分）。待恢复的视频恢复成功后改为成功并按实际时长重算。
+  - 视频按上游返回的实际时长结算，没有就按请求时长；字幕按 ffprobe 读到的视频时长；文本取 Mastra 的 `result.totalUsage`（工具循环多步合计）。
+  - 文本的实际模型在 `getModel()` 里记到请求上下文（`rememberUsageModel`），因为模型是按请求动态解析的，调用方并不知道最终用了哪个。
+  - 用量记录失败不影响生成本身（都 `catch` 掉并打 warn 日志）。
+  - 服务重启：生成任务由 `resumeInterruptedTasks` → `failTask` 处理；字幕等进程内任务不续跑，`resetInterruptedUsage` 把它们进行中的记录标为退还。
+- **注意事项**
+  - 积分只是折算展示，**一期不扣余额、不拦截**。余额、每月发放（重置）、余额不足 402、工作台预估都留到二期，设计见 `docs/design/usage-quota.md`。
+  - 单个模型的规则按「厂商 + 模型名」匹配，厂商取自 AI 服务配置的 `provider`。同一模型名在两个厂商下可以分别定价。
+  - 剧集字幕的项目归属由 `dramaOf('storyboard')` 反查；字幕工具、合成工具不属于项目，`drama_id` 为空。
+  - 结构测试不受影响，没有改测试里读的文件路径。
+- **验证**
+  - 新增 `backend/tests/usage.test.ts`（2 项，模拟 OpenAI 图片 / 对话和 MiniMax 视频，走完整中间件链）：规则匹配与公式、失败分类；图片成功 / 上游 400 退还、视频按实际时长重算、转存失败待恢复 → 恢复成功、中断时提交未知 → 待恢复、文本 token 记录、按分类汇总和按模型下钻、明细筛选、可见范围、时间范围、规则权限与删除覆盖。`subtitle.test.ts`、`subtitle-tool.test.ts` 补了字幕识别的用量断言。后端 TS 测试共 47 项通过；结构测试仍是后端 12、前端 25 个失败，名单不变。
+  - 本地端到端（Playwright，模拟上游服务）：三个账号经接口真实生成图片（含上游拒绝）、视频、文本对话；管理员在积分规则里改图片默认值和单个模型后，新任务按新单价、旧记录不变；普通用户的使用记录页只显示自己的，点「图片」看到两个模型、点模型筛出明细；管理员切换「Bob」只看 Bob 的。
+
 ### 2026-10-30 · 账号体系补充：用户隔离、免登 / 登录两种模式、项目转让
 - **分支**：`feat/accounts`（2026-10-30 已合并到 `dev`）
 - **改动**

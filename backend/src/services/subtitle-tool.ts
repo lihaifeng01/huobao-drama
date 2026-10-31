@@ -112,7 +112,9 @@ export async function startTranscribe(id: number, sel: SubtitleSelection = {}) {
 
   ;(async () => {
     const portrait = (job.height || 0) > (job.width || 0)
-    const cues = await transcribeVideoCues(getAbsolutePath(job.videoUrl), config, portrait, LABEL)
+    const cues = await transcribeVideoCues(getAbsolutePath(job.videoUrl), config, portrait, LABEL, {
+      userId: job.userId ?? null, dramaId: null, refType: 'subtitle_tool_job', refId: id, source: 'tool_subtitle', duration: job.duration || 0,
+    })
     if (!cues.length) throw new Error('未识别到语音，可以手动上传字幕文件')
     // 字幕变了，旧成品不再对应，需重新合成
     await update(id, { status: 'idle', subtitleUrl: writeSrt(cues), subtitleSource: 'asr', outputUrl: null })
