@@ -5,6 +5,7 @@
  */
 import { mastra } from '../mastra/index.js'
 import { buildAgentRequestContext } from '../agents/context.js'
+import { generateWithUsage } from '../agents/usage.js'
 import { logTaskError, logTaskProgress, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
 
 export type ExtractTarget = 'characters' | 'scenes' | 'props'
@@ -45,7 +46,7 @@ export function startExtraction(episodeId: number, dramaId: number, target: Extr
       modelOverride: opts.model || undefined,
       textConfigId: opts.configId || undefined,
     })
-    return agent.generate([{ role: 'user', content: EXTRACT_MESSAGES[target] }], {
+    return generateWithUsage(`extract:${target}`, requestContext, () => agent.generate([{ role: 'user', content: EXTRACT_MESSAGES[target] }], {
       maxSteps: 20,
       requestContext,
       // 逐步打印 Agent 进展：调用了哪些工具、输出了什么
@@ -59,7 +60,7 @@ export function startExtraction(episodeId: number, dramaId: number, target: Extr
           text: (step?.text || '').slice(0, 200) || undefined,
         })
       },
-    })
+    }))
   })()
     .then((result: any) => {
       task.status = 'done'

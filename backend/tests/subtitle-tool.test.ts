@@ -89,6 +89,9 @@ test('字幕工具：上传视频 → 自动识别 → 上传 GBK 字幕替换 �
   let cur = await waitIdle(job.id)
   assert.equal(cur.error_msg, null)
   assert.equal(cur.subtitle_source, 'asr')
+  // 用量：字幕工具的识别也记一次（没挂鉴权中间件，发起人为空）
+  const usage = (await db.select().from(schema.usageRecords)).filter(r => r.refType === 'subtitle_tool_job' && r.refId === job.id)
+  assert.deepEqual(usage.map(r => [r.serviceType, r.status, r.source]), [['subtitle', 'succeeded', 'tool_subtitle']])
   assert.match(await fs.readFile(path.join(root, cur.subtitle_url), 'utf8'), /你好，世界/)
 
   // 手动上传 GBK 编码的 SRT（「再见」）覆盖识别结果

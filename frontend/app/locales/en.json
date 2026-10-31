@@ -38,7 +38,8 @@
       "library": "Assets",
       "tools": "Tools",
       "settings": "Settings",
-      "users": "Accounts"
+      "users": "Accounts",
+      "usage": "Usage"
     },
     "banner": {
       "missing": "{types} model not configured yet. AI features are unavailable.",
@@ -316,7 +317,8 @@
       "styles": "Style Presets",
       "storage": "Storage",
       "about": "About & Updates",
-      "agents": "Agent Config"
+      "agents": "Agent Config",
+      "points": "Points"
     },
     "common": {
       "disabled": "Disabled",
@@ -1372,5 +1374,97 @@
     "created": "Account created",
     "passwordReset": "Password reset",
     "deleted": "Account deleted"
+  },
+  "points": {
+    "title": "Point rules",
+    "desc": "Set the default points for each service type, or override them for individual models. Usage records are converted to points with these rules. For now points are only tracked, not deducted.",
+    "default": "Default",
+    "defaultHint": "Leave a model empty to use the default",
+    "followDefault": "Default {n}",
+    "unit": {
+      "image": "pts / image",
+      "video": "pts / second",
+      "subtitle": "pts / minute"
+    },
+    "notInConfig": "No longer configured",
+    "noModels": "No AI service of this type is configured yet",
+    "textNote": "Text models only track token usage and cost no points",
+    "unsaved": "Unsaved changes",
+    "discard": "Discard",
+    "saved": "Point rules saved",
+    "invalid": "Points for \"{name}\" must be a whole number of 0 or more"
+  },
+  "usage": {
+    "title": "Usage",
+    "subAdmin": "AI service usage and points for your team. Click a category to see usage per model.",
+    "subSelf": "Your AI service usage and points. Click a category to see usage per model.",
+    "range": {
+      "month": "This month",
+      "week": "Last 7 days",
+      "days30": "Last 30 days",
+      "all": "All time"
+    },
+    "allMembers": "All members",
+    "type": {
+      "image": "Images",
+      "video": "Videos",
+      "subtitle": "Subtitles",
+      "text": "Text"
+    },
+    "calls": "{n} calls",
+    "pointsUnit": "points",
+    "amount": "Usage {q}",
+    "textOnly": "Tracked only, no points",
+    "status": {
+      "pending": "In progress",
+      "succeeded": "Succeeded",
+      "refunded": "Failed · refunded",
+      "held": "Awaiting recovery",
+      "failed": "Failed"
+    },
+    "byModel": "{type} · by model",
+    "clearModel": "Show all models",
+    "col": {
+      "model": "Model",
+      "count": "Calls",
+      "succeeded": "Succeeded",
+      "amount": "Usage",
+      "points": "Points",
+      "time": "Time",
+      "user": "Member",
+      "project": "Project",
+      "source": "Used for",
+      "status": "Status"
+    },
+    "unknownModel": "Unknown model",
+    "history": "History",
+    "total": "{n} records",
+    "empty": "No records yet",
+    "usageMissingHint": "The service did not report token usage",
+    "prev": "Previous page",
+    "next": "Next page",
+    "note": "Points follow Settings → Point rules. Succeeded, in-progress, and awaiting-recovery calls count; failed calls that were refunded do not. Awaiting recovery means a video task the provider may already have billed and whose result can still be recovered.",
+    "qty": {
+      "image": "{n} images",
+      "video": "{n} s",
+      "subtitle": "{n} min"
+    },
+    "source": {
+      "shot_image": "Shot image",
+      "shot_video": "Shot video",
+      "character_image": "Character image",
+      "look_image": "Look image",
+      "scene_image": "Scene image",
+      "prop_image": "Prop image",
+      "image": "Image",
+      "video": "Video",
+      "shot_subtitle": "Shot subtitles",
+      "tool_subtitle": "Subtitle tool",
+      "agent": "AI chat",
+      "extract": "Asset extraction",
+      "episode_summary": "Episode recap",
+      "video_prompt": "Video prompt",
+      "image_prompt": "Image prompt"
+    }
   }
 }

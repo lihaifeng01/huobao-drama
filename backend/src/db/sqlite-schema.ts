@@ -405,6 +405,50 @@ export const sqliteSchemaStatements = [
     PRIMARY KEY (drama_id, user_id)
   )`,
   `CREATE INDEX IF NOT EXISTS idx_drama_members_user_id ON drama_members (user_id)`,
+
+  // 用量记录：每次付费调用一行（见 docs/design/usage-quota.md）
+  // status：pending 进行中 / succeeded 成功 / refunded 失败已退还（不计积分）/ held 失败但上游可能已收费（待恢复，计积分）
+  `CREATE TABLE IF NOT EXISTS usage_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    drama_id INTEGER,
+    service_type TEXT NOT NULL,
+    provider TEXT,
+    model TEXT,
+    config_id INTEGER,
+    source TEXT,
+    ref_type TEXT,
+    ref_id INTEGER,
+    quantity REAL NOT NULL DEFAULT 0,
+    unit_points INTEGER NOT NULL DEFAULT 0,
+    points INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'pending',
+    error_code TEXT,
+    detail TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    completed_at TEXT
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_usage_records_user ON usage_records (user_id, created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_usage_records_ref ON usage_records (ref_type, ref_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_usage_records_type ON usage_records (service_type, created_at)`,
+  // 积分规则：model 为空 = 该类型的默认值；provider + model = 单个模型的覆盖
+  `CREATE TABLE IF NOT EXISTS point_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    service_type TEXT NOT NULL,
+    provider TEXT NOT NULL DEFAULT '',
+    model TEXT NOT NULL DEFAULT '',
+    points INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_point_rules_key ON point_rules (service_type, provider, model)`,
+  // 各类型默认积分（缺失才插入，不覆盖管理员修改）：图片每张 10、视频每秒 20、字幕每分钟 2；文本只统计不扣（0）
+  `INSERT OR IGNORE INTO point_rules (service_type, provider, model, points, created_at, updated_at) VALUES
+    ('image', '', '', 10, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    ('video', '', '', 20, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    ('subtitle', '', '', 2, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    ('text', '', '', 0, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'))`,
 ]
 
 /**
@@ -515,6 +559,8 @@ const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: 'library_files', column: 'user_id', ddl: 'ALTER TABLE library_files ADD COLUMN user_id INTEGER' },
   { table: 'subtitle_tool_jobs', column: 'user_id', ddl: 'ALTER TABLE subtitle_tool_jobs ADD COLUMN user_id INTEGER' },
   { table: 'merge_tool_jobs', column: 'user_id', ddl: 'ALTER TABLE merge_tool_jobs ADD COLUMN user_id INTEGER' },
+  // 生成任务的发起人（用量统计归属；后台续跑时按行上的值，不依赖请求上下文）
+  { table: 'sys_task', column: 'user_id', ddl: 'ALTER TABLE sys_task ADD COLUMN user_id INTEGER' },
 ]
 
 /** 依赖增量列的索引，须在补列之后建 */

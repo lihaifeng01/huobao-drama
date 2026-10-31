@@ -38,7 +38,8 @@
       "library": "素材",
       "tools": "工具",
       "settings": "设置",
-      "users": "账号"
+      "users": "账号",
+      "usage": "用量"
     },
     "banner": {
       "missing": "尚未配置{types}模型,AI 功能无法使用",
@@ -316,7 +317,8 @@
       "styles": "风格预设",
       "storage": "存储位置",
       "about": "关于更新",
-      "agents": "Agent 配置"
+      "agents": "Agent 配置",
+      "points": "积分规则"
     },
     "common": {
       "disabled": "已停用",
@@ -1372,5 +1374,97 @@
     "created": "账号已创建",
     "passwordReset": "密码已重置",
     "deleted": "账号已删除"
+  },
+  "points": {
+    "title": "积分规则",
+    "desc": "按类型设置默认消耗积分，也可以给单个模型单独设置。使用记录按这里的规则折算积分；目前只统计，不扣余额。",
+    "default": "默认",
+    "defaultHint": "下方模型留空即使用默认值",
+    "followDefault": "默认 {n}",
+    "unit": {
+      "image": "积分 / 张",
+      "video": "积分 / 秒",
+      "subtitle": "积分 / 分钟"
+    },
+    "notInConfig": "已不在配置中",
+    "noModels": "还没有这一类的 AI 服务配置",
+    "textNote": "文本模型只统计 token 用量，不消耗积分",
+    "unsaved": "有未保存的修改",
+    "discard": "放弃修改",
+    "saved": "积分规则已保存",
+    "invalid": "「{name}」的积分必须是不小于 0 的整数"
+  },
+  "usage": {
+    "title": "使用记录",
+    "subAdmin": "团队成员调用 AI 服务的用量和折合积分。点击分类查看每个模型的用量。",
+    "subSelf": "你调用 AI 服务的用量和折合积分。点击分类查看每个模型的用量。",
+    "range": {
+      "month": "本月",
+      "week": "近 7 天",
+      "days30": "近 30 天",
+      "all": "全部"
+    },
+    "allMembers": "全部成员",
+    "type": {
+      "image": "图片",
+      "video": "视频",
+      "subtitle": "字幕",
+      "text": "文本"
+    },
+    "calls": "{n} 次",
+    "pointsUnit": "积分",
+    "amount": "用量 {q}",
+    "textOnly": "只统计，不计积分",
+    "status": {
+      "pending": "进行中",
+      "succeeded": "成功",
+      "refunded": "失败·已退还",
+      "held": "待恢复",
+      "failed": "失败"
+    },
+    "byModel": "{type} · 按模型",
+    "clearModel": "查看全部模型",
+    "col": {
+      "model": "模型",
+      "count": "次数",
+      "succeeded": "成功",
+      "amount": "用量",
+      "points": "积分",
+      "time": "时间",
+      "user": "成员",
+      "project": "项目",
+      "source": "用途",
+      "status": "状态"
+    },
+    "unknownModel": "未知模型",
+    "history": "使用明细",
+    "total": "共 {n} 条",
+    "empty": "暂无记录",
+    "usageMissingHint": "该服务没有返回 token 用量",
+    "prev": "上一页",
+    "next": "下一页",
+    "note": "积分按「设置 → 积分规则」折算：成功、进行中和待恢复的计入，失败已退还的不计。待恢复是指上游可能已经收费、还能恢复结果的视频任务。",
+    "qty": {
+      "image": "{n} 张",
+      "video": "{n} 秒",
+      "subtitle": "{n} 分钟"
+    },
+    "source": {
+      "shot_image": "镜头图片",
+      "shot_video": "镜头视频",
+      "character_image": "角色图片",
+      "look_image": "造型图片",
+      "scene_image": "场景图片",
+      "prop_image": "道具图片",
+      "image": "生成图片",
+      "video": "生成视频",
+      "shot_subtitle": "镜头字幕",
+      "tool_subtitle": "字幕工具",
+      "agent": "AI 对话",
+      "extract": "资产提取",
+      "episode_summary": "前情摘要",
+      "video_prompt": "视频提示词",
+      "image_prompt": "图片提示词"
+    }
   }
 }

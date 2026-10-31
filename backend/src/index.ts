@@ -13,6 +13,7 @@ import { resumeInterruptedTasks } from './services/generation.js'
 import { resetInterruptedSubtitles } from './services/subtitle.js'
 import { resetInterruptedToolJobs } from './services/subtitle-tool.js'
 import { resetInterruptedMergeJobs } from './services/merge-tool.js'
+import { resetInterruptedUsage } from './services/usage.js'
 import { DATA_ROOT } from './utils/paths.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -59,5 +60,6 @@ await resumeInterruptedTasks()
 await resetInterruptedSubtitles()
 await resetInterruptedToolJobs()
 await resetInterruptedMergeJobs()
+await resetInterruptedUsage()
 
 serve({ fetch: app.fetch, port })

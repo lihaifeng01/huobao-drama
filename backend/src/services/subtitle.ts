@@ -20,6 +20,9 @@ import { cuesToSrt, parseSrt, sentencesToCues, type SrtCue } from '../utils/srt.
 import { logTaskError, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
 import { getActiveConfig, getConfigById, type AIConfig } from './ai.js'
 import { transcribeAudioFile } from './adapters/aliyun-asr.js'
+import { currentActorId } from './actor.js'
+import { completeUsage, failUsage, startUsage } from './usage.js'
+import { dramaOf } from './project-access.js'
 
 type Storyboard = typeof schema.storyboards.$inferSelect
 
@@ -69,7 +72,8 @@ export function isSubtitleCurrent(sb: Storyboard) {
 // ---------- 并发队列：识别和压制都较重，限制同时处理的镜头数 ----------
 
 // 入队时记下所选配置与模型，处理时按它解析（用户中途切换顶栏选择不影响已入队的镜头）
-const queue: { id: number; sel: SubtitleSelection }[] = []
+// userId 也在入队时记下：出队处理时已经不在发起请求的上下文里了（用量统计归属）
+const queue: { id: number; sel: SubtitleSelection; userId: number | null }[] = []
 const queued = new Set<number>()
 let running = 0
 
@@ -83,7 +87,7 @@ export async function enqueueSubtitles(storyboardIds: number[], sel: SubtitleSel
     const [sb] = await db.select().from(schema.storyboards).where(eq(schema.storyboards.id, id))
     if (!sb?.videoUrl) continue
     queued.add(id)
-    queue.push({ id, sel })
+    queue.push({ id, sel, userId: currentActorId() })
     accepted.push(id)
     await db.update(schema.storyboards)
       .set({ subtitleStatus: 'processing', subtitleError: null, updatedAt: now() })
@@ -95,9 +99,9 @@ export async function enqueueSubtitles(storyboardIds: number[], sel: SubtitleSel
 
 function pump() {
   while (running < MAX_CONCURRENCY && queue.length) {
-    const { id, sel } = queue.shift()!
+    const { id, sel, userId } = queue.shift()!
     running++
-    processStoryboard(id, sel)
+    processStoryboard(id, sel, userId)
       .catch(async (err: Error) => {
         logTaskError(LABEL, 'subtitle', { storyboardId: id, error: err.message })
         await db.update(schema.storyboards)
@@ -121,7 +125,7 @@ export async function resetInterruptedSubtitles() {
 
 // ---------- 单个镜头处理 ----------
 
-async function processStoryboard(id: number, sel: SubtitleSelection) {
+async function processStoryboard(id: number, sel: SubtitleSelection, userId: number | null) {
   const [sb] = await db.select().from(schema.storyboards).where(eq(schema.storyboards.id, id))
   if (!sb?.videoUrl) throw new Error('镜头还没有视频')
   const sourceVideo = sb.videoUrl
@@ -138,7 +142,9 @@ async function processStoryboard(id: number, sel: SubtitleSelection) {
   }
 
   const portrait = info.height > info.width
-  const cues = await transcribeVideoCues(videoAbs, config, portrait, LABEL)
+  const cues = await transcribeVideoCues(videoAbs, config, portrait, LABEL, {
+    userId, dramaId: await dramaOf('storyboard', id), refType: 'storyboard_subtitle', refId: id, source: 'shot_subtitle', duration: info.duration,
+  })
   if (!cues.length) {
     await finish(id, sourceVideo, { status: 'no_speech', error: '未识别到语音' })
     return
@@ -161,14 +167,38 @@ async function processStoryboard(id: number, sel: SubtitleSelection) {
   logTaskSuccess(LABEL, 'subtitle', { storyboardId: id, cues: cues.length, subtitleUrl, subtitledVideoUrl })
 }
 
+/** 用量统计上下文：谁发起、归属哪个项目、对应哪条业务记录、音频时长（秒） */
+export interface TranscribeUsage {
+  userId: number | null
+  dramaId: number | null
+  refType: string
+  refId: number
+  source: string
+  duration: number
+}
+
 /** 抽 16kHz 单声道音频 → 识别 → 切成字幕条目（字幕工具与工作流共用）；无语音返回空数组 */
-export async function transcribeVideoCues(videoAbs: string, config: AIConfig, portrait: boolean, label = LABEL): Promise<SrtCue[]> {
+export async function transcribeVideoCues(videoAbs: string, config: AIConfig, portrait: boolean, label = LABEL, usage?: TranscribeUsage): Promise<SrtCue[]> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'huobao-sub-'))
+  let tracked = false
   try {
     const audioPath = path.join(tmpDir, `${uuid()}.mp3`)
     await runFfmpeg(['-y', '-i', videoAbs, '-vn', '-ac', '1', '-ar', '16000', '-c:a', 'libmp3lame', '-b:a', '64k', audioPath])
+    // 抽音频之后、调用识别之前记用量：本地 ffmpeg 失败不算付费调用
+    if (usage) {
+      await startUsage({
+        serviceType: 'subtitle', provider: config.provider, model: config.model, configId: config.id,
+        source: usage.source, refType: usage.refType, refId: usage.refId, quantity: usage.duration,
+        dramaId: usage.dramaId, userId: usage.userId,
+      }).then(() => { tracked = true }).catch(() => {})
+    }
     const sentences = await transcribeAudioFile(config, audioPath, label)
+    // 识别完成即计（没识别到语音也调用过了）
+    if (tracked) await completeUsage(usage!.refType, usage!.refId).catch(() => {})
     return sentencesToCues(sentences, portrait ? 12 : 18)
+  } catch (err) {
+    if (tracked) await failUsage(usage!.refType, usage!.refId, { refund: true, errorCode: 'transcribe_failed' }).catch(() => {})
+    throw err
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true })
   }

@@ -269,6 +269,25 @@ export const subtitleAPI = {
   clear: (sbId: number) => api.del(`/subtitles/storyboards/${sbId}`),
   episodeSrtUrl: (epId: number) => `/api/v1/subtitles/episodes/${epId}/srt`,
 }
+// 用量统计与积分规则（积分一期：只统计不扣）；普通用户只能看自己的，管理员可按成员筛选
+export type UsageType = 'image' | 'video' | 'subtitle' | 'text'
+export interface UsageFilter { from?: string; to?: string; user_id?: number; service_type?: UsageType; provider?: string; model?: string; status?: string }
+const usageQ = (f: Record<string, unknown>) => {
+  const q = new URLSearchParams()
+  for (const [k, v] of Object.entries(f)) if (v !== undefined && v !== null && v !== '') q.set(k, String(v))
+  // provider / model 允许空串（未知模型），显式带上
+  if (f.model === '') q.set('model', '')
+  if (f.provider === '') q.set('provider', '')
+  return q.size ? `?${q.toString()}` : ''
+}
+export const usageAPI = {
+  summary: (f: UsageFilter = {}) => api.get<any[]>(`/usage/summary${usageQ({ ...f })}`),
+  models: (type: UsageType, f: UsageFilter = {}) => api.get<any[]>(`/usage/summary/${type}/models${usageQ({ ...f })}`),
+  records: (f: UsageFilter & { page?: number; page_size?: number } = {}) => api.get<{ total: number; items: any[] }>(`/usage/records${usageQ({ ...f })}`),
+  rules: () => api.get<{ defaults: Record<string, number>; models: any[]; candidates: any[] }>('/usage/rules'),
+  saveRules: (d: { defaults?: Record<string, number>; models?: { service_type: string; provider: string; model: string; points: number | null }[] }) => api.put('/usage/rules', d),
+}
+
 export const aiConfigAPI = {
   list: (t?: string) => api.get(`/ai-configs${t ? `?service_type=${t}` : ''}`),
   create: (d: any) => api.post('/ai-configs', d),

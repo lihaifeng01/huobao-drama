@@ -8,6 +8,7 @@ import type { Context, MiddlewareHandler } from 'hono'
 import { authMode, isAdmin, localUser, sessionUser, type UserRow } from '../services/auth.js'
 import { canAccessDrama, dramaOf, type EntityKind } from '../services/project-access.js'
 import { forbidden, unauthorized } from '../utils/response.js'
+import { runAsActor } from '../services/actor.js'
 
 declare module 'hono' {
   interface ContextVariableMap {
@@ -29,7 +30,8 @@ export const authGuard: MiddlewareHandler = async (c, next) => {
   const user = authMode() === 'none' ? await localUser() : await sessionUser(c)
   if (!user) return unauthorized(c)
   c.set('user', user)
-  return next()
+  // 请求内的服务函数通过 currentActor() 拿到发起人（用量统计）
+  return runAsActor({ id: user.id }, () => next())
 }
 
 /** 返回 true 表示该请求需要管理员 */
@@ -39,6 +41,8 @@ function needsAdmin(method: string, path: string) {
   if (/^\/(prompts|skills|storage|server-update|users)(\/|$)/.test(path)) return true
   // 工作台要读 AI 配置（模型下拉）和风格预设（新建项目），只放开读
   if (/^\/(ai-configs|style-presets)(\/|$)/.test(path)) return !read
+  // 积分规则：读放开（用量页展示单价），改仅管理员
+  if (/^\/usage\/rules(\/|$)/.test(path)) return !read
   // 全局内容语言：读放开，改仅管理员；新手引导记录任何人可写
   if (path === '/settings/content-language') return !read
   return false

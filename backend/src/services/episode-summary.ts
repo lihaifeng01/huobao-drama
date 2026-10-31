@@ -14,6 +14,7 @@ import crypto from 'crypto'
 import { and, asc, eq, isNull } from 'drizzle-orm'
 import { db, schema } from '../db/index.js'
 import { buildAgentRequestContext } from '../agents/context.js'
+import { generateWithUsage } from '../agents/usage.js'
 import type { ContentLanguage } from './app-settings.js'
 import { now } from '../utils/response.js'
 import { logTaskError, logTaskProgress, logTaskSuccess } from '../utils/task-logger.js'
@@ -76,10 +77,10 @@ export function generateEpisodeSummary(episodeId: number, opts: SummaryOptions =
     })
     logTaskProgress('EpisodeSummary', 'generate', { episodeId, episodeNumber: ep.episodeNumber, sourceChars: source.length })
     const clipped = source.length > SOURCE_CHAR_MAX ? `${source.slice(0, SOURCE_CHAR_MAX)}\n……（后文省略）` : source
-    const result = await agent.generate(
+    const result = await generateWithUsage('episode_summary', requestContext, () => agent.generate(
       [{ role: 'user', content: `第 ${ep.episodeNumber} 集《${ep.title}》内容如下：\n\n${clipped}` }],
       { maxSteps: 1, requestContext },
-    )
+    ))
     const summary = cleanSummary(result.text || '')
     if (!summary) throw new Error('摘要生成失败：模型未返回内容')
     const ts = now()
