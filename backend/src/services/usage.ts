@@ -4,6 +4,7 @@
  * 每次付费调用写一行 usage_records：
  * - 图片 / 视频：createTask 时 startUsage（pending，按请求量预估），完成时 completeUsage 按实际量重算，失败时 failUsage
  * - 字幕（语音识别）：transcribeVideoCues 内部记录
+ * - 音频（音色复刻 / 语音合成）：voice-clone-tool 内部记录，数量 = 调用次数，一期只统计不计积分
  * - 文本模型：generateWithUsage 包住 agent.generate，事后按 token 记录；文本只统计不计积分
  *
  * 失败的计分规则（refund = 不计积分）：
@@ -15,10 +16,10 @@ import { db, getInsertId, schema } from '../db/index.js'
 import { now } from '../utils/response.js'
 import { currentActorId } from './actor.js'
 
-export type UsageServiceType = 'image' | 'video' | 'subtitle' | 'text'
+export type UsageServiceType = 'image' | 'video' | 'subtitle' | 'audio' | 'text'
 export type UsageStatus = 'pending' | 'succeeded' | 'refunded' | 'held'
 
-export const USAGE_SERVICE_TYPES: UsageServiceType[] = ['image', 'video', 'subtitle', 'text']
+export const USAGE_SERVICE_TYPES: UsageServiceType[] = ['image', 'video', 'subtitle', 'audio', 'text']
 /** 可设置积分的类型（文本只统计 token，不计积分） */
 export const POINT_SERVICE_TYPES: UsageServiceType[] = ['image', 'video', 'subtitle']
 /** 计入积分的状态：成功、进行中（预估）、待恢复 */
@@ -33,7 +34,7 @@ type UsageRow = typeof schema.usageRecords.$inferSelect
  * 文本固定为 0（只统计不扣）
  */
 export async function resolveUnitPoints(serviceType: UsageServiceType, provider?: string | null, model?: string | null): Promise<number> {
-  if (serviceType === 'text') return 0
+  if (serviceType === 'text' || serviceType === 'audio') return 0
   const rules = await db.select().from(schema.pointRules).where(eq(schema.pointRules.serviceType, serviceType))
   const p = provider || ''
   const m = model || ''
@@ -236,7 +237,7 @@ function numbers<T extends Record<string, unknown>>(row: T) {
   return Object.fromEntries(Object.entries(row).map(([k, v]) => [k, typeof v === 'string' && /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : (v ?? 0)])) as T
 }
 
-/** 按类型汇总；没有记录的类型也返回一行 0，前端固定显示四个分类 */
+/** 按类型汇总；没有记录的类型也返回一行 0，前端固定显示五个分类 */
 export async function summaryByType(f: UsageFilter) {
   const t = schema.usageRecords
   const rows = await db.select({ serviceType: t.serviceType, ...aggregateColumns() })

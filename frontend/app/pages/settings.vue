@@ -149,6 +149,7 @@
                 <div class="svc-group-heading">
                   <span class="svc-group-title">{{ st.label }}</span>
                   <div class="svc-group-sub">{{ serviceMeta[st.type].desc }}</div>
+                  <div v-if="st.type === 'audio'" class="scope-note"><Info :size="12" />{{ t('settings.ai.audioScope') }}</div>
                 </div>
                 <span v-if="countActive(st.type)" class="tag tag-accent">{{ t('settings.ai.activeCount', { n: countActive(st.type) }) }}</span>
                 <button class="btn btn-ghost btn-sm ml-auto" @click="startAddCfg(st.type)"><Plus :size="13" /> {{ t('common.add') }}</button>
@@ -177,7 +178,7 @@
                   </div>
                   <div class="config-sub mono truncate">{{ c.base_url || t('settings.ai.noBaseUrl') }}</div>
                 </div>
-                <button v-if="st.type === 'text' || st.type === 'subtitle'" class="btn btn-ghost btn-sm" @click="testExistingCfg(c)">{{ t('settings.ai.test') }}</button>
+                <button v-if="st.type === 'text' || st.type === 'subtitle' || st.type === 'audio'" class="btn btn-ghost btn-sm" @click="testExistingCfg(c)">{{ t('settings.ai.test') }}</button>
                 <label class="config-switch">
                   <input type="checkbox" class="sr-only" :checked="c.is_active" @change="toggleCfg(c)">
                   <span class="switch" :class="{ on: c.is_active }"></span>
@@ -504,6 +505,7 @@
           <button type="button" class="btn btn-ghost btn-icon btn-sm" @click="cfgDialog = false"><X :size="14" /></button>
         </div>
         <div class="dialog-body config-dialog-body">
+          <div v-if="cfgForm.service_type === 'audio'" class="scope-note"><Info :size="12" />{{ t('settings.ai.audioScope') }}</div>
           <div class="preset-picker">
             <button
               v-for="preset in presetsByType(cfgForm.service_type)"
@@ -529,7 +531,7 @@
           </label>
           <label class="field"><span class="field-label">API Key</span><input v-model="cfgForm.api_key" class="input" type="password" placeholder="sk-..." /></label>
           <label class="field"><span class="field-label">Base URL</span><input v-model="cfgForm.base_url" class="input" placeholder="https://..." /></label>
-          <div v-if="cfgForm.service_type !== 'subtitle'" class="field">
+          <div v-if="!['subtitle', 'audio'].includes(cfgForm.service_type)" class="field">
             <span class="field-label">{{ t('settings.cfg.urlMode') }}</span>
             <div class="lang-picker url-mode-picker">
               <button type="button" :class="['lang-option', { on: cfgForm.url_mode === 'auto' }]" @click="cfgForm.url_mode = 'auto'">{{ t('settings.cfg.urlModeAuto') }}</button>
@@ -566,7 +568,8 @@
             <span class="field-hint">{{ t('settings.cfg.tempNote') }}</span>
           </label>
           <p v-if="cfgForm.service_type === 'subtitle'" class="field-hint">{{ t('settings.cfg.subtitleHint') }}</p>
-          <div v-if="cfgForm.service_type !== 'subtitle'" class="custom-block">
+          <p v-if="cfgForm.service_type === 'audio'" class="field-hint">{{ t('settings.cfg.audioHint') }}</p>
+          <div v-if="!['subtitle', 'audio'].includes(cfgForm.service_type)" class="custom-block">
             <button type="button" class="custom-toggle" @click="customOpen = !customOpen">
               <ChevronDown :size="13" :style="{ transform: customOpen ? 'rotate(180deg)' : '', transition: '0.2s' }" />
               {{ t('settings.cfg.custom.title') }}
@@ -773,7 +776,7 @@
 </template>
 
 <script setup>
-import { Plus, Pencil, Trash2, FileText, ChevronDown, Check, Loader2, Bot, Cpu, Sparkles, Palette, ExternalLink, Star, HardDrive, Database, RefreshCw, Download, Languages, SunMoon, X, Coins } from 'lucide-vue-next'
+import { Plus, Pencil, Trash2, FileText, ChevronDown, Check, Loader2, Bot, Cpu, Sparkles, Palette, ExternalLink, Star, HardDrive, Database, RefreshCw, Download, Languages, SunMoon, X, Coins, Info } from 'lucide-vue-next'
 import BaseSelect from '~/components/BaseSelect.vue'
 import { toast } from 'vue-sonner'
 import { toastError } from '~/composables/useToast'
@@ -902,14 +905,18 @@ const serviceTypes = computed(() => [
   { type: 'image', label: t('common.serviceType.image') },
   { type: 'video', label: t('common.serviceType.video') },
   { type: 'subtitle', label: t('common.serviceType.subtitle') },
+  { type: 'audio', label: t('common.serviceType.audio') },
 ])
 const providers = ['gemini', 'openai', 'volcengine', 'minimax', 'aliyun']
-const providerSelectOptions = computed(() => (cfgForm.service_type === 'subtitle' ? ['aliyun'] : providers).map(p => ({ label: p, value: p })))
+// 字幕仅阿里云百炼，音频仅 MiniMax（与后端 officialProviders 一致）
+const providersByType = { subtitle: ['aliyun'], audio: ['minimax'] }
+const providerSelectOptions = computed(() => (providersByType[cfgForm.service_type] || providers).map(p => ({ label: p, value: p })))
 const serviceMeta = computed(() => ({
   text: { label: t('common.serviceType.text'), desc: t('settings.ai.meta.text') },
   image: { label: t('common.serviceType.image'), desc: t('settings.ai.meta.image') },
   video: { label: t('common.serviceType.video'), desc: t('settings.ai.meta.video') },
   subtitle: { label: t('common.serviceType.subtitle'), desc: t('settings.ai.meta.subtitle') },
+  audio: { label: t('common.serviceType.audio'), desc: t('settings.ai.meta.audio') },
 }))
 const providerPresets = {
   text: {
@@ -925,9 +932,13 @@ const providerPresets = {
     volcengine: { label: 'Seedance 2.0 官方', baseUrl: 'https://ark.cn-beijing.volces.com', models: ['doubao-seedance-2-0-mini-260615', 'doubao-seedance-2-0-fast-260128', 'doubao-seedance-2-0-260128'] },
     minimax: { label: 'MiniMax H3 官方', baseUrl: 'https://api.minimaxi.com', models: ['MiniMax-H3'] },
   },
-  // 录音文件识别：本地音频经百炼临时上传（oss://），需用 dashscope 公共域名；新加坡地域改 dashscope-intl
+  // 录音文件识别：本地录音文件经百炼临时上传（oss://），需用 dashscope 公共域名；新加坡地域改 dashscope-intl
   subtitle: {
     aliyun: { label: '阿里云百炼 录音文件识别', baseUrl: 'https://dashscope.aliyuncs.com', models: ['qwen-audio-3.0-asr-flash-filetrans', 'qwen3-asr-flash-filetrans'] },
+  },
+  // 音色快速复刻 + 语音合成；国际站改 https://api.minimax.io
+  audio: {
+    minimax: { label: 'MiniMax 语音', baseUrl: 'https://api.minimaxi.com', models: ['speech-2.8-hd', 'speech-2.8-turbo', 'speech-2.6-hd'] },
   },
 }
 const huobaoQuickConfigs = computed(() => {
@@ -1777,6 +1788,9 @@ onBeforeUnmount(stopUsagePoll)
 .svc-group-heading { min-width: 0; }
 .svc-group-title { font-size: 14px; font-weight: 700; color: var(--text-0); }
 .svc-group-sub { font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
+/* 音频服务的适用范围提示：只给工具页「音色复刻」用 */
+.scope-note { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; padding: 6px 10px; border-radius: var(--radius); background: var(--warning-bg); color: var(--tag-warning-text); font-size: 12px; line-height: 1.5; }
+.scope-note svg { flex-shrink: 0; margin-top: 3px; }
 .config-row { display: flex; align-items: center; gap: 12px; padding: 12px 20px; }
 .config-row + .config-row { border-top: 1px solid var(--border); }
 .provider-badge {
@@ -1820,7 +1834,9 @@ onBeforeUnmount(stopUsagePoll)
 }
 .cfg-model-star { fill: currentColor; }
 .config-empty { font-size: 12px; color: var(--text-3); padding: 14px 20px; }
-.config-switch { display: inline-flex; flex-shrink: 0; cursor: pointer; }
+/* position: relative 让 sr-only 复选框以开关自身定位：否则它相对页面定位，点击聚焦时浏览器会去滚动
+   overflow:hidden 的 .shell 让它“可见”，整页上移变空且无法滚回（刷新才恢复） */
+.config-switch { position: relative; display: inline-flex; flex-shrink: 0; cursor: pointer; }
 .config-switch input:focus-visible + .switch { box-shadow: 0 0 0 3.5px var(--button-focus); }
 .btn-icon.btn-sm { width: 30px; min-width: 30px; height: 30px; min-height: 30px; }
 

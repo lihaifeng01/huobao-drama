@@ -69,6 +69,108 @@
 
 ## 变更条目
 
+### 2026-11-02 · 新增：工具页「音色复刻」+ 设置页「音频」服务类型
+- **分支**：`feat/voice-clone`（从 `origin/dev` 拉出，2026-11-02 已合并到 `dev`）
+- **改动**
+  - 设置 → AI 服务新增「音频」服务类型（`service_type: 'audio'`，仅 `minimax`），预设 MiniMax 语音：Base URL `https://api.minimaxi.com`（国际站 `https://api.minimax.io`），模型 `speech-2.8-hd` / `speech-2.8-turbo` / `speech-2.6-hd`。「测试」走 `POST /v1/get_voice`（查音色列表，不计费）。和字幕一样不显示 URL 模式和自定义请求结构。音频分组和配置弹窗顶部都有提示：只给「工具 → 音色复刻」用，不参与剧集制作；镜头对白音色仍在角色卡片上上传（`settings.ai.audioScope`）。
+  - 工具页新增第三个工具「音色复刻」（`/tools?tool=voice`）：上传人声样本（mp3 / wav / m4a，10 秒–5 分钟，≤20MB）→ 复刻（可选自定义音色 ID、试听文本、降噪、音量归一化，带试听文本时转存服务商返回的试听音频）→ 输入文字合成语音（语速 0.5–2，单次 ≤5000 字），合成结果保留最近 20 条，可试听、下载、移除。
+  - 接口：`/api/v1/tools/voice-clones`（列表 / 上传 / 改名 / `:id/clone` / `:id/synthesize` / `:id/outputs?url=` / 删除），按 `user_id` 隔离，和字幕、合成工具一致。新表 `voice_clone_jobs`。
+  - 用量：新增用量类型 `audio`，复刻和合成各记一条（数量 = 次数），**一期只统计不计积分**（`resolveUnitPoints` 对 audio 返回 0，不在 `POINT_SERVICE_TYPES` 里，积分规则面板不变）。用量页分类卡片从 4 个变成 5 个。
+- **关键文件**：`backend/src/services/adapters/minimax-voice.ts`（MiniMax 上传 / 复刻 / 合成 / 探针）、`backend/src/services/voice-clone-tool.ts`、`backend/src/routes/tools.ts`、`frontend/app/components/VoiceCloneTool.vue`、`frontend/app/pages/settings.vue`、`frontend/app/pages/tools.vue`。
+- **流程**：`POST /v1/files/upload`（multipart，`purpose=voice_clone`）拿 `file_id` → `POST /v1/voice_clone { file_id, voice_id, need_noise_reduction, need_volume_normalization, text?, model? }` → `POST /v1/t2a_v2`（`output_format: 'hex'`，mp3 32k/128kbps 单声道）。三个接口都要看 `base_resp.status_code`，HTTP 200 也可能是业务失败。
+- **设计取舍**
+  - 复刻出的音色属于配置里 API Key 对应的服务商账号，所以任务记下 `config_id`，合成只能用这条配置（可换同配置里的模型）；配置被停用 / 删除时提示重新复刻。
+  - 重新复刻会换新的 `voice_id`（服务商不允许重复 ID）；复刻失败不覆盖已有的成功结果。
+  - 删除只软删本地记录，不调服务商删除音色接口。
+  - 状态与字幕工具同构：`status` 只表示进行中的操作（idle / cloning / synthesizing），进程内异步执行，重启时 `resetInterruptedVoiceJobs` 复位并提示重试。
+  - 和 2026-10 之前删掉的 TTS / AI 音色分配流程无关，那些仍不恢复。以前的结构测试禁止 `ai.ts` 出现 `audio`、设置页出现「音频」/`type: 'audio'`/`speech-2.8-hd`，这次按用户需求收窄：`remove-audio-tts-structure`、`official-provider-adapters`（改为断言 audio 只有 minimax）、`official-provider-settings`（`speech-2.8-hd` 只允许出现在 audio 预设里，测试按钮允许 audio）、`remove-audio-voice-structure`（去掉设置页的三条，项目页 / 工作台 / API 的 TTS 断言保留）。
+- **注意事项**
+  - MiniMax 复刻的是临时音色：**7 天内没用于语音合成会被删除**，界面上有提示。复刻按次计费，账号需要开通复刻权限（未开通时服务商返回 2038 之类的错误，原样显示在任务上）。
+  - **没有用真实 MiniMax Key 验证过**，接口细节按官方文档实现：https://platform.minimaxi.com/docs/guides/speech-voice-clone 。`file_id` 纯数字时按数字传（官方示例是整数）。
+  - 复刻音色目前只在工具页里用，还没有接到角色音色（`CharacterVoice`）或视频提示词的 `#音色引用`。合成出的 mp3 可以下载后作为角色音色上传。
+- **验证**
+  - `usage.test.ts` 原来断言用量汇总固定四个分类，已改为五个（含 audio）。注意：这个测试断言失败后不会退出（模拟服务没关），表现为卡住而不是报错。
+  - 新增 `backend/tests/voice-clone-tool.test.ts`（2 项，模拟 MiniMax）：voice_id 规则；上传校验（格式、时长）→ 复刻请求体 → 试听转存 → 合成请求体与落盘 → 用量记录 → 复刻失败退还用量且保留旧结果 → 删除。`npm run typecheck` 通过；后端 TS 测试 18 个文件全部通过（逐个文件跑）。
+  - 结构测试失败名单与 dev 一致（后端 `.mjs` 11 个、前端 24 个）；`npm run generate` 构建成功。
+  - 本地端到端：临时数据目录 + 本地模拟 MiniMax，Playwright 在设置页添加音频配置并测试、工具页上传样本 → 复刻 → 合成、用量页查看「音频」卡片，控制台无报错。
+
+### 2026-11-02 · 修复设置页切换启用开关后整页变空
+- **分支**：`feat/upstream-sync-4.0.10`（2026-11-02 已合并到 `dev`）
+- **改动**：AI 服务 / 风格预设列表的启用开关（`label.config-switch` 内的 `sr-only` 复选框）加 `position: relative` 定位锚点。
+- **关键文件**：`frontend/app/pages/settings.vue`（`.config-switch` 样式）
+- **原因**：`.sr-only` 是 `position: absolute`，祖先里没有定位元素时，它不属于 `.settings-scroll` 这个滚动容器。点击开关时复选框获得焦点，浏览器为了让它“可见”去滚动 `overflow: hidden` 的 `.shell`，整页（含顶栏）上移、下方留白，而且用户无法滚回来，只能刷新。开关在首屏以下时才会触发，所以配置条目多了才出现。这个问题从 2026-09-11 的初始代码就存在，不是 4.0.10 合并或近期提交引入的（用 10-26 的 b1efd4f 前端复现结果相同）。
+- **注意事项**：以后再用 `sr-only` 隐藏可聚焦控件，外层要有定位祖先（`position: relative`）。
+- **验证**：Playwright 打开设置页，点击首屏以下的开关：修复前 `.shell` 被滚走、顶栏消失；修复后连续切换 3 次，`.shell`/`.content`/document 的 scrollTop 都是 0，开关状态正常翻转。
+
+### 2026-11-02 · 修复：历史视频预览几秒后跳回当前视频，「设为主视频」按钮消失
+- **分支**：`dev`（直接提交）
+- **现象**：在视频制作页点开历史里的另一个视频，「设为主视频」按钮出现后一两秒就消失，预览也跳回当前主视频，导致没法换主视频。只要本集有任务在跑（任何镜头的生视频、生图）就会发生。
+- **原因**：`watch(() => [selectedSb.value?.id, getVideoUrl(selectedSb.value)], ...)` 用的是一个返回数组的 getter，每次都生成新数组。本集有任务在跑时，页面每 4 秒 `refresh()` 一次，替换 `sbs` 和 `selectedSb` 后 getter 重新执行，新数组被判定为变化，于是触发 `loadSbVideoHistory()`，它一开头就把 `previewVideoUrl` 清空了。
+- **改动**（`frontend/app/views/drama/episode.vue`）
+  - watch 改成两个独立来源 `[() => id, () => videoUrl]`，按元素比较，值不变就不会触发。
+  - `loadSbVideoHistory({ keepPreview })`：只有切换镜头时才清空预览。同一镜头的主视频变了（重绘完成、设为主视频）时，保留正在看的历史视频，除非它已经成了主视频或者不在历史里了。另外丢弃请求期间切换镜头后返回的过期结果。
+- **注意事项**：页面里其他「getter 返回数组」的 watch 也有同样的隐患，写新 watch 时用多来源数组写法，或者给 getter 返回值做比较。
+- **验证**：`video-regen-placeholder.test.mjs` 新增 1 个用例（4/4 通过），前端结构测试的失败名单不变，构建成功。用 Playwright 造了一个进行中的任务并点开历史视频：修复前 6 秒后按钮消失、预览被清空；修复后 10 秒仍保持。点「设为主视频」后，「当前」角标移到这个视频上，按钮按预期消失。
+
+### 2026-11-02 · 视频制作页：重绘时在「历史视频」加占位，按钮显示生成中
+- **分支**：`feat/upstream-sync-4.0.10`（2026-11-02 已合并到 `dev`）
+- **现象**：已有视频的镜头点「重绘」后，除了一闪而过的 toast，页面没有任何变化：播放器仍放旧视频，按钮仍是「重绘」且可以再点（容易重复提交、重复计费）。
+- **原因**：
+  - `videoTaskState` 只要镜头有视频就返回 `done`，比 `pending` 优先。
+  - `loadGenTasks` 遇到已有视频的镜头直接 `continue`，`processing` 任务没被算进 `pendingVideoIds`。`genVid` 提交后紧接着会 `refresh()`，本地乐观写入的「生成中」随即被清掉。
+- **改动**（`frontend/app/views/drama/episode.vue`）
+  - `loadGenTasks`：`processing` 一律算生成中，「已有视频就忽略」只用在失败分支（保留原意：失败后重试成功的镜头不再报旧错误）。
+  - 历史视频列表最前面加一个占位卡片（虚线框、转圈图标、阶段文案「生成中 / 下载中 / 转存中」、发起时间）。镜头还没有任何历史视频时，也会显示历史区块和这个占位。生成完成后 `video_url` 变化会重新加载历史，占位被新视频取代；失败时占位消失，按原逻辑提示错误。
+  - 右侧「重绘」按钮和任务列表的生成按钮：生成中禁用，文案显示「生成中」（`videoTaskActionLabel` 先判断 `isPendingVideo`，再判断 `done`）。
+  - 抽出 `videoPendingStageLabel`，状态标签和占位共用。
+  - 新增文案 `episode.vid.historyPendingTitle`（四种语言）。
+- **注意事项 / 已知限制**：顶部「N 生成中」计数现在包含重绘中的镜头，但点这个计数做筛选时按 `videoTaskState` 过滤，重绘中的镜头不会出现在筛选结果里（仍算「已完成」）。这个不一致以前在乐观状态那一瞬间就存在，这次没改。
+- **验证**：新增 `frontend/tests/video-regen-placeholder.test.mjs`（3 个用例）；前端结构测试的失败名单不变；`npm run generate` 构建成功。用 Playwright 造了一个「已有视频，最新任务 processing」的镜头：历史视频显示占位「生成中 · 发起时间」，右侧按钮显示「生成中」且禁用，顶部显示「1 生成中」。把任务改成完成后点刷新：占位消失，历史变成 2 条，按钮恢复「重绘」，页面没有报错。
+
+### 2026-11-02 · 视频提示词编辑框：标红会导致生成失败的 #音色引用
+- **分支**：`feat/upstream-sync-4.0.10`（2026-11-02 已合并到 `dev`）
+- **起因**：编辑框只把已上传音色的角色的 `#名字` 标绿。没上传音色的角色不在 `#` 候选里，`#小林晚` 就显示成普通文字，用户看不出这是音色引用，要到生成时才收到后端报错「角色「小林晚」尚未上传音色」。
+- **改动**
+  - `frontend/app/utils/prompt-mentions.js` 新增 `findInvalidVoiceMentions`，按后端 `resolveVoiceMentions` 的规则找出两类错误引用：`no_voice`（角色绑定了本分镜但没有音色）和 `unknown`（`#` 后面不是本分镜绑定的角色）。`#01` 这类纯数字镜头编号不算引用，与后端一致。
+  - `highlightMentions` 新增第三个参数 `{ checkVoices }`，开启后给错误引用加 `mention-token-invalid` 样式（红色加波浪下划线，只改颜色和装饰线，不影响与 textarea 逐字对齐）。默认关闭，原有行为和测试都不变。
+  - `MentionTextarea` 新增 `check-voices` 属性：开启后输入框下方逐条列出错误原因（同一个引用只列一条）。剧集工作台的视频提示词编辑框已开启。
+  - 新增文案 `characterVoice.invalidNoVoice` / `invalidUnknown`，四种语言都加了，`@` 写成 `{'@'}`。
+- **注意事项**
+  - 前端的检查规则必须和后端 `character-voice-references.ts` 保持一致，正则 `VOICE_TOKEN` 是从后端复制过来的。以后改其中一边，另一边也要改。
+  - 提示文字放在输入框下方，没有做成悬停提示：高亮层设置了 `aria-hidden` 且不接收鼠标事件，挂 `title` 不会生效。
+- **验证**：`prompt-mentions.test.mjs` 新增 2 个用例（检查规则和高亮，以及四种语言的文案），7/7 通过；前端结构测试的失败名单不变；`npm run generate` 构建成功。用 Playwright 打开剧集工作台的视频制作页，填入用户的那段提示词：两处 `#小林晚` 标红，有音色的 `#林晚` 仍是绿色，下方显示一条中文提示，页面没有报错。
+
+### 2026-11-02 · 修复：Agent 输出的字面 `\n` 保存时转成真正的换行，并清理存量数据
+- **分支**：`feat/upstream-sync-4.0.10`（跟上游同步放在同一分支，2026-11-02 已合并到 `dev`）
+- **现象**：模型调用工具时常把换行多转义一层，库里存的是反斜杠 + n 两个字符。视频提示词编辑框里直接显示 `\n3-6秒`，还会原样发给视频模型，干扰它划分时间段。提示词文件里没有教模型这么写，纯属模型自己转义出错。
+- **改动**
+  - `backend/src/utils/agent-text.ts`：`fixLiteralNewlines` 把字面的 `\r\n`、`\n`、`\r` 转成换行，前面还有一个反斜杠的（`\\n`）不转；`fixAgentText` 递归处理工具入参里的所有字符串。
+  - 8 个会写库的 Agent 工具（`save_storyboards`、`update_storyboard`、`save_script`、`save_dedup_characters/scenes/props`、`save_*_final_prompt`）在 execute 开头先对入参调用 `fixAgentText`。手动保存分镜的 `PUT /storyboards/:id` 对字符串字段也做同样处理。
+  - 存量数据：`initSqliteSchema` 末尾调用 `cleanLiteralNewlines`，按 `AGENT_TEXT_COLUMNS` 列出的列，用 `LIKE` 找出含字面 `\n` / `\r` 的行逐条转换，有改动时打印「🧹 已把 N 处字面 \n 转为换行」。转过的行不会再被匹配到，所以每次启动最多是一次空扫描。
+- **设计取舍**
+  - 清理不改 `updated_at`：这不是用户编辑，不应该让分镜显示成「刚修改」。
+  - 不处理 `episodes.content`（用户贴进来的原始小说），只处理 Agent 会写的列。以后新增 Agent 写库的列，要同时加进 `AGENT_TEXT_COLUMNS`，新增写库工具也要在 execute 开头调用 `fixAgentText`。
+  - 选择在保存时转换，而不是在展示或发给模型时转换：这样库里只有一种形态，不用到处兜底。
+- **验证**：新增 `backend/tests/agent-literal-newlines.test.ts`（4 个用例：转换规则、嵌套入参、启动清理且不动 `updated_at` 和 `content`、`update_storyboard` 工具和 `PUT` 路由都存成真正的换行）。去掉工具里的修复后，用例 4 会失败。`tsx --test tests/*.ts` 74/74 通过；`.mjs` 结构测试的失败名单不变；typecheck 通过。在一个含字面 `\n` 的旧库上启动后端，日志打印「已把 1 处」，数据已转换，`updated_at` 保持原值。
+
+### 2026-11-02 · 同步上游 v4.0.10：Windows 中文安装路径修复 + 角色音色上传 / 视频提示词 #音色引用
+- **分支**：`feat/upstream-sync-4.0.10`（从 `dev` 拉出，2026-11-02 已合并到 `dev`）
+- **来源**：上游 `chatfire-AI/huobao-drama` master 的 2026-10-26 `772e2d5`、2026-11-01 `70c14ea`（cherry-pick -x，提交信息里有原 hash）。2026-11-01 的 `5ac2a34` 只是把桌面版本号改成 4.0.10，本仓库已是 4.1.1，**未合入**。
+- **改动**
+  - `772e2d5`（无冲突）：Windows 安装路径含中文等非 ASCII 字符时，打包资源改用 8.3 短路径；拿不到短路径就把运行时复制到纯 ASCII 目录兜底（`desktop/src/runtime-resources.ts`）。
+  - `70c14ea`：角色可上传一段音色样本（`POST/DELETE /characters/:id/voice`，`CharacterVoice.vue` 出现在项目素材库卡片、编辑弹窗和剧集工作台的角色卡片 / 详情里）。视频提示词里输入 `#` 可选当前镜头已绑定角色的音色，提交时后端把 `#角色名` 改写成「角色名（音色参考音频N）」并把音频追加进 `reference_audio_urls`（`services/character-voice-references.ts`）。Seedance 2.0 / MiniMax 直接用 data URL 内联本地音频，其它厂商需要 `PUBLIC_BASE_URL`；M4A/AAC 用 FFmpeg 转成 WAV，单段 2–15 秒、合计 ≤15 秒（`services/reference-audio.ts`）。storyboard_breaker / prompt_generator 的 instructions 追加音色引用说明（`agents/voice-reference-instructions.ts`）。
+- **本仓库适配（与上游不同之处）**
+  - 冲突：`agents/index.ts` 同时保留前情摘要 `recap` 与音色说明，顺序 `[base, skills, recap, voice, language]`；`routes/tasks.ts`、`routes/characters.ts` 的 import 两边合并；`episode.vue` 样式两边都留。
+  - 新列 `characters.voice_audio_url / voice_audio_name`：上游在 `initSqliteSchema` 里单独写了一段 PRAGMA 补列，这里改成追加到 `ADDED_COLUMNS`。
+  - 角色合并（本仓库独有的 `mergeCharacters`）：目标没有音色就继承源角色的音色；`rewriteMentions` 同时改写 `@源名` 和 `#源名`，否则合并后旧提示词里的 `#源名` 会报「音色引用无效」。
+  - 权限：`/characters/:id/voice` 被 `PATH_RULES` 的 `/characters/(\d+)` 覆盖，非项目成员会收到 403（已实测）。multipart 请求体不经过 `collectRefs` 的 JSON 解析，不受影响。
+  - 测试：上游把 `frontend/tests/remove-audio-voice-structure.test.mjs` 的文件路径改对了，这个文件第一次真正跑起来。其中「settings 不含 audio」的断言 `/serviceTypes[\s\S]*audio/` 会误伤本仓库的字幕识别配置（`qwen-audio-…` 模型名、`generate_audio` 参数），所以收窄成 `/type: 'audio'/`。settings.vue 里一处注释的「本地音频」改成「本地录音文件」（只改注释，不影响逻辑）。`backend/tests/episode-recap-structure.test.mjs` 的 return 断言同步加上 `voiceInstructions`。
+- **注意事项**
+  - 移除音色只解除角色绑定，不删除音频文件（与软删除原则一致）。
+  - 积分：音色只是视频请求的参考输入，视频仍按秒计费，`usage_records` 不用改。
+  - 桌面版没有公网地址：选 Seedance 2.0 / MiniMax 以外的视频模型时，引用本地音色会报中文错误，要求配置 `PUBLIC_BASE_URL`。
+- **验证**：`npm run typecheck` 通过；`npx tsx --test tests/*.ts` 70/70 通过（含上游新增的 3 个音色测试）；后端 `.mjs` 失败 12→11、前端失败 25→24，没有新增失败（失败名单与 dev 对比过）；`npm run generate` 构建成功。用 login 模式起后端做了实测：管理员上传和移除音色正常，非成员上传 / 移除返回 403，非音频文件返回 400。Playwright 打开项目素材库，角色卡片能显示音色面板、上传成功并能播放，控制台没有报错。
+
 ### 2026-10-31 · 新增：用量统计与积分规则（积分一期：只统计，不扣）
 - **分支**：`feat/usage-points`（从 `dev` 拉出，2026-10-31 已合并到 `dev`）
 - **改动**
@@ -176,7 +278,7 @@
 - **验证**：在应用里修改 AI 改写的剧本，状态从「未保存」变成「已自动保存」，接口返回修改后的内容；输入后立刻切到「资产制作」，修改也已保存；「重新改写」会弹出确认框，取消后不执行。前端结构测试的失败数不变（25 个）。
 
 ### 2026-10-29 · 新增：工具页 · 视频合成
-- **分支**：`feat/video-merge-tool`（从 `dev` 拉出，未合并）
+- **分支**：`feat/video-merge-tool`（从 `dev` 拉出，2026-10-29 已合并到 `dev`）
 - **改动**
   - 工具页新增第二个工具「视频合成」。当前选中的工具记在 `?tool=subtitle|merge` 里，刷新后保持。
   - 用法：一次可选或拖入多个视频，逐个上传并显示进度；在列表里拖动或用上移、下移调整顺序，可以删除单个片段；选择输出尺寸（默认是第一个片段的尺寸，也可以选其他片段的尺寸，或 1080×1920、1920×1080 等常用尺寸）→ 按顺序合成。右侧是合成记录，可以预览、下载、删除，也可以「用这次的片段重新编辑」。
@@ -195,7 +297,7 @@
   - 在应用里模拟拖入三个视频，拖动调整顺序后合成，结果自动播放。截帧确认顺序正确，竖屏铺满、横屏和 4:3 带黑边，输出为 6 秒、30fps、带音轨。切换两个工具后，字幕工具的预览尺寸正常。
 
 ### 2026-10-29 · 新增：工具页 · 生成字幕（独立工具）
-- **分支**：`feat/subtitle-tool`（从 `dev` 拉出，未合并）
+- **分支**：`feat/subtitle-tool`（从 `dev` 拉出，2026-10-29 已合并到 `dev`）
 - **改动**
   - 顶部导航在「素材」和「设置」之间新增「工具」，路由为 `/tools`（`frontend/app/pages/tools.vue`）。左侧是工具列表，目前只有「生成字幕」。
   - 生成字幕的流程：上传本地视频，最大 500MB，带上传进度，支持拖入 → 如果有字幕服务且视频有音轨，上传后自动开始识别 → 也可以手动上传 `.srt` / `.vtt`，UTF-8、UTF-16、GBK 编码都能识别，统一转存为 UTF-8 SRT → 调整字号和「距底部」位置，有底部 / 中部 / 顶部三个快捷位置 → 合成 → 下载 SRT 和成品视频。
@@ -231,7 +333,7 @@
 - **后续调整（同日）**：约束放在末尾时，用户实测仍会出字幕。在视频提示词**最前面**手动加上「注意：不要带字幕。」后，就不再出字幕了。所以改为加在开头，写法也换成这句短句（英文 `Note: no subtitles.`，日、韩同理）。用户手写的同一句话会被识别，不会重复添加。查过 Wan 3.0 官方 API：没有 `negative_prompt`，也没有字幕相关参数。官方提示词指南的做法是在提示词里写「负向清单：…无字幕水印…」。
 
 ### 2026-10-29 · 新增：字幕制作（语音识别 → SRT → 压制字幕版）
-- **分支**：`feat/video-subtitles`（从 `dev` 拉出，未合并）
+- **分支**：`feat/video-subtitles`（从 `dev` 拉出，2026-10-29 已合并到 `dev`）
 - **改动**
   - 设置 → AI 服务新增「字幕」服务类型（`service_type: 'subtitle'`，仅 `aliyun`），预设阿里云百炼录音文件识别，默认模型 `qwen-audio-3.0-asr-flash-filetrans`，也可选 `qwen3-asr-flash-filetrans`。「测试」走 `GET /api/v1/uploads?action=getPolicy`，不产生计费任务。
   - 剧集工作台「制作」下新增「字幕制作」子步骤（视频制作之后），主流程跑马灯变为五段。支持单镜头生成 / 重新生成、选择模式批量、全部生成；每个镜头可下载 SRT 和字幕版视频；「整集字幕」下载与成片时间轴对齐的 SRT。

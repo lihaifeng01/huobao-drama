@@ -15,6 +15,7 @@ import { eq } from 'drizzle-orm'
 import { now } from '../../utils/response.js'
 import { getDramaStylePrompt } from '../../services/style-preset.js'
 import { getDramaId } from '../context.js'
+import { fixAgentText } from '../../utils/agent-text.js'
 
 // ─── 角色提示词 ───────────────────────────────────────
 
@@ -49,7 +50,8 @@ const saveCharacterFinalPrompt = createTool({
     character_id: z.number(),
     prompt: z.string().describe('角色三视图最终提示词（使用会话语言指令指定的目标语言，不含风格词）'),
   }),
-  execute: async ({ character_id, prompt }, context) => {
+  execute: async (rawInput, context) => {
+    const { character_id, prompt } = fixAgentText(rawInput)
     const dramaId = getDramaId(context?.requestContext)
     if (!dramaId) return { error: 'Missing dramaId in request context' }
     const [c] = await db.select().from(schema.characters)
@@ -103,7 +105,8 @@ const saveSceneFinalPrompt = createTool({
     scene_id: z.number(),
     prompt: z.string().describe('场景固定视角最终提示词（使用会话语言指令指定的目标语言，不含风格词）'),
   }),
-  execute: async ({ scene_id, prompt }, context) => {
+  execute: async (rawInput, context) => {
+    const { scene_id, prompt } = fixAgentText(rawInput)
     const dramaId = getDramaId(context?.requestContext)
     if (!dramaId) return { error: 'Missing dramaId in request context' }
     const [s] = await db.select().from(schema.scenes)
@@ -156,7 +159,8 @@ const savePropFinalPrompt = createTool({
     prop_id: z.number(),
     prompt: z.string().describe('道具白底单品最终提示词（使用会话语言指令指定的目标语言，不含风格词）'),
   }),
-  execute: async ({ prop_id, prompt }, context) => {
+  execute: async (rawInput, context) => {
+    const { prop_id, prompt } = fixAgentText(rawInput)
     const dramaId = getDramaId(context?.requestContext)
     if (!dramaId) return { error: 'Missing dramaId in request context' }
     const [p] = await db.select().from(schema.props)

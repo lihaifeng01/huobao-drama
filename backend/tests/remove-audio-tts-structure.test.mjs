@@ -24,7 +24,8 @@ test('backend removes audio service providers, TTS adapters, and voice routes', 
   const types = read('src/services/adapters/types.ts')
 
   assert.doesNotMatch(index, /aiVoices/)
-  assert.doesNotMatch(ai, /audio/)
+  // 2026-11-02 起重新开放「音频」服务类型（仅 MiniMax 音色复刻工具），旧的配音 / TTS 流程仍不恢复
+  assert.match(ai, /audio: \['minimax'\]/)
   assert.doesNotMatch(ai, /getAudioConfig/)
   assert.doesNotMatch(registry, /TTS/)
   assert.doesNotMatch(registry, /minimax-tts/)
@@ -36,12 +37,12 @@ test('backend removes audio service providers, TTS adapters, and voice routes', 
   assert.doesNotMatch(read('src/services/adapters/volcengine-video.ts'), /generate_audio:\s*false/)
 })
 
-test('backend removes TTS endpoints and audio-specific schema fields', () => {
+test('backend keeps legacy TTS fields and endpoints removed while allowing uploaded voice samples', () => {
   const episodes = read('src/routes/episodes.ts')
   const storyboards = read('src/routes/storyboards.ts')
   const characters = read('src/routes/characters.ts')
   const schema = read('src/db/schema.ts')
-  const mysqlSchema = read('src/db/mysql-schema.ts')
+  const sqliteSchema = read('src/db/sqlite-schema.ts')
 
   assert.doesNotMatch(episodes, /audio_config_id/)
   assert.doesNotMatch(episodes, /assign_voices/)
@@ -56,12 +57,10 @@ test('backend removes TTS endpoints and audio-specific schema fields', () => {
   assert.doesNotMatch(schema, /voiceProvider/)
   assert.doesNotMatch(schema, /ttsAudioUrl/)
   assert.doesNotMatch(schema, /aiVoices/)
-  assert.doesNotMatch(mysqlSchema, /audio_config_id/)
-  assert.doesNotMatch(mysqlSchema, /voice_style/)
-  assert.doesNotMatch(mysqlSchema, /voice_sample_url/)
-  assert.doesNotMatch(mysqlSchema, /voice_provider/)
-  assert.doesNotMatch(mysqlSchema, /tts_audio_url/)
-  // 无 ai_voices 表定义；仅保留启动时的孤儿表清理 DROP
-  assert.doesNotMatch(mysqlSchema, /CREATE TABLE IF NOT EXISTS ai_voices/)
-  assert.match(mysqlSchema, /DROP TABLE IF EXISTS `ai_voices`/)
+  assert.doesNotMatch(sqliteSchema, /audio_config_id/)
+  assert.doesNotMatch(sqliteSchema, /voice_style/)
+  assert.doesNotMatch(sqliteSchema, /voice_sample_url/)
+  assert.doesNotMatch(sqliteSchema, /voice_provider/)
+  assert.doesNotMatch(sqliteSchema, /tts_audio_url/)
+  assert.doesNotMatch(sqliteSchema, /CREATE TABLE IF NOT EXISTS ai_voices/)
 })

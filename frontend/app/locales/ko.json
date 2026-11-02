@@ -3,6 +3,28 @@
     "title": "화바오 숏드라마",
     "updateAvailable": "새 버전 v{version}을 사용할 수 있습니다. 「설정 → 업데이트 정보」에서 업그레이드하세요"
   },
+  "characterVoice": {
+    "title": "캐릭터 음색",
+    "forCharacter": "{name}의 음색",
+    "upload": "음색 업로드",
+    "replace": "음색 교체",
+    "remove": "제거",
+    "saving": "저장 중…",
+    "empty": "캐릭터 음색 샘플로 사용할 선명한 음성 녹음을 업로드하세요.",
+    "formats": "MP3 / WAV / M4A / AAC · 최대 20MB",
+    "sample": "음색 샘플",
+    "preview": "{name}의 음색 미리 듣기",
+    "saved": "캐릭터 음색이 저장되었습니다",
+    "removed": "캐릭터 음색이 제거되었습니다",
+    "invalidFormat": "MP3, WAV, M4A 또는 AAC 오디오 파일을 선택하세요",
+    "tooLarge": "오디오 파일은 20MB 이하여야 합니다",
+    "emptyFile": "오디오 파일이 비어 있습니다",
+    "playbackError": "오디오를 재생할 수 없습니다. 파일을 확인하거나 다시 업로드하세요.",
+    "referenceHint": "{'@'}이름으로 외형, 대사에서 #이름으로 음색을 참조하세요. 예: {'@'}민수가 고개를 들고 #민수가 부드럽게 말한다. 샘플당 2~5초, 총 15초 이하를 권장합니다.",
+    "noMatch": "일치하는 음색이 없습니다. 에셋에서 음색을 업로드하고 현재 샷에 캐릭터를 추가하세요.",
+    "invalidNoVoice": "「{token}」는 {name}의 음색을 참조하지만 {name}의 음색이 업로드되지 않아 생성이 실패합니다. 소재 라이브러리에서 {name}의 음색을 업로드하거나 # 를 {'@'} 로 바꿔 이미지만 참조하세요.",
+    "invalidUnknown": "「{token}」는 이 샷에 연결된 캐릭터가 아니어서 생성이 실패합니다. # 는 이 샷에 연결되고 음색이 업로드된 캐릭터만 참조할 수 있습니다."
+  },
   "common": {
     "confirm": "확인",
     "cancel": "취소",
@@ -29,7 +51,8 @@
       "text": "텍스트",
       "image": "이미지",
       "video": "영상",
-      "subtitle": "자막"
+      "subtitle": "자막",
+      "audio": "오디오"
     }
   },
   "layout": {
@@ -374,8 +397,10 @@
         "text": "대본 재작성, 캐릭터·장면 추출, 스토리보드 분해 등 Agent 텍스트 기능",
         "image": "캐릭터 이미지, 장면 이미지, 샷 이미지 등 정지 이미지 생성",
         "video": "샷 영상 직접 생성(기본 Seedance 2.0)",
-        "subtitle": "샷 영상의 대사를 인식해 자막을 만듭니다. 기본값: Alibaba Cloud Model Studio qwen-audio-3.0-asr-flash-filetrans"
-      }
+        "subtitle": "샷 영상의 대사를 인식해 자막을 만듭니다. 기본값: Alibaba Cloud Model Studio qwen-audio-3.0-asr-flash-filetrans",
+        "audio": "음색 복제와 음성 합성, 기본값 MiniMax speech-2.8-hd"
+      },
+      "audioScope": "「도구 → 보이스 클론」 전용이며 에피소드 제작 흐름에는 쓰이지 않습니다. 샷 영상 속 캐릭터 대사 음색은 캐릭터 카드에서 음색 샘플을 업로드하세요."
     },
     "styles": {
       "title": "스타일 프리셋",
@@ -523,7 +548,8 @@
       "urlModeAuto": "자동 완성",
       "urlModeBase": "Base URL 그대로 사용",
       "urlModeHint": "자동 완성: 제공업체 공식 규칙에 따라 Base URL 뒤에 경로를 추가합니다(예: /v1, /api/v3). 그대로 사용: Base URL을 전체 요청 URL로 보고 경로를 추가하지 않으며, 폴링 URL은 Base URL에 / 와 작업 ID를 붙인 값이고 요청 파라미터는 공식 형식을 따릅니다.",
-      "subtitleHint": "자막 서비스는 Alibaba Cloud Model Studio 녹음 파일 인식을 사용합니다. Base URL은 https://dashscope.aliyuncs.com(싱가포르는 https://dashscope-intl.aliyuncs.com)입니다. 로컬 오디오는 Model Studio 임시 저장소(48시간 유효)에 업로드되므로 공개 URL이 필요 없습니다."
+      "subtitleHint": "자막 서비스는 Alibaba Cloud Model Studio 녹음 파일 인식을 사용합니다. Base URL은 https://dashscope.aliyuncs.com(싱가포르는 https://dashscope-intl.aliyuncs.com)입니다. 로컬 오디오는 Model Studio 임시 저장소(48시간 유효)에 업로드되므로 공개 URL이 필요 없습니다.",
+      "audioHint": "오디오 서비스는 MiniMax 빠른 보이스 클론과 동기 음성 합성을 사용합니다. Base URL은 https://api.minimaxi.com (국제판은 https://api.minimax.io). 모델은 클론 시 미리듣기와 이후 합성에 사용됩니다. 클론은 호출마다 과금되며 계정에 보이스 클론 권한이 있어야 합니다."
     },
     "styleDialog": {
       "editTitle": "스타일 프리셋 편집",
@@ -801,7 +827,7 @@
       "regenPrompt": "다시 생성",
       "aiGenerate": "AI로 생성",
       "videoPromptCopy": "이 스토리보드의 화면 설명(대사/나레이션 포함)과 분위기를 바탕으로 생성",
-      "videoPromptPlaceholder": "{'@'}캐릭터명 / {'@'}장멸명 으로 참조 소재를 지정하고, 3초마다 줄 바꿈하여 화면의 움직임과 침라를 기술. AI로 생성해 프롬프트 Agent에 맡길 수도 있습니다…",
+      "videoPromptPlaceholder": "{'@'}이름으로 이미지, #이름으로 음색을 참조하고 대사, 화자, 카메라 움직임을 설명하세요…",
       "breaking": "스토리보드 분해 중...",
       "emptyTitle": "스토리보드 분해 시작",
       "emptyDesc": "대본, 캐릭터, 장면을 바탕으로 샷으로 분해하여 스토리보드 설명과 연결 정보를 생성합니다.",
@@ -870,6 +896,7 @@
       "current": "현재",
       "deleteRecord": "이 기록 삭제",
       "historyDeleted": "이 기록이 삭제되었습니다",
+      "historyPendingTitle": "새 영상을 생성 중입니다. 완료되면 여기에 표시됩니다",
       "needRefOrPrompt": "참조 소재 또는 영상 프롬프트가 최소 1개 필요합니다",
       "generating": "영상 생성 중",
       "genDone": "영상 생성이 완료되었습니다",
@@ -899,7 +926,7 @@
       "aspectRatio": "화면 비율"
     },
     "inspector": {
-      "videoPromptPlaceholder": "{'@'}캐릭터명 / {'@'}장멸명 으로 참조 소재를 지정(생성 시 참조 이미지로 자동 매핑). 시간대별로 화면의 움직임과 침라를 기술…",
+      "videoPromptPlaceholder": "{'@'}이름으로 이미지, #이름으로 음색을 참조하고 대사, 화자, 카메라 움직임을 설명하세요…",
       "noRefs": "이 스토리보드에는 참조 소재가 연결되어 있지 않습니다",
       "refMedia": "참조 이미지 / 영상 / 오디오",
       "imageN": "이미지 {n}",
@@ -1274,6 +1301,55 @@
         "done": "완료",
         "failed": "실패"
       }
+    },
+    "voice": {
+      "name": "보이스 클론",
+      "desc": "음성 샘플을 올려 음색을 복제한 뒤 텍스트를 음성으로 합성",
+      "list": "음색",
+      "uploadSample": "샘플 업로드",
+      "uploading": "업로드 중 {pct}%",
+      "uploaded": "샘플을 업로드했습니다",
+      "empty": "아직 음색이 없습니다. 음성 녹음을 업로드해 시작하세요",
+      "dropTitle": "음성 샘플을 업로드하거나 끌어 놓기",
+      "dropDesc": "mp3 / wav / m4a, 10초~5분, 최대 20MB. 한 사람이 조용한 환경에서 말한 녹음이 가장 좋습니다",
+      "notAudio": "mp3 / wav / m4a 파일을 끌어 놓으세요",
+      "rename": "이름 변경",
+      "sample": "샘플",
+      "stepClone": "음색 복제",
+      "previewModel": "미리듣기 모델",
+      "noConfig": "사용할 수 있는 오디오 서비스가 없습니다.",
+      "voiceId": "음색 ID (선택)",
+      "voiceIdPlaceholder": "비워 두면 자동 생성",
+      "previewText": "미리듣기 텍스트",
+      "previewTextPlaceholder": "안녕하세요, 복제한 제 목소리예요. 비슷한가요?",
+      "noiseReduction": "노이즈 제거",
+      "volumeNormalization": "볼륨 정규화",
+      "clone": "복제 시작",
+      "reclone": "다시 복제",
+      "cloning": "복제 중…",
+      "recloneHint": "다시 복제하면 새 음색 ID가 만들어집니다",
+      "voiceIdLabel": "음색 ID",
+      "copy": "복사",
+      "copied": "음색 ID를 복사했습니다",
+      "copyFailed": "복사하지 못했습니다. 직접 복사해 주세요",
+      "demo": "미리듣기",
+      "expireHint": "복제한 음색은 임시 음색입니다. 7일 안에 음성 합성에 쓰지 않으면 서비스 측에서 삭제되며, 한 번 합성하면 계속 유지됩니다.",
+      "stepSynth": "음성 합성",
+      "synthModel": "합성 모델",
+      "configGone": "복제에 사용한 오디오 설정이 비활성화되었거나 삭제되었습니다. 설정을 켜거나 다시 복제하세요",
+      "textPlaceholder": "이 음색으로 읽을 텍스트를 입력하세요",
+      "speed": "속도",
+      "synthesize": "합성",
+      "synthesizing": "합성 중…",
+      "download": "다운로드",
+      "noOutputs": "아직 합성 결과가 없습니다",
+      "needClone": "먼저 음색을 복제하세요",
+      "cloneDone": "음색 복제가 완료되었습니다",
+      "synthDone": "음성 합성이 완료되었습니다",
+      "stateNew": "복제 전",
+      "stateCloned": "복제됨",
+      "stateFailed": "실패",
+      "deleteConfirm": "음색 「{name}」을(를) 삭제할까요? (로컬 기록만 삭제되며 서비스 측 음색은 남습니다)"
     }
   },
   "auth": {
@@ -1409,7 +1485,8 @@
       "image": "이미지",
       "video": "동영상",
       "subtitle": "자막",
-      "text": "텍스트"
+      "text": "텍스트",
+      "audio": "오디오"
     },
     "calls": "{n}회",
     "pointsUnit": "포인트",
@@ -1447,7 +1524,8 @@
     "qty": {
       "image": "{n}장",
       "video": "{n}초",
-      "subtitle": "{n}분"
+      "subtitle": "{n}분",
+      "audio": "{n}회"
     },
     "source": {
       "shot_image": "컷 이미지",
@@ -1464,7 +1542,9 @@
       "extract": "소재 추출",
       "episode_summary": "이전 줄거리",
       "video_prompt": "동영상 프롬프트",
-      "image_prompt": "이미지 프롬프트"
+      "image_prompt": "이미지 프롬프트",
+      "tool_voice_clone": "보이스 클론",
+      "tool_voice_synthesis": "음성 합성"
     }
   }
 }

@@ -3,6 +3,28 @@
     "title": "Huobao Shorts",
     "updateAvailable": "New version v{version} is available. Upgrade in Settings → About."
   },
+  "characterVoice": {
+    "title": "Character voice",
+    "forCharacter": "Voice for {name}",
+    "upload": "Upload voice",
+    "replace": "Replace voice",
+    "remove": "Remove",
+    "saving": "Saving…",
+    "empty": "Upload a clear voice recording as this character’s voice sample.",
+    "formats": "MP3 / WAV / M4A / AAC · Up to 20MB",
+    "sample": "Voice sample",
+    "preview": "Preview voice for {name}",
+    "saved": "Character voice saved",
+    "removed": "Character voice removed",
+    "invalidFormat": "Choose an MP3, WAV, M4A or AAC audio file",
+    "tooLarge": "Audio must be no larger than 20MB",
+    "emptyFile": "The audio file is empty",
+    "playbackError": "Unable to play this audio. Check the file or upload it again.",
+    "referenceHint": "Use {'@'}Name for appearance and #Name at each spoken line, e.g. {'@'}Alex looks up; #Alex softly says hello. Use 2–5 second voice samples, up to 15 seconds total.",
+    "noMatch": "No matching voice. Upload a character voice in Assets and add the character to this shot.",
+    "invalidNoVoice": "{token} references {name}'s voice, but {name} has no voice uploaded, so generation will fail. Upload a voice for {name} in the asset library, or change # to {'@'} to reference only the image.",
+    "invalidUnknown": "{token} is not a character bound to this shot, so generation will fail. # can only reference bound characters with an uploaded voice."
+  },
   "common": {
     "confirm": "Confirm",
     "cancel": "Cancel",
@@ -29,7 +51,8 @@
       "text": "Text",
       "image": "Image",
       "video": "Video",
-      "subtitle": "Subtitle"
+      "subtitle": "Subtitle",
+      "audio": "Audio"
     }
   },
   "layout": {
@@ -374,8 +397,10 @@
         "text": "Text capabilities: script rewriting, asset extraction, storyboard breaking",
         "image": "Static image generation: characters, scenes and shots",
         "video": "Direct video generation, Seedance 2.0 by default",
-        "subtitle": "Transcribes dialogue in shot videos into subtitles. Default: Alibaba Cloud Model Studio qwen-audio-3.0-asr-flash-filetrans"
-      }
+        "subtitle": "Transcribes dialogue in shot videos into subtitles. Default: Alibaba Cloud Model Studio qwen-audio-3.0-asr-flash-filetrans",
+        "audio": "Voice cloning and speech synthesis; defaults to MiniMax speech-2.8-hd"
+      },
+      "audioScope": "Only used by Tools → Voice Clone; it is not part of the episode production pipeline. For character dialogue voices in shot videos, upload a voice sample on the character card."
     },
     "styles": {
       "title": "Style Presets",
@@ -523,7 +548,8 @@
       "urlModeAuto": "Auto-complete",
       "urlModeBase": "Use Base URL as-is",
       "urlModeHint": "Auto-complete: append the provider's official path to the Base URL (e.g. /v1, /api/v3). As-is: the Base URL is the full request URL and nothing is appended; the poll URL is Base URL plus / plus task ID; request parameters still follow the provider's official format.",
-      "subtitleHint": "Subtitles use Alibaba Cloud Model Studio file transcription. Set Base URL to https://dashscope.aliyuncs.com (Singapore: https://dashscope-intl.aliyuncs.com). Local audio is uploaded to Model Studio temporary storage (valid 48 hours), so no public URL is needed."
+      "subtitleHint": "Subtitles use Alibaba Cloud Model Studio file transcription. Set Base URL to https://dashscope.aliyuncs.com (Singapore: https://dashscope-intl.aliyuncs.com). Local audio is uploaded to Model Studio temporary storage (valid 48 hours), so no public URL is needed.",
+      "audioHint": "The audio service uses MiniMax quick voice cloning and synchronous speech synthesis. Set Base URL to https://api.minimaxi.com (international: https://api.minimax.io). Models are used for the clone preview and later synthesis. Cloning is billed per call and requires voice cloning to be enabled on the account."
     },
     "styleDialog": {
       "editTitle": "Edit Style Preset",
@@ -801,7 +827,7 @@
       "regenPrompt": "Regenerate",
       "aiGenerate": "AI Generate",
       "videoPromptCopy": "Generated from this shot's visual description (including dialogue/narration) and atmosphere",
-      "videoPromptPlaceholder": "Reference assets with {'@'}character / {'@'}scene, describe motion and camera per 3-second line; or click AI Generate for the prompt Agent…",
+      "videoPromptPlaceholder": "Use {'@'}Name for images and #Name for voices; describe the dialogue, speaker and camera movement…",
       "breaking": "Breaking the storyboard...",
       "emptyTitle": "Start Storyboard Breakdown",
       "emptyDesc": "Break the script into shots based on the script, characters and scenes, producing shot descriptions and bindings.",
@@ -870,6 +896,7 @@
       "current": "Current",
       "deleteRecord": "Delete this record",
       "historyDeleted": "History record deleted",
+      "historyPendingTitle": "Generating a new video. It will appear here when done.",
       "needRefOrPrompt": "At least one reference asset or a video prompt is required",
       "generating": "Video generating",
       "genDone": "Video generation complete",
@@ -899,7 +926,7 @@
       "aspectRatio": "Aspect Ratio"
     },
     "inspector": {
-      "videoPromptPlaceholder": "Reference assets with {'@'}character / {'@'}scene — auto-mapped to reference images on generation; then describe motion and camera per time segment…",
+      "videoPromptPlaceholder": "Use {'@'}Name for images and #Name for voices; describe the dialogue, speaker and camera movement…",
       "noRefs": "No reference assets bound to this shot",
       "refMedia": "Reference images / videos / audio",
       "imageN": "Image {n}",
@@ -1274,6 +1301,55 @@
         "done": "Done",
         "failed": "Failed"
       }
+    },
+    "voice": {
+      "name": "Voice Clone",
+      "desc": "Upload a voice sample, clone it, then turn text into speech",
+      "list": "Voices",
+      "uploadSample": "Upload sample",
+      "uploading": "Uploading {pct}%",
+      "uploaded": "Sample uploaded",
+      "empty": "No voices yet. Upload a voice recording to start",
+      "dropTitle": "Upload or drop a voice sample",
+      "dropDesc": "mp3 / wav / m4a, 10 seconds to 5 minutes, up to 20MB. One speaker with a quiet background works best",
+      "notAudio": "Please drop an mp3 / wav / m4a file",
+      "rename": "Rename",
+      "sample": "Sample",
+      "stepClone": "Clone voice",
+      "previewModel": "Preview model",
+      "noConfig": "No audio service is available.",
+      "voiceId": "Voice ID (optional)",
+      "voiceIdPlaceholder": "Leave empty to generate",
+      "previewText": "Preview text",
+      "previewTextPlaceholder": "Hi, this is my cloned voice. Does it sound like me?",
+      "noiseReduction": "Noise reduction",
+      "volumeNormalization": "Normalize volume",
+      "clone": "Clone",
+      "reclone": "Clone again",
+      "cloning": "Cloning…",
+      "recloneHint": "Cloning again creates a new voice ID",
+      "voiceIdLabel": "Voice ID",
+      "copy": "Copy",
+      "copied": "Voice ID copied",
+      "copyFailed": "Copy failed, please copy it manually",
+      "demo": "Preview",
+      "expireHint": "Cloned voices are temporary: the provider deletes them if they are not used for synthesis within 7 days. One synthesis keeps them.",
+      "stepSynth": "Synthesize speech",
+      "synthModel": "Synthesis model",
+      "configGone": "The audio config used for cloning is disabled or deleted. Enable it or clone again",
+      "textPlaceholder": "Enter the text to read in this voice",
+      "speed": "Speed",
+      "synthesize": "Synthesize",
+      "synthesizing": "Synthesizing…",
+      "download": "Download",
+      "noOutputs": "No results yet",
+      "needClone": "Clone the voice first",
+      "cloneDone": "Voice cloned",
+      "synthDone": "Speech synthesized",
+      "stateNew": "Not cloned",
+      "stateCloned": "Cloned",
+      "stateFailed": "Failed",
+      "deleteConfirm": "Delete voice \"{name}\"? (Only the local record is removed, not the voice on the provider side)"
     }
   },
   "auth": {
@@ -1409,7 +1485,8 @@
       "image": "Images",
       "video": "Videos",
       "subtitle": "Subtitles",
-      "text": "Text"
+      "text": "Text",
+      "audio": "Audio"
     },
     "calls": "{n} calls",
     "pointsUnit": "points",
@@ -1447,7 +1524,8 @@
     "qty": {
       "image": "{n} images",
       "video": "{n} s",
-      "subtitle": "{n} min"
+      "subtitle": "{n} min",
+      "audio": "{n} calls"
     },
     "source": {
       "shot_image": "Shot image",
@@ -1464,7 +1542,9 @@
       "extract": "Asset extraction",
       "episode_summary": "Episode recap",
       "video_prompt": "Video prompt",
-      "image_prompt": "Image prompt"
+      "image_prompt": "Image prompt",
+      "tool_voice_clone": "Voice clone",
+      "tool_voice_synthesis": "Speech synthesis"
     }
   }
 }

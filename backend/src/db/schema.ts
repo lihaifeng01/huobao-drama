@@ -60,6 +60,8 @@ export const characters = sqliteTable('characters', {
   finalPrompt: text('final_prompt'),
   personality: text('personality'),
   imageUrl: text('image_url'),
+  voiceAudioUrl: text('voice_audio_url'),
+  voiceAudioName: text('voice_audio_name'),
   referenceImages: text('reference_images'),
   seedValue: text('seed_value'),
   sortOrder: integer('sort_order'),
@@ -289,6 +291,28 @@ export const mergeToolJobs = sqliteTable('merge_tool_jobs', {
   status: text('status').notNull().default('merging'),
   errorMsg: text('error_msg'),
   outputUrl: text('output_url'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+})
+
+// 音色复刻工具：status = idle / cloning / synthesizing（只表示进行中的操作）
+// voice_id 为服务商侧的复刻音色 ID，cloned_at 有值才表示复刻成功；outputs 为 JSON [{ url, text, model, created_at }]（新的在前）
+export const voiceCloneJobs = sqliteTable('voice_clone_jobs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id'), // 所属用户（按用户隔离）
+  name: text('name').notNull(),
+  sampleUrl: text('sample_url').notNull(),
+  sampleName: text('sample_name'),
+  sampleDuration: real('sample_duration').default(0),
+  provider: text('provider'),
+  configId: integer('config_id'),
+  voiceId: text('voice_id'),
+  status: text('status').notNull().default('idle'),
+  errorMsg: text('error_msg'),
+  demoUrl: text('demo_url'),
+  outputs: text('outputs'),
+  clonedAt: text('cloned_at'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),

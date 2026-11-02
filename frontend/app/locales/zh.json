@@ -3,6 +3,28 @@
     "title": "火宝短剧",
     "updateAvailable": "发现新版本 v{version}，可在「设置 → 关于更新」中升级"
   },
+  "characterVoice": {
+    "title": "角色音色",
+    "forCharacter": "{name}的角色音色",
+    "upload": "上传音色",
+    "replace": "替换音色",
+    "remove": "移除",
+    "saving": "保存中…",
+    "empty": "上传一段清晰的人声，作为角色的音色样本。",
+    "formats": "MP3 / WAV / M4A / AAC · 最大 20MB",
+    "sample": "音色样本",
+    "preview": "试听{name}的音色",
+    "saved": "角色音色已保存",
+    "removed": "已移除角色音色",
+    "invalidFormat": "请选择 MP3、WAV、M4A 或 AAC 音频文件",
+    "tooLarge": "音频文件不能超过 20MB",
+    "emptyFile": "音频文件不能为空",
+    "playbackError": "音频无法播放，请检查文件或重新上传。",
+    "referenceHint": "用 {'@'}角色名引用形象，在对白处用 #角色名引用音色，例如：{'@'}林小雨抬头，#林小雨轻声说。音色建议每段 2–5 秒，总计不超过 15 秒。",
+    "noMatch": "未找到音色，请先在资产制作中上传角色音色，并将角色绑定到当前分镜。",
+    "invalidNoVoice": "「{token}」引用了{name}的音色，但{name}还没有上传音色，生成会失败。请在素材库给{name}上传音色，或把 # 改成 {'@'} 只引用形象。",
+    "invalidUnknown": "「{token}」不是当前分镜绑定的角色，生成会失败。# 只能引用本分镜已绑定、已上传音色的角色。"
+  },
   "common": {
     "confirm": "确认",
     "cancel": "取消",
@@ -29,7 +51,8 @@
       "text": "文本",
       "image": "图片",
       "video": "视频",
-      "subtitle": "字幕"
+      "subtitle": "字幕",
+      "audio": "音频"
     }
   },
   "layout": {
@@ -374,8 +397,10 @@
         "text": "剧本改写、角色场景提取、分镜拆解等 Agent 文本能力",
         "image": "角色图、场景图与镜头图等静态图像生成",
         "video": "镜头视频直出生成，默认 Seedance 2.0",
-        "subtitle": "识别镜头视频中的对白生成字幕，默认阿里云百炼 qwen-audio-3.0-asr-flash-filetrans"
-      }
+        "subtitle": "识别镜头视频中的对白生成字幕，默认阿里云百炼 qwen-audio-3.0-asr-flash-filetrans",
+        "audio": "音色复刻与语音合成，默认 MiniMax speech-2.8-hd"
+      },
+      "audioScope": "仅供「工具 → 音色复刻」使用，不参与剧集制作流程。镜头视频里的角色对白音色，请在角色卡片上上传音色样本。"
     },
     "styles": {
       "title": "风格预设",
@@ -523,7 +548,8 @@
       "urlModeAuto": "自动补全",
       "urlModeBase": "原样使用 Base URL",
       "urlModeHint": "自动补全：按服务商官方规则在 Base URL 后追加路径（如 /v1、/api/v3）。原样使用：Base URL 即完整请求地址，不追加任何路径，轮询地址为 Base URL 加 / 加任务 ID，请求参数仍沿用服务商官方格式。",
-      "subtitleHint": "字幕服务使用阿里云百炼录音文件识别。Base URL 填 https://dashscope.aliyuncs.com（新加坡地域填 https://dashscope-intl.aliyuncs.com）；本地音频会经百炼临时存储上传（48 小时有效），不需要公网地址。"
+      "subtitleHint": "字幕服务使用阿里云百炼录音文件识别。Base URL 填 https://dashscope.aliyuncs.com（新加坡地域填 https://dashscope-intl.aliyuncs.com）；本地音频会经百炼临时存储上传（48 小时有效），不需要公网地址。",
+      "audioHint": "音频服务使用 MiniMax 音色快速复刻与同步语音合成。Base URL 填 https://api.minimaxi.com（国际站填 https://api.minimax.io）；模型用于复刻时生成试听和后续合成。复刻会按次计费，需账号已开通音色复刻权限。"
     },
     "styleDialog": {
       "editTitle": "编辑风格预设",
@@ -801,7 +827,7 @@
       "regenPrompt": "重新生成",
       "aiGenerate": "AI 生成",
       "videoPromptCopy": "根据当前分镜的画面描述（含台词/旁白）与氛围生成",
-      "videoPromptPlaceholder": "用 {'@'}角色名 / {'@'}场景名 引用参考素材，按 3 秒一段换行描述画面运动与镜头；也可点 AI 生成由提示词 Agent 自动创作…",
+      "videoPromptPlaceholder": "用 {'@'}角色名引用图片，用 #角色名引用声音；描述台词、说话角色与镜头运动…",
       "breaking": "正在拆分分镜...",
       "emptyTitle": "开始拆分分镜",
       "emptyDesc": "根据剧本、角色和场景拆分镜头，生成分镜描述和绑定信息。",
@@ -870,6 +896,7 @@
       "current": "当前",
       "deleteRecord": "删除该记录",
       "historyDeleted": "已删除该历史记录",
+      "historyPendingTitle": "正在生成新视频，完成后会出现在这里",
       "needRefOrPrompt": "需要至少一个参考素材或视频提示词",
       "generating": "视频生成中",
       "genDone": "视频生成完成",
@@ -899,7 +926,7 @@
       "aspectRatio": "画面比例"
     },
     "inspector": {
-      "videoPromptPlaceholder": "用 {'@'}角色名 / {'@'}场景名 引用参考素材，生成时自动映射为参考图片；再按时间段描述画面运动与镜头…",
+      "videoPromptPlaceholder": "用 {'@'}角色名引用图片，用 #角色名引用声音；描述台词、说话角色与镜头运动…",
       "noRefs": "当前分镜未绑定参考素材",
       "refMedia": "参考图片 / 视频 / 音频",
       "imageN": "图片 {n}",
@@ -1274,6 +1301,55 @@
         "done": "已完成",
         "failed": "失败"
       }
+    },
+    "voice": {
+      "name": "音色复刻",
+      "desc": "上传一段人声，复刻音色后输入文字合成语音",
+      "list": "音色",
+      "uploadSample": "上传样本",
+      "uploading": "上传中 {pct}%",
+      "uploaded": "样本已上传",
+      "empty": "还没有音色，上传一段人声录音开始",
+      "dropTitle": "上传或拖入人声样本",
+      "dropDesc": "支持 mp3 / wav / m4a，时长 10 秒 – 5 分钟，最大 20MB；单人说话、背景安静效果最好",
+      "notAudio": "请拖入 mp3 / wav / m4a 音频文件",
+      "rename": "改名",
+      "sample": "样本",
+      "stepClone": "复刻音色",
+      "previewModel": "试听模型",
+      "noConfig": "还没有可用的音频服务。",
+      "voiceId": "音色 ID（可选）",
+      "voiceIdPlaceholder": "留空自动生成",
+      "previewText": "试听文本",
+      "previewTextPlaceholder": "你好，这是我复刻的声音，听起来像吗？",
+      "noiseReduction": "降噪",
+      "volumeNormalization": "音量归一化",
+      "clone": "开始复刻",
+      "reclone": "重新复刻",
+      "cloning": "复刻中…",
+      "recloneHint": "重新复刻会生成新的音色 ID",
+      "voiceIdLabel": "音色 ID",
+      "copy": "复制",
+      "copied": "已复制音色 ID",
+      "copyFailed": "复制失败，请手动选择复制",
+      "demo": "试听",
+      "expireHint": "复刻的音色是临时音色：7 天内没有用于语音合成会被服务商删除，合成一次即可长期保留。",
+      "stepSynth": "合成语音",
+      "synthModel": "合成模型",
+      "configGone": "复刻时使用的音频配置已停用或删除，请启用该配置或重新复刻",
+      "textPlaceholder": "输入要用这个音色朗读的文字",
+      "speed": "语速",
+      "synthesize": "合成",
+      "synthesizing": "合成中…",
+      "download": "下载",
+      "noOutputs": "还没有合成结果",
+      "needClone": "先完成音色复刻",
+      "cloneDone": "音色复刻完成",
+      "synthDone": "语音合成完成",
+      "stateNew": "待复刻",
+      "stateCloned": "已复刻",
+      "stateFailed": "失败",
+      "deleteConfirm": "删除音色「{name}」？（只删除本地记录，不会删除服务商侧的音色）"
     }
   },
   "auth": {
@@ -1409,7 +1485,8 @@
       "image": "图片",
       "video": "视频",
       "subtitle": "字幕",
-      "text": "文本"
+      "text": "文本",
+      "audio": "音频"
     },
     "calls": "{n} 次",
     "pointsUnit": "积分",
@@ -1447,7 +1524,8 @@
     "qty": {
       "image": "{n} 张",
       "video": "{n} 秒",
-      "subtitle": "{n} 分钟"
+      "subtitle": "{n} 分钟",
+      "audio": "{n} 次"
     },
     "source": {
       "shot_image": "镜头图片",
@@ -1464,7 +1542,9 @@
       "extract": "资产提取",
       "episode_summary": "前情摘要",
       "video_prompt": "视频提示词",
-      "image_prompt": "图片提示词"
+      "image_prompt": "图片提示词",
+      "tool_voice_clone": "音色复刻",
+      "tool_voice_synthesis": "语音合成"
     }
   }
 }
