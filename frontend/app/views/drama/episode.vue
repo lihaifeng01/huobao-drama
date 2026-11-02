@@ -650,7 +650,7 @@
                   <button
                     class="btn btn-icon btn-sm video-task-action"
                     :title="videoTaskActionLabel(task.storyboard)"
-                    :disabled="videoTaskState(task.storyboard) === 'pending'"
+                    :disabled="isPendingVideo(task.storyboard?.id)"
                     @click.stop="genVid(task.storyboard)"
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
@@ -808,12 +808,23 @@
               </div>
             </aside>
 
-            <div v-if="sbVideoHistory.length" class="video-player-history">
+            <div v-if="sbVideoHistory.length || isPendingVideo(selectedSb?.id)" class="video-player-history">
               <div class="video-player-history-head">
                 <span>{{ t('episode.vid.history') }}</span>
                 <span class="video-player-history-count">{{ sbVideoHistory.length }}</span>
               </div>
               <div class="video-player-history-list">
+                <!-- 生成 / 重绘中的占位：完成后由新视频接替（video_url 变化会重新加载历史） -->
+                <div
+                  v-if="isPendingVideo(selectedSb?.id)"
+                  class="video-history-item is-pending"
+                  role="status"
+                  :title="t('episode.vid.historyPendingTitle')"
+                >
+                  <Loader2 :size="14" class="animate-spin" />
+                  <span class="video-history-pending-label">{{ videoPendingStageLabel(selectedSb) }}</span>
+                  <span v-if="pendingVideoStartedAt" class="video-history-time">{{ formatHistoryTime(pendingVideoStartedAt) }}</span>
+                </div>
                 <div
                   v-for="h in sbVideoHistory"
                   :key="h.id"
@@ -898,7 +909,7 @@
                   </div>
                   <button
                     class="btn btn-primary video-inspector-action"
-                    :disabled="videoTaskState(selectedSb) === 'pending'"
+                    :disabled="isPendingVideo(selectedSb?.id)"
                     @click="genVid(selectedSb)"
                   >
                     {{ videoTaskActionLabel(selectedSb) }}
@@ -2299,19 +2310,23 @@ async function recoverTask(taskId, storyboardId) {
 function videoTaskStatusLabel(sb) {
   const state = videoTaskState(sb)
   if (state === 'done') return t('episode.status.done')
-  if (state === 'pending') {
-    const stage = latestVideoTask(sb.id)?.stage
-    return stage === 'downloading' ? t('episode.recovery.downloading')
-      : stage === 'transferring' ? t('episode.recovery.transferring') : t('episode.status.generating')
-  }
+  if (state === 'pending') return videoPendingStageLabel(sb)
   if (state === 'failed' && latestVideoTask(sb?.id)?.result_url) return t('episode.recovery.localDownloadFailed')
   if (state === 'failed') return t('episode.status.failed')
   return t('episode.status.todo')
 }
 
+function videoPendingStageLabel(sb) {
+  const stage = latestVideoTask(sb?.id)?.stage
+  return stage === 'downloading' ? t('episode.recovery.downloading')
+    : stage === 'transferring' ? t('episode.recovery.transferring') : t('episode.status.generating')
+}
+
 function videoTaskActionLabel(sb) {
   if (canRecoverVideo(sb?.id)) return t('episode.recovery.restore')
   if (latestVideoTask(sb?.id)?.status === 'failed') return t('episode.recovery.newGeneration')
+  // 已有视频的镜头重绘中：videoTaskState 仍是 done（播放器继续放旧视频），按钮要显示生成中
+  if (isPendingVideo(sb?.id)) return t('episode.asset.generating')
   const state = videoTaskState(sb)
   if (state === 'done') return t('episode.asset.regen')
   if (state === 'pending') return t('episode.asset.generating')
@@ -2564,10 +2579,10 @@ async function loadGenTasks() {
     const pending = new Set()
     const failed = {}
     for (const [sbId, t] of latestBySb) {
-      // 分镜已有视频(失败后重试成功)时不再报历史错误
-      if (hasVid(sbs.value.find(s => s.id === sbId))) continue
+      // 已有视频的镜头点「重绘」后同样处于生成中（否则刷新后状态被清掉，页面看不到任何反馈）；
+      // 但分镜已有视频(失败后重试成功)时不再报历史错误
       if (t.status === 'processing') pending.add(sbId)
-      else if (t.status === 'failed') failed[sbId] = t.error_msg || 'Task failed'
+      else if (t.status === 'failed' && !hasVid(sbs.value.find(s => s.id === sbId))) failed[sbId] = t.error_msg || 'Task failed'
     }
     // 刚点击提交、任务记录尚未加载出来的本地状态保留,避免状态闪退
     for (const id of pendingVideoIds.value) if (!latestBySb.has(id)) pending.add(id)
@@ -3569,6 +3584,12 @@ async function loadSbVideoHistory() {
 }
 
 watch(() => [selectedSb.value?.id, getVideoUrl(selectedSb.value)], () => { loadSbVideoHistory() })
+
+// 占位上显示的发起时间：取最新一条进行中的任务；刚点击、任务列表还没刷新时不显示
+const pendingVideoStartedAt = computed(() => {
+  const task = latestVideoTask(selectedSb.value?.id)
+  return task?.status === 'processing' ? taskCreatedAt(task) : ''
+})
 
 function previewHistoryVideo(t) {
   previewVideoUrl.value = isCurrentVideo(t) ? '' : taskVideoPath(t)
@@ -5457,6 +5478,23 @@ onMounted(() => setTimeout(() => autoTour('episode', EPISODE_TOUR, t), 900))
   cursor: pointer;
 }
 .video-history-item:hover .video-history-del { display: flex; }
+.video-history-item.is-pending {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding-bottom: 14px; /* 给底部的时间标签留位置 */
+  border-style: dashed;
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent-text);
+  cursor: default;
+}
+.video-history-item.is-pending .video-history-time { bottom: 3px; }
+.video-history-pending-label {
+  font-size: 10px;
+  font-weight: 700;
+}
 .video-task-player {
   min-width: 0;
   min-height: 0;

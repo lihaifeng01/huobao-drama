@@ -892,6 +892,7 @@
       "current": "Current",
       "deleteRecord": "Delete this record",
       "historyDeleted": "History record deleted",
+      "historyPendingTitle": "Generating a new video. It will appear here when done.",
       "needRefOrPrompt": "At least one reference asset or a video prompt is required",
       "generating": "Video generating",
       "genDone": "Video generation complete",

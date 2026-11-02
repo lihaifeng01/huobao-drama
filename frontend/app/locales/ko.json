@@ -892,6 +892,7 @@
       "current": "현재",
       "deleteRecord": "이 기록 삭제",
       "historyDeleted": "이 기록이 삭제되었습니다",
+      "historyPendingTitle": "새 영상을 생성 중입니다. 완료되면 여기에 표시됩니다",
       "needRefOrPrompt": "참조 소재 또는 영상 프롬프트가 최소 1개 필요합니다",
       "generating": "영상 생성 중",
       "genDone": "영상 생성이 완료되었습니다",

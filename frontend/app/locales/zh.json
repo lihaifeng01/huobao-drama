@@ -892,6 +892,7 @@
       "current": "当前",
       "deleteRecord": "删除该记录",
       "historyDeleted": "已删除该历史记录",
+      "historyPendingTitle": "正在生成新视频，完成后会出现在这里",
       "needRefOrPrompt": "需要至少一个参考素材或视频提示词",
       "generating": "视频生成中",
       "genDone": "视频生成完成",
