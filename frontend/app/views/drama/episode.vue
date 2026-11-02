@@ -3572,18 +3572,31 @@ function taskVideoPath(t) { return t?.local_path || t?.localPath || t?.result_ur
 function taskCreatedAt(t) { return t?.created_at || t?.createdAt || '' }
 function isCurrentVideo(t) { const p = taskVideoPath(t); return !!p && p === getVideoUrl(selectedSb.value) }
 
-async function loadSbVideoHistory() {
-  previewVideoUrl.value = ''
-  if (!selectedSb.value?.id) { sbVideoHistory.value = []; return }
+// keepPreview：同一个镜头只是主视频变了（重绘完成 / 设为主视频）时，保留正在看的历史视频，
+// 除非它已经成了当前主视频或已不在历史里
+async function loadSbVideoHistory({ keepPreview = false } = {}) {
+  if (!keepPreview) previewVideoUrl.value = ''
+  const sbId = selectedSb.value?.id
+  if (!sbId) { sbVideoHistory.value = []; previewVideoUrl.value = ''; return }
   try {
-    const rows = await taskAPI.list({ type: 'video', storyboard_id: selectedSb.value.id })
+    const rows = await taskAPI.list({ type: 'video', storyboard_id: sbId })
+    if (selectedSb.value?.id !== sbId) return // 请求期间切换了镜头，丢弃过期结果
     sbVideoHistory.value = (Array.isArray(rows) ? rows : [])
       .filter(t => t.status === 'completed' && taskVideoPath(t))
       .sort((a, b) => taskCreatedAt(b).localeCompare(taskCreatedAt(a)))
   } catch { sbVideoHistory.value = [] }
+  const viewing = previewVideoUrl.value
+  if (viewing && (viewing === getVideoUrl(selectedSb.value) || !sbVideoHistory.value.some(h => taskVideoPath(h) === viewing))) {
+    previewVideoUrl.value = ''
+  }
 }
 
-watch(() => [selectedSb.value?.id, getVideoUrl(selectedSb.value)], () => { loadSbVideoHistory() })
+// 必须用两个独立的来源：只返回一个数组的 getter 每次都会生成新数组，
+// 任务轮询（有任务进行中时每 4 秒 refresh 一次）替换 sbs 后就会被判定为变化，
+// 预览被清空，「设为主视频」按钮一闪就没了。
+watch([() => selectedSb.value?.id, () => getVideoUrl(selectedSb.value)], ([id], [oldId]) => {
+  loadSbVideoHistory({ keepPreview: id === oldId })
+})
 
 // 占位上显示的发起时间：取最新一条进行中的任务；刚点击、任务列表还没刷新时不显示
 const pendingVideoStartedAt = computed(() => {

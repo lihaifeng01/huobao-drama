@@ -24,3 +24,10 @@ test('placeholder tooltip text exists in every locale', () => {
     assert.ok(vid.historyPendingTitle, lang)
   }
 })
+
+test('task polling does not reset the history preview (Set as main stays available)', () => {
+  // 单个 getter 返回数组会在每次 refresh 时被判定为变化，导致预览被清空
+  assert.doesNotMatch(page, /watch\(\(\) => \[selectedSb\.value\?\.id, getVideoUrl\(selectedSb\.value\)\]/)
+  assert.match(page, /watch\(\[\(\) => selectedSb\.value\?\.id, \(\) => getVideoUrl\(selectedSb\.value\)\], \(\[id\], \[oldId\]\) =>/)
+  assert.match(page, /loadSbVideoHistory\(\{ keepPreview: id === oldId \}\)/)
+})
