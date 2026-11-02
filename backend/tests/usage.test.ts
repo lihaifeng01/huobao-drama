@@ -174,10 +174,11 @@ test('records image / video / text usage per user, with model breakdown and visi
     [aliceId, drama.id, 'mock-text', 'openai', 1500, 0, 'succeeded'])
   assert.deepEqual(JSON.parse(text.detail!), { inputTokens: 1200, outputTokens: 300, usageMissing: false })
 
-  // 汇总：四个分类；点开图片看每个模型
+  // 汇总：五个分类（含音频）；点开图片看每个模型
   const summary = (await alice('GET', '/usage/summary')).json.data
   const byType = Object.fromEntries(summary.map((s: any) => [s.service_type, s]))
-  assert.deepEqual(Object.keys(byType), ['image', 'video', 'subtitle', 'text'])
+  assert.deepEqual(Object.keys(byType), ['image', 'video', 'subtitle', 'audio', 'text'])
+  assert.equal(byType.audio.count, 0)
   assert.deepEqual([byType.image.count, byType.image.succeeded, byType.image.refunded, byType.image.quantity, byType.image.points], [3, 2, 1, 2, 42])
   assert.deepEqual([byType.video.count, byType.video.held, byType.video.points], [3, 1, 315])
   assert.deepEqual([byType.text.quantity, byType.text.points], [1500, 0])

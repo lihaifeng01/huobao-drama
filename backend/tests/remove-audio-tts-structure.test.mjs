@@ -24,7 +24,8 @@ test('backend removes audio service providers, TTS adapters, and voice routes', 
   const types = read('src/services/adapters/types.ts')
 
   assert.doesNotMatch(index, /aiVoices/)
-  assert.doesNotMatch(ai, /audio/)
+  // 2026-11-02 起重新开放「音频」服务类型（仅 MiniMax 音色复刻工具），旧的配音 / TTS 流程仍不恢复
+  assert.match(ai, /audio: \['minimax'\]/)
   assert.doesNotMatch(ai, /getAudioConfig/)
   assert.doesNotMatch(registry, /TTS/)
   assert.doesNotMatch(registry, /minimax-tts/)

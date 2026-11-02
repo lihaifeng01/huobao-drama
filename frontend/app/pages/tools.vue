@@ -24,13 +24,14 @@
 
       <SubtitleTool v-if="activeTool === 'subtitle'" />
       <VideoMergeTool v-else-if="activeTool === 'merge'" />
+      <VoiceCloneTool v-else-if="activeTool === 'voice'" />
     </div>
   </div>
 </template>
 
 <script setup>
 import { useI18n } from 'vue-i18n'
-import { Captions, Combine } from 'lucide-vue-next'
+import { AudioLines, Captions, Combine } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -39,6 +40,7 @@ const router = useRouter()
 const toolDefs = computed(() => [
   { id: 'subtitle', icon: Captions, name: t('tools.subtitle.name'), desc: t('tools.subtitle.desc') },
   { id: 'merge', icon: Combine, name: t('tools.merge.name'), desc: t('tools.merge.desc') },
+  { id: 'voice', icon: AudioLines, name: t('tools.voice.name'), desc: t('tools.voice.desc') },
 ])
 // 当前工具记在 ?tool= 上，刷新和返回时保持
 const activeTool = computed({

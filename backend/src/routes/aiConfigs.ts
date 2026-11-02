@@ -9,6 +9,7 @@ import { isOfficialProvider, parseConfigTemperature } from '../services/ai.js'
 import { applyCustomHeaders, normalizeCustomOptions, normalizeUrlMode, parseCustomOptions, parseUrlMode, withUrlMode } from '../services/adapters/custom.js'
 import type { CustomOptions } from '../services/adapters/types.js'
 import { buildAsrProbe } from '../services/adapters/aliyun-asr.js'
+import { buildVoiceProbe } from '../services/adapters/minimax-voice.js'
 import { isAdmin } from '../services/auth.js'
 import { redactUrl, logTaskError, logTaskProgress, logTaskSuccess } from '../utils/task-logger.js'
 
@@ -61,6 +62,8 @@ function buildProbe(serviceType: string, provider: string, baseUrl: string, mode
   const m = model || ''
 
   if (serviceType === 'subtitle') return buildAsrProbe(baseUrl, m, apiKey)
+  // 音频：查询已复刻音色列表，不产生费用
+  if (serviceType === 'audio') return buildVoiceProbe(baseUrl, apiKey)
 
   if (p === 'gemini') {
     // 探针统一走 generateContent:文本运行时(AI SDK)走的就是它,官方与中转站都支持;

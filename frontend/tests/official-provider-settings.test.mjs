@@ -70,11 +70,12 @@ test('settings page offers official default model IDs', () => {
   assert.doesNotMatch(settingsPage, /gemini-3-pro-image-preview/)
   assert.doesNotMatch(settingsPage, /gemini-3\.1-flash-image-preview/)
   assert.doesNotMatch(settingsPage, /doubao-seedream/)
-  assert.doesNotMatch(settingsPage, /speech-2\.8-hd/)
+  // speech-2.8-hd 只允许出现在音频（音色复刻）预设里
+  assert.doesNotMatch(settingsPage.replace(providerPresetBlock('audio'), ''), /speech-2\.8-hd/)
 })
 
-test('only text and subtitle service configs expose the connection test button', () => {
-  assert.match(settingsPage, /v-if="st\.type === 'text' \|\| st\.type === 'subtitle'" class="btn btn-ghost btn-sm" @click="testExistingCfg\(c\)">\{\{ t\('settings\.ai\.test'\) \}\}/)
+test('only text, subtitle and audio service configs expose the connection test button', () => {
+  assert.match(settingsPage, /v-if="st\.type === 'text' \|\| st\.type === 'subtitle' \|\| st\.type === 'audio'" class="btn btn-ghost btn-sm" @click="testExistingCfg\(c\)">\{\{ t\('settings\.ai\.test'\) \}\}/)
 })
 
 test('settings page offers the supported official provider presets', () => {
@@ -85,7 +86,9 @@ test('settings page offers the supported official provider presets', () => {
   assert.match(providerPresetBlock('video'), /minimax/)
   assert.match(providerPresetBlock('video'), /aliyun/)
   assert.doesNotMatch(providerPresetBlock('video'), /'vidu'/i)
-  assert.doesNotMatch(settingsPage, /audio:\s*\{/)
+  // 音频仅 MiniMax（音色复刻）
+  assert.match(providerPresetBlock('audio'), /minimax/)
+  assert.doesNotMatch(providerPresetBlock('audio'), /volcengine|aliyun|gemini|openai/)
 })
 
 test('Huobao quick config includes Wan 3.0 through the Qwen gateway route', () => {

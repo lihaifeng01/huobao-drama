@@ -51,7 +51,8 @@
       "text": "テキスト",
       "image": "画像",
       "video": "動画",
-      "subtitle": "字幕"
+      "subtitle": "字幕",
+      "audio": "音声"
     }
   },
   "layout": {
@@ -396,8 +397,10 @@
         "text": "脚本リライト、キャラクター・シーン抽出、分镜分解などの Agent テキスト能力",
         "image": "キャラクター図、シーン図、ショット図などの静止画生成",
         "video": "ショット動画の直接生成（デフォルト Seedance 2.0）",
-        "subtitle": "ショット動画のセリフを認識して字幕を作成します。既定は Alibaba Cloud Model Studio の qwen-audio-3.0-asr-flash-filetrans"
-      }
+        "subtitle": "ショット動画のセリフを認識して字幕を作成します。既定は Alibaba Cloud Model Studio の qwen-audio-3.0-asr-flash-filetrans",
+        "audio": "声のクローンと音声合成。既定は MiniMax speech-2.8-hd"
+      },
+      "audioScope": "「ツール → ボイスクローン」専用で、エピソード制作の流れには使われません。ショット動画のキャラクターの台詞の声は、キャラクターカードで音声サンプルをアップロードしてください。"
     },
     "styles": {
       "title": "スタイルプリセット",
@@ -545,7 +548,8 @@
       "urlModeAuto": "自動補完",
       "urlModeBase": "Base URL をそのまま使用",
       "urlModeHint": "自動補完：プロバイダー公式のルールで Base URL にパスを追加します（例：/v1、/api/v3）。そのまま使用：Base URL を完全なリクエスト URL として扱い、パスは追加しません。ポーリング URL は Base URL に / とタスク ID を付けたもので、リクエストパラメーターは公式形式のままです。",
-      "subtitleHint": "字幕サービスは Alibaba Cloud Model Studio の録音ファイル認識を使用します。Base URL は https://dashscope.aliyuncs.com（シンガポールは https://dashscope-intl.aliyuncs.com）。ローカル音声は Model Studio の一時ストレージ（48 時間有効）にアップロードされるため、公開 URL は不要です。"
+      "subtitleHint": "字幕サービスは Alibaba Cloud Model Studio の録音ファイル認識を使用します。Base URL は https://dashscope.aliyuncs.com（シンガポールは https://dashscope-intl.aliyuncs.com）。ローカル音声は Model Studio の一時ストレージ（48 時間有効）にアップロードされるため、公開 URL は不要です。",
+      "audioHint": "音声サービスは MiniMax のクイックボイスクローンと同期音声合成を使います。Base URL は https://api.minimaxi.com（国際版は https://api.minimax.io）。モデルはクローン時の試聴と以後の合成に使われます。クローンは回数ごとに課金され、アカウントでボイスクローン権限が必要です。"
     },
     "styleDialog": {
       "editTitle": "スタイルプリセットを編集",
@@ -1297,6 +1301,55 @@
         "done": "完了",
         "failed": "失敗"
       }
+    },
+    "voice": {
+      "name": "ボイスクローン",
+      "desc": "声のサンプルをアップロードしてクローンし、テキストを音声に変換",
+      "list": "ボイス",
+      "uploadSample": "サンプルをアップロード",
+      "uploading": "アップロード中 {pct}%",
+      "uploaded": "サンプルをアップロードしました",
+      "empty": "ボイスがまだありません。声の録音をアップロードしてください",
+      "dropTitle": "声のサンプルをアップロードまたはドロップ",
+      "dropDesc": "mp3 / wav / m4a、10 秒〜5 分、最大 20MB。話者 1 人・静かな環境が最適です",
+      "notAudio": "mp3 / wav / m4a ファイルをドロップしてください",
+      "rename": "名前を変更",
+      "sample": "サンプル",
+      "stepClone": "ボイスをクローン",
+      "previewModel": "試聴モデル",
+      "noConfig": "利用できる音声サービスがありません。",
+      "voiceId": "ボイス ID（任意）",
+      "voiceIdPlaceholder": "空欄なら自動生成",
+      "previewText": "試聴テキスト",
+      "previewTextPlaceholder": "こんにちは、これはクローンした私の声です。似ていますか？",
+      "noiseReduction": "ノイズ除去",
+      "volumeNormalization": "音量の正規化",
+      "clone": "クローン開始",
+      "reclone": "再クローン",
+      "cloning": "クローン中…",
+      "recloneHint": "再クローンすると新しいボイス ID になります",
+      "voiceIdLabel": "ボイス ID",
+      "copy": "コピー",
+      "copied": "ボイス ID をコピーしました",
+      "copyFailed": "コピーできませんでした。手動でコピーしてください",
+      "demo": "試聴",
+      "expireHint": "クローンしたボイスは一時的です。7 日以内に音声合成で使わないとプロバイダー側で削除されます。一度合成すれば保持されます。",
+      "stepSynth": "音声を合成",
+      "synthModel": "合成モデル",
+      "configGone": "クローンに使った音声設定が無効または削除されています。有効にするか再クローンしてください",
+      "textPlaceholder": "このボイスで読み上げるテキストを入力",
+      "speed": "速度",
+      "synthesize": "合成",
+      "synthesizing": "合成中…",
+      "download": "ダウンロード",
+      "noOutputs": "合成結果はまだありません",
+      "needClone": "先にボイスをクローンしてください",
+      "cloneDone": "ボイスのクローンが完了しました",
+      "synthDone": "音声合成が完了しました",
+      "stateNew": "未クローン",
+      "stateCloned": "クローン済み",
+      "stateFailed": "失敗",
+      "deleteConfirm": "ボイス「{name}」を削除しますか？（ローカルの記録のみ削除され、プロバイダー側のボイスは残ります）"
     }
   },
   "auth": {
@@ -1432,7 +1485,8 @@
       "image": "画像",
       "video": "動画",
       "subtitle": "字幕",
-      "text": "テキスト"
+      "text": "テキスト",
+      "audio": "音声"
     },
     "calls": "{n} 回",
     "pointsUnit": "ポイント",
@@ -1470,7 +1524,8 @@
     "qty": {
       "image": "{n} 枚",
       "video": "{n} 秒",
-      "subtitle": "{n} 分"
+      "subtitle": "{n} 分",
+      "audio": "{n} 回"
     },
     "source": {
       "shot_image": "カット画像",
@@ -1487,7 +1542,9 @@
       "extract": "素材抽出",
       "episode_summary": "あらすじ",
       "video_prompt": "動画プロンプト",
-      "image_prompt": "画像プロンプト"
+      "image_prompt": "画像プロンプト",
+      "tool_voice_clone": "ボイスクローン",
+      "tool_voice_synthesis": "音声合成"
     }
   }
 }

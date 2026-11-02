@@ -160,13 +160,13 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { Image as ImageIcon, Video, Captions, MessageSquareText, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { Image as ImageIcon, Video, Captions, AudioLines, MessageSquareText, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { usageAPI, userAPI, type UsageType, type UsageFilter } from '~/composables/useApi'
 import { useAuth } from '~/composables/useAuth'
 import { toastError } from '~/composables/useToast'
 import BaseSelect from '~/components/BaseSelect.vue'
 
-const TYPE_ICONS: Record<UsageType, any> = { image: ImageIcon, video: Video, subtitle: Captions, text: MessageSquareText }
+const TYPE_ICONS: Record<UsageType, any> = { image: ImageIcon, video: Video, subtitle: Captions, audio: AudioLines, text: MessageSquareText }
 const RANGES = ['month', 'week', 'days30', 'all'] as const
 const PAGE_SIZE = 20
 const STATUS_CLASS: Record<string, string> = { succeeded: 'tag-success', pending: 'tag-info', held: 'tag-warning', refunded: '' }
@@ -279,6 +279,7 @@ function fmtQuantity(type: string | null, q: number) {
     case 'image': return t('usage.qty.image', { n: fmtInt(v) })
     case 'video': return t('usage.qty.video', { n: v.toLocaleString(locale.value, { maximumFractionDigits: 1 }) })
     case 'subtitle': return t('usage.qty.subtitle', { n: (v / 60).toLocaleString(locale.value, { maximumFractionDigits: 1 }) })
+    case 'audio': return t('usage.qty.audio', { n: fmtInt(v) })
     case 'text': return `${fmtTokens(v)} tokens`
     default: return String(v)
   }
@@ -324,7 +325,7 @@ onMounted(async () => {
 .filter-chip.on { background: var(--inverse-surface); color: var(--on-inverse); border-color: transparent; }
 .member-select { width: 200px; }
 
-.type-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.type-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
 .type-card {
   display: flex; flex-direction: column; gap: 10px;
   padding: 14px 16px; text-align: left;
@@ -366,6 +367,7 @@ onMounted(async () => {
 .pager { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px; border-top: 1px solid var(--border); }
 .usage-note { font-size: 12px; color: var(--text-3); line-height: 1.6; margin-top: 4px; }
 @media (max-width: 900px) { .type-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1200px) and (min-width: 901px) { .type-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
   .usage-page { padding: 16px; }
   .hide-sm { display: none; }

@@ -265,6 +265,27 @@ export const sqliteSchemaStatements = [
     deleted_at TEXT
   )`,
 
+  // 音色复刻工具：上传一段人声样本 → 复刻成服务商音色（voice_id）→ 用该音色合成语音
+  `CREATE TABLE IF NOT EXISTS voice_clone_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    name TEXT NOT NULL,
+    sample_url TEXT NOT NULL,
+    sample_name TEXT,
+    sample_duration REAL DEFAULT 0,
+    provider TEXT,
+    config_id INTEGER,
+    voice_id TEXT,
+    status TEXT NOT NULL DEFAULT 'idle',
+    error_msg TEXT,
+    demo_url TEXT,
+    outputs TEXT,
+    cloned_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  )`,
+
   `CREATE TABLE IF NOT EXISTS video_merges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     episode_id INTEGER,
