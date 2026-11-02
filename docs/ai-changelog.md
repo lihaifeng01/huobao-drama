@@ -70,7 +70,7 @@
 ## 变更条目
 
 ### 2026-11-02 · 新增：工具页「音色复刻」+ 设置页「音频」服务类型
-- **分支**：`feat/voice-clone`（从 `origin/dev` 拉出，未合并）
+- **分支**：`feat/voice-clone`（从 `origin/dev` 拉出，2026-11-02 已合并到 `dev`）
 - **改动**
   - 设置 → AI 服务新增「音频」服务类型（`service_type: 'audio'`，仅 `minimax`），预设 MiniMax 语音：Base URL `https://api.minimaxi.com`（国际站 `https://api.minimax.io`），模型 `speech-2.8-hd` / `speech-2.8-turbo` / `speech-2.6-hd`。「测试」走 `POST /v1/get_voice`（查音色列表，不计费）。和字幕一样不显示 URL 模式和自定义请求结构。音频分组和配置弹窗顶部都有提示：只给「工具 → 音色复刻」用，不参与剧集制作；镜头对白音色仍在角色卡片上上传（`settings.ai.audioScope`）。
   - 工具页新增第三个工具「音色复刻」（`/tools?tool=voice`）：上传人声样本（mp3 / wav / m4a，10 秒–5 分钟，≤20MB）→ 复刻（可选自定义音色 ID、试听文本、降噪、音量归一化，带试听文本时转存服务商返回的试听音频）→ 输入文字合成语音（语速 0.5–2，单次 ≤5000 字），合成结果保留最近 20 条，可试听、下载、移除。
