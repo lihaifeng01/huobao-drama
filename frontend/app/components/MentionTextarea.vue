@@ -16,6 +16,12 @@
       @click="closeMention"
       @scroll="onScroll"
     />
+    <ul v-if="invalidVoices.length" class="mention-voice-warnings" role="alert">
+      <li v-for="w in invalidVoices" :key="w.start">
+        <AlertTriangle :size="12" />
+        <span>{{ w.reason === 'no_voice' ? t('characterVoice.invalidNoVoice', { token: w.token, name: w.name }) : t('characterVoice.invalidUnknown', { token: w.token }) }}</span>
+      </li>
+    </ul>
     <Teleport to="body">
       <div v-if="mention.open" ref="dropdownEl" class="mention-dropdown" :style="mentionStyle">
         <template v-if="groupedFiltered.length">
@@ -46,9 +52,9 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import { User, MapPin, Package, AudioLines } from 'lucide-vue-next'
+import { User, MapPin, Package, AudioLines, AlertTriangle } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
-import { mentionToken, mentionEntries, activeMentionAt, highlightMentions, mentionDeletionRange } from '../utils/prompt-mentions.js'
+import { mentionToken, mentionEntries, activeMentionAt, highlightMentions, mentionDeletionRange, findInvalidVoiceMentions } from '../utils/prompt-mentions.js'
 
 const { t } = useI18n()
 
@@ -62,6 +68,8 @@ const props = defineProps({
   rows: { type: [Number, String], default: 4 },
   placeholder: { type: String, default: '' },
   inputClass: { type: String, default: '' },
+  // 标红生成时会被后端拒绝的 #音色引用（未上传音色 / 未绑定角色），并在下方列出原因
+  checkVoices: { type: Boolean, default: false },
 })
 const emit = defineEmits(['update:modelValue', 'commit'])
 
@@ -104,7 +112,13 @@ watch(() => props.modelValue, (v) => {
 
 // 可引用名（按长度降序，保证最长匹配优先）及其分组样式（kind code 判断）
 const mentionNames = computed(() => mentionEntries(props.options))
-const highlightedHtml = computed(() => highlightMentions(text.value, props.options))
+const highlightedHtml = computed(() => highlightMentions(text.value, props.options, { checkVoices: props.checkVoices }))
+// 同一个错误引用出现多次只列一条
+const invalidVoices = computed(() => {
+  if (!props.checkVoices) return []
+  const seen = new Set()
+  return findInvalidVoiceMentions(text.value, props.options).filter(w => !seen.has(w.token) && seen.add(w.token))
+})
 
 // 光标前最近一个 @token（@ 后不含空白），命中则处于引用输入态
 function activeMention() {
@@ -346,6 +360,29 @@ function onBlur(e) {
 .mention-backdrop :deep(.mention-token-voice) {
   color: var(--tag-success-text);
   background: var(--success-bg);
+}
+.mention-backdrop :deep(.mention-token-invalid) {
+  color: var(--error);
+  background: var(--error-bg);
+  text-decoration: underline wavy var(--error);
+  text-decoration-skip-ink: none;
+}
+.mention-voice-warnings {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--error);
+}
+.mention-voice-warnings li {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+.mention-voice-warnings li :deep(svg) {
+  flex-shrink: 0;
+  margin-top: 3px;
 }
 .mention-dropdown {
   position: fixed;

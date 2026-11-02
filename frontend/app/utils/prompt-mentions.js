@@ -30,16 +30,62 @@ export function activeMentionAt(text, position, options) {
 const escapeHtml = text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-export function highlightMentions(text, options) {
+// 与后端 character-voice-references.ts 的 voiceToken 保持一致：#后面直到空白或标点
+const VOICE_TOKEN = /#[^\s#@，。！？；、：,.!?;:「」“”"'（）()[\]{}<>]{1,100}/gu
+
+/**
+ * 找出生成时后端会拒绝的 #音色引用，写的时候就提示，不必等到生成报错。
+ * - no_voice：当前分镜绑定了这个角色，但角色没上传音色（没上传的角色不在 # 候选里，原本显示成普通文字）
+ * - unknown：#后面不是当前分镜绑定的角色
+ * #01 这类纯数字镜头编号不算音色引用（与后端一致）。
+ */
+export function findInvalidVoiceMentions(text, options) {
+  const valid = mentionEntries(options).filter(([token]) => token.startsWith('#')).map(([token]) => token)
+  const characters = [...new Set(options.filter(o => o.kind === 'character' && o.value).map(o => String(o.value)))]
+    .sort((a, b) => b.length - a.length)
+  const result = []
+  for (let pos = text.indexOf('#'); pos >= 0; pos = text.indexOf('#', pos + 1)) {
+    const tail = text.slice(pos)
+    const ok = valid.find(token => tail.startsWith(token))
+    if (ok) { pos += ok.length - 1; continue }
+    const name = characters.find(n => tail.startsWith(`#${n}`))
+    if (name) {
+      result.push({ start: pos, end: pos + name.length + 1, token: `#${name}`, name, reason: 'no_voice' })
+      pos += name.length
+      continue
+    }
+    VOICE_TOKEN.lastIndex = 0
+    const m = VOICE_TOKEN.exec(tail)
+    if (m && m.index === 0 && !/^#\d+$/.test(m[0])) {
+      result.push({ start: pos, end: pos + m[0].length, token: m[0], name: m[0].slice(1), reason: 'unknown' })
+      pos += m[0].length - 1
+    }
+  }
+  return result
+}
+
+export function highlightMentions(text, options, { checkVoices = false } = {}) {
   const entries = mentionEntries(options)
-  if (!entries.length) return escapeHtml(text) + (text.endsWith('\n') ? '\u200b' : '')
-  const pattern = new RegExp(entries.map(([token]) => escapeRegExp(token)).join('|'), 'g')
-  const styles = new Map(entries)
+  const ranges = []
+  if (entries.length) {
+    const pattern = new RegExp(entries.map(([token]) => escapeRegExp(token)).join('|'), 'g')
+    const styles = new Map(entries)
+    for (const match of text.matchAll(pattern)) {
+      ranges.push({ start: match.index, end: match.index + match[0].length, cls: styles.get(match[0]) })
+    }
+  }
+  if (checkVoices) {
+    for (const bad of findInvalidVoiceMentions(text, options)) {
+      // 有效引用优先；与已着色区间重叠的不再标红
+      if (!ranges.some(r => r.start < bad.end && bad.start < r.end)) ranges.push({ start: bad.start, end: bad.end, cls: 'invalid' })
+    }
+    ranges.sort((a, b) => a.start - b.start)
+  }
   let html = '', start = 0
-  for (const match of text.matchAll(pattern)) {
-    html += escapeHtml(text.slice(start, match.index))
-    html += `<span class="mention-token mention-token-${styles.get(match[0])}">${escapeHtml(match[0])}</span>`
-    start = match.index + match[0].length
+  for (const r of ranges) {
+    html += escapeHtml(text.slice(start, r.start))
+    html += `<span class="mention-token mention-token-${r.cls}">${escapeHtml(text.slice(r.start, r.end))}</span>`
+    start = r.end
   }
   return html + escapeHtml(text.slice(start)) + (text.endsWith('\n') ? '\u200b' : '')
 }

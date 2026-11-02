@@ -21,7 +21,9 @@
     "emptyFile": "The audio file is empty",
     "playbackError": "Unable to play this audio. Check the file or upload it again.",
     "referenceHint": "Use {'@'}Name for appearance and #Name at each spoken line, e.g. {'@'}Alex looks up; #Alex softly says hello. Use 2–5 second voice samples, up to 15 seconds total.",
-    "noMatch": "No matching voice. Upload a character voice in Assets and add the character to this shot."
+    "noMatch": "No matching voice. Upload a character voice in Assets and add the character to this shot.",
+    "invalidNoVoice": "{token} references {name}'s voice, but {name} has no voice uploaded, so generation will fail. Upload a voice for {name} in the asset library, or change # to {'@'} to reference only the image.",
+    "invalidUnknown": "{token} is not a character bound to this shot, so generation will fail. # can only reference bound characters with an uploaded voice."
   },
   "common": {
     "confirm": "Confirm",

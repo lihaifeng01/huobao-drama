@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { activeMentionAt, mentionToken, highlightMentions, mentionDeletionRange } from '../app/utils/prompt-mentions.js'
+import { activeMentionAt, mentionToken, highlightMentions, mentionDeletionRange, findInvalidVoiceMentions } from '../app/utils/prompt-mentions.js'
 
 const options = [
   { value: '小雨', kind: 'character' },
@@ -43,4 +43,35 @@ test('typing dialogue immediately after a voice name keeps the menu closed; long
 test('previously saved suffix tokens are highlighted and deleted as one mention', () => {
   assert.match(highlightMentions('#小雨音色说话', options), /mention-token-voice">#小雨音色<\/span>说话/)
   assert.deepEqual(mentionDeletionRange('#小雨音色说话', 5, options, true), { start: 0, end: 5 })
+})
+
+test('voice check flags #references the backend would reject, without touching valid ones', () => {
+  const shot = [
+    { value: '林晚', kind: 'character' },
+    { value: '小林晚', kind: 'character' },
+    { value: '林晚', aliases: ['林晚音色'], trigger: '#', kind: 'voice' },
+  ]
+  const text = '@小林晚急切说；#林晚说：“你是谁？”\n#小林晚说：“我是来救你的。”#路人甲喊 #01 镜头 #小林晚说'
+  const found = findInvalidVoiceMentions(text, shot)
+  assert.deepEqual(found.map(f => [f.token, f.reason]), [['#小林晚', 'no_voice'], ['#路人甲喊', 'unknown'], ['#小林晚', 'no_voice']])
+  assert.equal(text.slice(found[0].start, found[0].end), '#小林晚')
+
+  const html = highlightMentions(text, shot, { checkVoices: true })
+  assert.match(html, /mention-token-voice">#林晚<\/span>说/)
+  assert.match(html, /mention-token-invalid">#小林晚<\/span>说/)
+  assert.match(html, /mention-token-invalid">#路人甲喊<\/span>/)
+  assert.doesNotMatch(html, /#01<\/span>/)
+  // 默认不检查，保持原行为
+  assert.doesNotMatch(highlightMentions(text, shot), /invalid/)
+})
+
+test('voice-check i18n messages exist in every locale and avoid raw @', async () => {
+  const { readFileSync } = await import('node:fs')
+  for (const lang of ['zh', 'en', 'ja', 'ko']) {
+    const cv = JSON.parse(readFileSync(new URL(`../app/locales/${lang}.json`, import.meta.url), 'utf8')).characterVoice
+    for (const key of ['invalidNoVoice', 'invalidUnknown']) {
+      assert.ok(cv[key], `${lang}.${key}`)
+      assert.doesNotMatch(cv[key].replaceAll("{'@'}", ''), /@/)
+    }
+  }
 })

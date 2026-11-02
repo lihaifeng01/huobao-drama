@@ -732,6 +732,7 @@
                     <MentionTextarea
                       :model-value="selectedSb.video_prompt || selectedSb.videoPrompt || ''"
                       :options="mentionOptions"
+                      check-voices
                       :rows="14"
                       input-class="textarea video-inspector-prompt"
                       :placeholder="t('episode.inspector.videoPromptPlaceholder')"
