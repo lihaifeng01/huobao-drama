@@ -69,6 +69,30 @@
 
 ## 变更条目
 
+### 2026-11-02 · 新增：工具页「音色复刻」+ 设置页「音频」服务类型
+- **分支**：`feat/voice-clone`（从 `origin/dev` 拉出，未合并）
+- **改动**
+  - 设置 → AI 服务新增「音频」服务类型（`service_type: 'audio'`，仅 `minimax`），预设 MiniMax 语音：Base URL `https://api.minimaxi.com`（国际站 `https://api.minimax.io`），模型 `speech-2.8-hd` / `speech-2.8-turbo` / `speech-2.6-hd`。「测试」走 `POST /v1/get_voice`（查音色列表，不计费）。和字幕一样不显示 URL 模式和自定义请求结构。
+  - 工具页新增第三个工具「音色复刻」（`/tools?tool=voice`）：上传人声样本（mp3 / wav / m4a，10 秒–5 分钟，≤20MB）→ 复刻（可选自定义音色 ID、试听文本、降噪、音量归一化，带试听文本时转存服务商返回的试听音频）→ 输入文字合成语音（语速 0.5–2，单次 ≤5000 字），合成结果保留最近 20 条，可试听、下载、移除。
+  - 接口：`/api/v1/tools/voice-clones`（列表 / 上传 / 改名 / `:id/clone` / `:id/synthesize` / `:id/outputs?url=` / 删除），按 `user_id` 隔离，和字幕、合成工具一致。新表 `voice_clone_jobs`。
+  - 用量：新增用量类型 `audio`，复刻和合成各记一条（数量 = 次数），**一期只统计不计积分**（`resolveUnitPoints` 对 audio 返回 0，不在 `POINT_SERVICE_TYPES` 里，积分规则面板不变）。用量页分类卡片从 4 个变成 5 个。
+- **关键文件**：`backend/src/services/adapters/minimax-voice.ts`（MiniMax 上传 / 复刻 / 合成 / 探针）、`backend/src/services/voice-clone-tool.ts`、`backend/src/routes/tools.ts`、`frontend/app/components/VoiceCloneTool.vue`、`frontend/app/pages/settings.vue`、`frontend/app/pages/tools.vue`。
+- **流程**：`POST /v1/files/upload`（multipart，`purpose=voice_clone`）拿 `file_id` → `POST /v1/voice_clone { file_id, voice_id, need_noise_reduction, need_volume_normalization, text?, model? }` → `POST /v1/t2a_v2`（`output_format: 'hex'`，mp3 32k/128kbps 单声道）。三个接口都要看 `base_resp.status_code`，HTTP 200 也可能是业务失败。
+- **设计取舍**
+  - 复刻出的音色属于配置里 API Key 对应的服务商账号，所以任务记下 `config_id`，合成只能用这条配置（可换同配置里的模型）；配置被停用 / 删除时提示重新复刻。
+  - 重新复刻会换新的 `voice_id`（服务商不允许重复 ID）；复刻失败不覆盖已有的成功结果。
+  - 删除只软删本地记录，不调服务商删除音色接口。
+  - 状态与字幕工具同构：`status` 只表示进行中的操作（idle / cloning / synthesizing），进程内异步执行，重启时 `resetInterruptedVoiceJobs` 复位并提示重试。
+  - 和 2026-10 之前删掉的 TTS / AI 音色分配流程无关，那些仍不恢复。以前的结构测试禁止 `ai.ts` 出现 `audio`、设置页出现「音频」/`type: 'audio'`/`speech-2.8-hd`，这次按用户需求收窄：`remove-audio-tts-structure`、`official-provider-adapters`（改为断言 audio 只有 minimax）、`official-provider-settings`（`speech-2.8-hd` 只允许出现在 audio 预设里，测试按钮允许 audio）、`remove-audio-voice-structure`（去掉设置页的三条，项目页 / 工作台 / API 的 TTS 断言保留）。
+- **注意事项**
+  - MiniMax 复刻的是临时音色：**7 天内没用于语音合成会被删除**，界面上有提示。复刻按次计费，账号需要开通复刻权限（未开通时服务商返回 2038 之类的错误，原样显示在任务上）。
+  - **没有用真实 MiniMax Key 验证过**，接口细节按官方文档实现：https://platform.minimaxi.com/docs/guides/speech-voice-clone 。`file_id` 纯数字时按数字传（官方示例是整数）。
+  - 复刻音色目前只在工具页里用，还没有接到角色音色（`CharacterVoice`）或视频提示词的 `#音色引用`。合成出的 mp3 可以下载后作为角色音色上传。
+- **验证**
+  - 新增 `backend/tests/voice-clone-tool.test.ts`（2 项，模拟 MiniMax）：voice_id 规则；上传校验（格式、时长）→ 复刻请求体 → 试听转存 → 合成请求体与落盘 → 用量记录 → 复刻失败退还用量且保留旧结果 → 删除。`npm run typecheck` 通过。
+  - 结构测试失败名单与 dev 一致（后端 `.mjs` 11 个、前端 24 个）；`npm run generate` 构建成功。
+  - 本地端到端：临时数据目录 + 本地模拟 MiniMax，Playwright 在设置页添加音频配置并测试、工具页上传样本 → 复刻 → 合成、用量页查看「音频」卡片，控制台无报错。
+
 ### 2026-11-02 · 修复设置页切换启用开关后整页变空
 - **分支**：`feat/upstream-sync-4.0.10`（2026-11-02 已合并到 `dev`）
 - **改动**：AI 服务 / 风格预设列表的启用开关（`label.config-switch` 内的 `sr-only` 复选框）加 `position: relative` 定位锚点。

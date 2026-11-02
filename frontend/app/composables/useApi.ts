@@ -229,6 +229,19 @@ export const subtitleToolAPI = {
   del: (id: number) => api.del(`/tools/subtitle-jobs/${id}`),
 }
 
+// 音色复刻工具：上传样本 → 复刻 → 用复刻音色合成语音
+export const voiceCloneToolAPI = {
+  list: () => api.get<any[]>('/tools/voice-clones'),
+  get: (id: number) => api.get(`/tools/voice-clones/${id}`),
+  create: (file: File, onProgress?: (ratio: number) => void) => uploadWithProgress('/tools/voice-clones', file, onProgress),
+  rename: (id: number, name: string) => api.put(`/tools/voice-clones/${id}`, { name }),
+  clone: (id: number, body: { config_id?: number; model?: string; voice_id?: string; preview_text?: string; noise_reduction?: boolean; volume_normalization?: boolean } = {}) =>
+    api.post(`/tools/voice-clones/${id}/clone`, body),
+  synthesize: (id: number, body: { text: string; model?: string; speed?: number }) => api.post(`/tools/voice-clones/${id}/synthesize`, body),
+  removeOutput: (id: number, url: string) => api.del(`/tools/voice-clones/${id}/outputs?url=${encodeURIComponent(url)}`),
+  del: (id: number) => api.del(`/tools/voice-clones/${id}`),
+}
+
 // 视频合成工具：先逐个上传片段，再按顺序提交合成
 export const mergeToolAPI = {
   uploadClip: (file: File, onProgress?: (ratio: number) => void) => uploadWithProgress('/tools/merge-clips', file, onProgress),
@@ -277,7 +290,7 @@ export const subtitleAPI = {
   episodeSrtUrl: (epId: number) => `/api/v1/subtitles/episodes/${epId}/srt`,
 }
 // 用量统计与积分规则（积分一期：只统计不扣）；普通用户只能看自己的，管理员可按成员筛选
-export type UsageType = 'image' | 'video' | 'subtitle' | 'text'
+export type UsageType = 'image' | 'video' | 'subtitle' | 'audio' | 'text'
 export interface UsageFilter { from?: string; to?: string; user_id?: number; service_type?: UsageType; provider?: string; model?: string; status?: string }
 const usageQ = (f: Record<string, unknown>) => {
   const q = new URLSearchParams()

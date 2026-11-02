@@ -8,7 +8,7 @@ import { joinProviderUrl } from './adapters/url.js'
 import { parseCustomOptions, parseUrlMode, withUrlMode } from './adapters/custom.js'
 import type { CustomOptions } from './adapters/types.js'
 
-export type ServiceType = 'text' | 'image' | 'video' | 'subtitle'
+export type ServiceType = 'text' | 'image' | 'video' | 'subtitle' | 'audio'
 
 export interface AIConfig {
   id?: number
@@ -39,6 +39,8 @@ export const officialProviders: Record<ServiceType, readonly string[]> = {
   video: ['volcengine', 'minimax', 'aliyun'],
   // 字幕：阿里云百炼录音文件识别（Filetrans 系列 ASR 模型）
   subtitle: ['aliyun'],
+  // 音频：MiniMax 音色快速复刻 + 语音合成（工具页「音色复刻」使用）
+  audio: ['minimax'],
 }
 
 export function isOfficialProvider(serviceType?: string | null, provider?: string | null): boolean {

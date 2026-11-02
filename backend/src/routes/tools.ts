@@ -4,6 +4,7 @@ import {
   ToolError, createJob, deleteJob, getJob, listJobs, serializeJob, startBurn, startTranscribe, uploadSubtitle,
 } from '../services/subtitle-tool.js'
 import * as mergeTool from '../services/merge-tool.js'
+import * as voiceTool from '../services/voice-clone-tool.js'
 
 const app = new Hono()
 
@@ -88,6 +89,73 @@ app.post('/merge-jobs', (c) => handle(c, async () => mergeTool.serializeJob(awai
 // DELETE /tools/merge-jobs/:id — 软删除
 app.delete('/merge-jobs/:id', (c) => handle(c, async () => {
   await mergeTool.deleteJob(Number(c.req.param('id')), uid(c))
+  return null
+}))
+
+// ===== 音色复刻 =====
+
+// GET /tools/voice-clones — 音色列表（新的在前）
+app.get('/voice-clones', async (c) => success(c, (await voiceTool.listJobs(uid(c))).map(voiceTool.serializeJob)))
+
+// POST /tools/voice-clones — 上传音色样本（multipart file，可带 name），新建任务
+app.post('/voice-clones', (c) => handle(c, async () => {
+  const body = await c.req.parseBody()
+  const file = body['file']
+  if (!file || !(file instanceof File)) throw new ToolError('文件必填')
+  const name = typeof body['name'] === 'string' ? body['name'] : undefined
+  return voiceTool.serializeJob(await voiceTool.createJob(file, { name, userId: uid(c) }))
+}))
+
+app.get('/voice-clones/:id', (c) => handle(c, async () => voiceTool.serializeJob(await voiceTool.getJob(Number(c.req.param('id')), uid(c)))))
+
+// PUT /tools/voice-clones/:id — 改名，body: { name }
+app.put('/voice-clones/:id', (c) => handle(c, async () => {
+  const id = Number(c.req.param('id'))
+  await voiceTool.getJob(id, uid(c))
+  const body = await c.req.json().catch(() => ({}))
+  return voiceTool.serializeJob(await voiceTool.renameJob(id, body?.name))
+}))
+
+// POST /tools/voice-clones/:id/clone — 复刻，body: { config_id?, model?, voice_id?, preview_text?, noise_reduction?, volume_normalization? }
+app.post('/voice-clones/:id/clone', (c) => handle(c, async () => {
+  const id = Number(c.req.param('id'))
+  await voiceTool.getJob(id, uid(c))
+  const body = await c.req.json().catch(() => ({}))
+  await voiceTool.startClone(id, {
+    configId: Number(body?.config_id) || undefined,
+    model: typeof body?.model === 'string' && body.model.trim() ? body.model.trim() : undefined,
+    voiceId: typeof body?.voice_id === 'string' ? body.voice_id : undefined,
+    previewText: typeof body?.preview_text === 'string' ? body.preview_text : undefined,
+    noiseReduction: !!body?.noise_reduction,
+    volumeNormalization: !!body?.volume_normalization,
+  })
+  return voiceTool.serializeJob(await voiceTool.getJob(id))
+}))
+
+// POST /tools/voice-clones/:id/synthesize — 用复刻音色合成，body: { text, model?, speed? }
+app.post('/voice-clones/:id/synthesize', (c) => handle(c, async () => {
+  const id = Number(c.req.param('id'))
+  await voiceTool.getJob(id, uid(c))
+  const body = await c.req.json().catch(() => ({}))
+  await voiceTool.startSynthesize(id, {
+    text: typeof body?.text === 'string' ? body.text : '',
+    model: typeof body?.model === 'string' && body.model.trim() ? body.model.trim() : undefined,
+    speed: body?.speed === undefined ? undefined : Number(body.speed),
+  })
+  return voiceTool.serializeJob(await voiceTool.getJob(id))
+}))
+
+// DELETE /tools/voice-clones/:id/outputs?url= — 从列表移除一条合成结果
+app.delete('/voice-clones/:id/outputs', (c) => handle(c, async () => {
+  const id = Number(c.req.param('id'))
+  await voiceTool.getJob(id, uid(c))
+  return voiceTool.serializeJob(await voiceTool.removeOutput(id, c.req.query('url') || ''))
+}))
+
+// DELETE /tools/voice-clones/:id — 软删除
+app.delete('/voice-clones/:id', (c) => handle(c, async () => {
+  await voiceTool.getJob(Number(c.req.param('id')), uid(c))
+  await voiceTool.deleteJob(Number(c.req.param('id')))
   return null
 }))
 
