@@ -16,6 +16,7 @@ import { now } from '../../utils/response.js'
 import { logTaskProgress, logTaskSuccess } from '../../utils/task-logger.js'
 import { getDramaId, getEpisodeId } from '../context.js'
 import { normalizeName, parseAliases, cleanAliases, findCharacterByName, findAliasConflict } from '../../services/character-identity.js'
+import { fixAgentText } from '../../utils/agent-text.js'
 
 // ─── 关联辅助 ────────────────────────────────────────────────
 async function linkCharToEpisode(episodeId: number, characterId: number) {
@@ -189,7 +190,8 @@ const saveDedupCharacters = createTool({
       styling: z.string().optional(),
     })),
   }),
-  execute: async ({ characters }, context) => {
+  execute: async (rawInput, context) => {
+    const { characters } = fixAgentText(rawInput)
     const ids = requireIds(context)
     if ('error' in ids) return ids
     const { episodeId, dramaId } = ids
@@ -282,7 +284,8 @@ const saveDedupScenes = createTool({
       lighting: z.string().optional(),
     })),
   }),
-  execute: async ({ scenes }, context) => {
+  execute: async (rawInput, context) => {
+    const { scenes } = fixAgentText(rawInput)
     const ids = requireIds(context)
     if ('error' in ids) return ids
     const { episodeId, dramaId } = ids
@@ -391,7 +394,8 @@ const saveDedupProps = createTool({
       description: z.string().optional(),
     })),
   }),
-  execute: async ({ props }, context) => {
+  execute: async (rawInput, context) => {
+    const { props } = fixAgentText(rawInput)
     const ids = requireIds(context)
     if ('error' in ids) return ids
     const { episodeId, dramaId } = ids

@@ -69,6 +69,19 @@
 
 ## 变更条目
 
+### 2026-11-02 · 修复：Agent 输出的字面 `\n` 保存时转成真正的换行，并清理存量数据
+- **分支**：`feat/upstream-sync-4.0.10`（跟上游同步放在同一分支，未合并）
+- **现象**：模型调用工具时常把换行多转义一层，库里存的是反斜杠 + n 两个字符。视频提示词编辑框里直接显示 `\n3-6秒`，还会原样发给视频模型，干扰它划分时间段。提示词文件里没有教模型这么写，纯属模型自己转义出错。
+- **改动**
+  - `backend/src/utils/agent-text.ts`：`fixLiteralNewlines` 把字面的 `\r\n`、`\n`、`\r` 转成换行，前面还有一个反斜杠的（`\\n`）不转；`fixAgentText` 递归处理工具入参里的所有字符串。
+  - 8 个会写库的 Agent 工具（`save_storyboards`、`update_storyboard`、`save_script`、`save_dedup_characters/scenes/props`、`save_*_final_prompt`）在 execute 开头先对入参调用 `fixAgentText`。手动保存分镜的 `PUT /storyboards/:id` 对字符串字段也做同样处理。
+  - 存量数据：`initSqliteSchema` 末尾调用 `cleanLiteralNewlines`，按 `AGENT_TEXT_COLUMNS` 列出的列，用 `LIKE` 找出含字面 `\n` / `\r` 的行逐条转换，有改动时打印「🧹 已把 N 处字面 \n 转为换行」。转过的行不会再被匹配到，所以每次启动最多是一次空扫描。
+- **设计取舍**
+  - 清理不改 `updated_at`：这不是用户编辑，不应该让分镜显示成「刚修改」。
+  - 不处理 `episodes.content`（用户贴进来的原始小说），只处理 Agent 会写的列。以后新增 Agent 写库的列，要同时加进 `AGENT_TEXT_COLUMNS`，新增写库工具也要在 execute 开头调用 `fixAgentText`。
+  - 选择在保存时转换，而不是在展示或发给模型时转换：这样库里只有一种形态，不用到处兜底。
+- **验证**：新增 `backend/tests/agent-literal-newlines.test.ts`（4 个用例：转换规则、嵌套入参、启动清理且不动 `updated_at` 和 `content`、`update_storyboard` 工具和 `PUT` 路由都存成真正的换行）。去掉工具里的修复后，用例 4 会失败。`tsx --test tests/*.ts` 74/74 通过；`.mjs` 结构测试的失败名单不变；typecheck 通过。在一个含字面 `\n` 的旧库上启动后端，日志打印「已把 1 处」，数据已转换，`updated_at` 保持原值。
+
 ### 2026-11-02 · 同步上游 v4.0.10：Windows 中文安装路径修复 + 角色音色上传 / 视频提示词 #音色引用
 - **分支**：`feat/upstream-sync-4.0.10`（从 `dev` 拉出，未合并）
 - **来源**：上游 `chatfire-AI/huobao-drama` master 的 2026-10-26 `772e2d5`、2026-11-01 `70c14ea`（cherry-pick -x，提交信息里有原 hash）。2026-11-01 的 `5ac2a34` 只是把桌面版本号改成 4.0.10，本仓库已是 4.1.1，**未合入**。

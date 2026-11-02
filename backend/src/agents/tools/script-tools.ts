@@ -8,6 +8,7 @@ import { db, schema } from '../../db/index.js'
 import { eq } from 'drizzle-orm'
 import { now } from '../../utils/response.js'
 import { getEpisodeId } from '../context.js'
+import { fixAgentText } from '../../utils/agent-text.js'
 
 const readEpisodeScript = createTool({
   id: 'read_episode_script',
@@ -64,7 +65,8 @@ const saveScript = createTool({
   inputSchema: z.object({
     content: z.string().describe('The formatted screenplay content to save'),
   }),
-  execute: async ({ content }, context) => {
+  execute: async (rawInput, context) => {
+    const { content } = fixAgentText(rawInput)
     const episodeId = getEpisodeId(context?.requestContext)
     if (!episodeId) return { error: 'Missing episodeId in request context' }
     await db.update(schema.episodes)

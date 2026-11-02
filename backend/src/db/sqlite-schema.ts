@@ -5,6 +5,7 @@
  * - 种子语句去掉 FROM DUAL（SQLite 非法），幂等语义（WHERE NOT EXISTS）保留
  */
 import type Database from 'better-sqlite3'
+import { cleanLiteralNewlines } from '../utils/agent-text.js'
 
 export const sqliteSchemaStatements = [
   `CREATE TABLE IF NOT EXISTS dramas (
@@ -605,4 +606,7 @@ export function initSqliteSchema(sqlite: Database.Database) {
     const res = removeSeed.run(value, prompt)
     if (res.changes > 0) console.log(`🗑️ 风格预设「${value}」已下架`)
   }
+  // Agent 曾把换行写成字面的 \n（反斜杠 + n），存量数据转成真正的换行
+  const fixed = cleanLiteralNewlines(sqlite)
+  if (fixed > 0) console.log(`🧹 已把 ${fixed} 处字面 \\n 转为换行`)
 }

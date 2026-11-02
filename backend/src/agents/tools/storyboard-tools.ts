@@ -11,6 +11,7 @@ import { now } from '../../utils/response.js'
 import { logTaskProgress, logTaskSuccess } from '../../utils/task-logger.js'
 import { getDramaId, getEpisodeId } from '../context.js'
 import { resolveVoiceMentions } from '../../services/character-voice-references.js'
+import { fixAgentText } from '../../utils/agent-text.js'
 
 async function validateVideoPromptVoices(prompt: string | undefined, dramaId: number, characterIds: number[] = []) {
   if (!prompt?.includes('#')) return
@@ -271,7 +272,8 @@ const saveStoryboards = createTool({
     replace_existing: z.boolean().optional(),
     storyboards: z.array(storyboardFields),
   }),
-  execute: async ({ storyboards, replace_existing }, context) => {
+  execute: async (rawInput, context) => {
+    const { storyboards, replace_existing } = fixAgentText(rawInput)
     const ids = requireIds(context)
     if ('error' in ids) return ids
     const { episodeId, dramaId } = ids
@@ -387,7 +389,8 @@ const updateStoryboard = createTool({
     prop_ids: z.array(z.number()).optional(),
     duration: z.number().optional(),
   }),
-  execute: async ({ storyboard_id, ...fields }, context) => {
+  execute: async (rawInput, context) => {
+    const { storyboard_id, ...fields } = fixAgentText(rawInput)
     const ids = requireIds(context)
     if ('error' in ids) return ids
     const { episodeId, dramaId } = ids
