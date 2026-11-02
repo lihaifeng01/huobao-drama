@@ -69,6 +69,65 @@
 
 ## 变更条目
 
+### 2026-11-02 · 视频制作页：重绘时在「历史视频」加占位，按钮显示生成中
+- **分支**：`feat/upstream-sync-4.0.10`（未合并）
+- **现象**：已有视频的镜头点「重绘」后，除了一闪而过的 toast，页面没有任何变化：播放器仍放旧视频，按钮仍是「重绘」且可以再点（容易重复提交、重复计费）。
+- **原因**：
+  - `videoTaskState` 只要镜头有视频就返回 `done`，比 `pending` 优先。
+  - `loadGenTasks` 遇到已有视频的镜头直接 `continue`，`processing` 任务没被算进 `pendingVideoIds`。`genVid` 提交后紧接着会 `refresh()`，本地乐观写入的「生成中」随即被清掉。
+- **改动**（`frontend/app/views/drama/episode.vue`）
+  - `loadGenTasks`：`processing` 一律算生成中，「已有视频就忽略」只用在失败分支（保留原意：失败后重试成功的镜头不再报旧错误）。
+  - 历史视频列表最前面加一个占位卡片（虚线框、转圈图标、阶段文案「生成中 / 下载中 / 转存中」、发起时间）。镜头还没有任何历史视频时，也会显示历史区块和这个占位。生成完成后 `video_url` 变化会重新加载历史，占位被新视频取代；失败时占位消失，按原逻辑提示错误。
+  - 右侧「重绘」按钮和任务列表的生成按钮：生成中禁用，文案显示「生成中」（`videoTaskActionLabel` 先判断 `isPendingVideo`，再判断 `done`）。
+  - 抽出 `videoPendingStageLabel`，状态标签和占位共用。
+  - 新增文案 `episode.vid.historyPendingTitle`（四种语言）。
+- **注意事项 / 已知限制**：顶部「N 生成中」计数现在包含重绘中的镜头，但点这个计数做筛选时按 `videoTaskState` 过滤，重绘中的镜头不会出现在筛选结果里（仍算「已完成」）。这个不一致以前在乐观状态那一瞬间就存在，这次没改。
+- **验证**：新增 `frontend/tests/video-regen-placeholder.test.mjs`（3 个用例）；前端结构测试的失败名单不变；`npm run generate` 构建成功。用 Playwright 造了一个「已有视频，最新任务 processing」的镜头：历史视频显示占位「生成中 · 发起时间」，右侧按钮显示「生成中」且禁用，顶部显示「1 生成中」。把任务改成完成后点刷新：占位消失，历史变成 2 条，按钮恢复「重绘」，页面没有报错。
+
+### 2026-11-02 · 视频提示词编辑框：标红会导致生成失败的 #音色引用
+- **分支**：`feat/upstream-sync-4.0.10`（未合并）
+- **起因**：编辑框只把已上传音色的角色的 `#名字` 标绿。没上传音色的角色不在 `#` 候选里，`#小林晚` 就显示成普通文字，用户看不出这是音色引用，要到生成时才收到后端报错「角色「小林晚」尚未上传音色」。
+- **改动**
+  - `frontend/app/utils/prompt-mentions.js` 新增 `findInvalidVoiceMentions`，按后端 `resolveVoiceMentions` 的规则找出两类错误引用：`no_voice`（角色绑定了本分镜但没有音色）和 `unknown`（`#` 后面不是本分镜绑定的角色）。`#01` 这类纯数字镜头编号不算引用，与后端一致。
+  - `highlightMentions` 新增第三个参数 `{ checkVoices }`，开启后给错误引用加 `mention-token-invalid` 样式（红色加波浪下划线，只改颜色和装饰线，不影响与 textarea 逐字对齐）。默认关闭，原有行为和测试都不变。
+  - `MentionTextarea` 新增 `check-voices` 属性：开启后输入框下方逐条列出错误原因（同一个引用只列一条）。剧集工作台的视频提示词编辑框已开启。
+  - 新增文案 `characterVoice.invalidNoVoice` / `invalidUnknown`，四种语言都加了，`@` 写成 `{'@'}`。
+- **注意事项**
+  - 前端的检查规则必须和后端 `character-voice-references.ts` 保持一致，正则 `VOICE_TOKEN` 是从后端复制过来的。以后改其中一边，另一边也要改。
+  - 提示文字放在输入框下方，没有做成悬停提示：高亮层设置了 `aria-hidden` 且不接收鼠标事件，挂 `title` 不会生效。
+- **验证**：`prompt-mentions.test.mjs` 新增 2 个用例（检查规则和高亮，以及四种语言的文案），7/7 通过；前端结构测试的失败名单不变；`npm run generate` 构建成功。用 Playwright 打开剧集工作台的视频制作页，填入用户的那段提示词：两处 `#小林晚` 标红，有音色的 `#林晚` 仍是绿色，下方显示一条中文提示，页面没有报错。
+
+### 2026-11-02 · 修复：Agent 输出的字面 `\n` 保存时转成真正的换行，并清理存量数据
+- **分支**：`feat/upstream-sync-4.0.10`（跟上游同步放在同一分支，未合并）
+- **现象**：模型调用工具时常把换行多转义一层，库里存的是反斜杠 + n 两个字符。视频提示词编辑框里直接显示 `\n3-6秒`，还会原样发给视频模型，干扰它划分时间段。提示词文件里没有教模型这么写，纯属模型自己转义出错。
+- **改动**
+  - `backend/src/utils/agent-text.ts`：`fixLiteralNewlines` 把字面的 `\r\n`、`\n`、`\r` 转成换行，前面还有一个反斜杠的（`\\n`）不转；`fixAgentText` 递归处理工具入参里的所有字符串。
+  - 8 个会写库的 Agent 工具（`save_storyboards`、`update_storyboard`、`save_script`、`save_dedup_characters/scenes/props`、`save_*_final_prompt`）在 execute 开头先对入参调用 `fixAgentText`。手动保存分镜的 `PUT /storyboards/:id` 对字符串字段也做同样处理。
+  - 存量数据：`initSqliteSchema` 末尾调用 `cleanLiteralNewlines`，按 `AGENT_TEXT_COLUMNS` 列出的列，用 `LIKE` 找出含字面 `\n` / `\r` 的行逐条转换，有改动时打印「🧹 已把 N 处字面 \n 转为换行」。转过的行不会再被匹配到，所以每次启动最多是一次空扫描。
+- **设计取舍**
+  - 清理不改 `updated_at`：这不是用户编辑，不应该让分镜显示成「刚修改」。
+  - 不处理 `episodes.content`（用户贴进来的原始小说），只处理 Agent 会写的列。以后新增 Agent 写库的列，要同时加进 `AGENT_TEXT_COLUMNS`，新增写库工具也要在 execute 开头调用 `fixAgentText`。
+  - 选择在保存时转换，而不是在展示或发给模型时转换：这样库里只有一种形态，不用到处兜底。
+- **验证**：新增 `backend/tests/agent-literal-newlines.test.ts`（4 个用例：转换规则、嵌套入参、启动清理且不动 `updated_at` 和 `content`、`update_storyboard` 工具和 `PUT` 路由都存成真正的换行）。去掉工具里的修复后，用例 4 会失败。`tsx --test tests/*.ts` 74/74 通过；`.mjs` 结构测试的失败名单不变；typecheck 通过。在一个含字面 `\n` 的旧库上启动后端，日志打印「已把 1 处」，数据已转换，`updated_at` 保持原值。
+
+### 2026-11-02 · 同步上游 v4.0.10：Windows 中文安装路径修复 + 角色音色上传 / 视频提示词 #音色引用
+- **分支**：`feat/upstream-sync-4.0.10`（从 `dev` 拉出，未合并）
+- **来源**：上游 `chatfire-AI/huobao-drama` master 的 2026-10-26 `772e2d5`、2026-11-01 `70c14ea`（cherry-pick -x，提交信息里有原 hash）。2026-11-01 的 `5ac2a34` 只是把桌面版本号改成 4.0.10，本仓库已是 4.1.1，**未合入**。
+- **改动**
+  - `772e2d5`（无冲突）：Windows 安装路径含中文等非 ASCII 字符时，打包资源改用 8.3 短路径；拿不到短路径就把运行时复制到纯 ASCII 目录兜底（`desktop/src/runtime-resources.ts`）。
+  - `70c14ea`：角色可上传一段音色样本（`POST/DELETE /characters/:id/voice`，`CharacterVoice.vue` 出现在项目素材库卡片、编辑弹窗和剧集工作台的角色卡片 / 详情里）。视频提示词里输入 `#` 可选当前镜头已绑定角色的音色，提交时后端把 `#角色名` 改写成「角色名（音色参考音频N）」并把音频追加进 `reference_audio_urls`（`services/character-voice-references.ts`）。Seedance 2.0 / MiniMax 直接用 data URL 内联本地音频，其它厂商需要 `PUBLIC_BASE_URL`；M4A/AAC 用 FFmpeg 转成 WAV，单段 2–15 秒、合计 ≤15 秒（`services/reference-audio.ts`）。storyboard_breaker / prompt_generator 的 instructions 追加音色引用说明（`agents/voice-reference-instructions.ts`）。
+- **本仓库适配（与上游不同之处）**
+  - 冲突：`agents/index.ts` 同时保留前情摘要 `recap` 与音色说明，顺序 `[base, skills, recap, voice, language]`；`routes/tasks.ts`、`routes/characters.ts` 的 import 两边合并；`episode.vue` 样式两边都留。
+  - 新列 `characters.voice_audio_url / voice_audio_name`：上游在 `initSqliteSchema` 里单独写了一段 PRAGMA 补列，这里改成追加到 `ADDED_COLUMNS`。
+  - 角色合并（本仓库独有的 `mergeCharacters`）：目标没有音色就继承源角色的音色；`rewriteMentions` 同时改写 `@源名` 和 `#源名`，否则合并后旧提示词里的 `#源名` 会报「音色引用无效」。
+  - 权限：`/characters/:id/voice` 被 `PATH_RULES` 的 `/characters/(\d+)` 覆盖，非项目成员会收到 403（已实测）。multipart 请求体不经过 `collectRefs` 的 JSON 解析，不受影响。
+  - 测试：上游把 `frontend/tests/remove-audio-voice-structure.test.mjs` 的文件路径改对了，这个文件第一次真正跑起来。其中「settings 不含 audio」的断言 `/serviceTypes[\s\S]*audio/` 会误伤本仓库的字幕识别配置（`qwen-audio-…` 模型名、`generate_audio` 参数），所以收窄成 `/type: 'audio'/`。settings.vue 里一处注释的「本地音频」改成「本地录音文件」（只改注释，不影响逻辑）。`backend/tests/episode-recap-structure.test.mjs` 的 return 断言同步加上 `voiceInstructions`。
+- **注意事项**
+  - 移除音色只解除角色绑定，不删除音频文件（与软删除原则一致）。
+  - 积分：音色只是视频请求的参考输入，视频仍按秒计费，`usage_records` 不用改。
+  - 桌面版没有公网地址：选 Seedance 2.0 / MiniMax 以外的视频模型时，引用本地音色会报中文错误，要求配置 `PUBLIC_BASE_URL`。
+- **验证**：`npm run typecheck` 通过；`npx tsx --test tests/*.ts` 70/70 通过（含上游新增的 3 个音色测试）；后端 `.mjs` 失败 12→11、前端失败 25→24，没有新增失败（失败名单与 dev 对比过）；`npm run generate` 构建成功。用 login 模式起后端做了实测：管理员上传和移除音色正常，非成员上传 / 移除返回 403，非音频文件返回 400。Playwright 打开项目素材库，角色卡片能显示音色面板、上传成功并能播放，控制台没有报错。
+
 ### 2026-10-31 · 新增：用量统计与积分规则（积分一期：只统计，不扣）
 - **分支**：`feat/usage-points`（从 `dev` 拉出，2026-10-31 已合并到 `dev`）
 - **改动**

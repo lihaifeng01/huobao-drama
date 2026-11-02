@@ -18,7 +18,7 @@ test('recap is injected into rewriter/extractor/storyboard agents only, lazily g
   const mastra = read('src/mastra/index.ts')
 
   assert.match(agents, /const RECAP_AGENT_TYPES = new Set\(\['script_rewriter', 'extractor', 'storyboard_breaker'\]\)/)
-  assert.match(agents, /return \[baseInstructions, skillInstructions, recap, languageDirective\]/)
+  assert.match(agents, /return \[baseInstructions, skillInstructions, recap, voiceInstructions, languageDirective\]/)
   // 内部摘要 Agent 不进 validAgentTypes，但挂到 Mastra 实例
   assert.match(agents, /export const auxiliaryAgents/)
   assert.match(mastra, /agents: \{ \.\.\.agentRegistry, \.\.\.auxiliaryAgents \}/)

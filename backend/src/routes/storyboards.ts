@@ -4,6 +4,7 @@ import { db, getInsertId, schema } from '../db/index.js'
 import { success, created, now, badRequest } from '../utils/response.js'
 import { toSnakeCase } from '../utils/transform.js'
 import { logTaskPayload, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
+import { fixLiteralNewlines } from '../utils/agent-text.js'
 
 const app = new Hono()
 
@@ -144,7 +145,7 @@ app.put('/:id', async (c) => {
 
   const updates: Record<string, any> = { updatedAt: now() }
   for (const [snakeKey, camelKey] of Object.entries(fieldMap)) {
-    if (snakeKey in body) updates[camelKey] = body[snakeKey]
+    if (snakeKey in body) updates[camelKey] = typeof body[snakeKey] === 'string' ? fixLiteralNewlines(body[snakeKey]) : body[snakeKey]
   }
 
   await validateStoryboardBindings(

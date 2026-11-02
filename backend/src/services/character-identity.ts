@@ -106,11 +106,12 @@ export async function projectCharacters(dramaId: number) {
 export function rewriteMentions(prompt: string, fromNames: string[], toName: string, otherNames: string[]): string {
   if (!prompt) return prompt
   const froms = [...new Set(fromNames.filter(Boolean))].sort((a, b) => b.length - a.length)
-  return prompt.replace(/@([^\s@]+)/g, (m, raw: string) => {
+  // @名 = 形象引用，#名 = 音色引用（见 character-voice-references.ts），合并后都指向目标角色
+  return prompt.replace(/([@#])([^\s@#]+)/g, (m, sigil: string, raw: string) => {
     const from = froms.find(n => raw.startsWith(n))
     if (!from) return m
     if (otherNames.some(o => o.length > from.length && raw.startsWith(o))) return m
-    return `@${toName}${raw.slice(from.length)}`
+    return `${sigil}${toName}${raw.slice(from.length)}`
   })
 }
 
@@ -213,6 +214,11 @@ export function mergeCharacters(target: CharacterRow, sources: CharacterRow[], a
       // 4. 补齐空字段 + 别名
       for (const key of ['role', 'description', 'appearance', 'styling', 'personality'] as const) {
         if (!target[key] && !targetUpdates[key] && src[key]) targetUpdates[key] = src[key]
+      }
+      // 音色成对继承（文件路径 + 显示名），目标已有音色则保留目标的
+      if (!target.voiceAudioUrl && !targetUpdates.voiceAudioUrl && src.voiceAudioUrl) {
+        targetUpdates.voiceAudioUrl = src.voiceAudioUrl
+        targetUpdates.voiceAudioName = src.voiceAudioName
       }
       aliases = cleanAliases([...aliases, src.name, ...parseAliases(src.aliases)], target.name)
 

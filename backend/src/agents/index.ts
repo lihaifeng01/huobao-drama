@@ -21,6 +21,7 @@ import { loadAgentPromptFile, loadBasePromptFile } from './prompts.js'
 import { buildLanguageDirective } from './language.js'
 import { getContentLanguageFromRC, getEpisodeId } from './context.js'
 import { buildRecapBlock } from '../services/episode-summary.js'
+import { getVoiceReferenceInstructions } from './voice-reference-instructions.js'
 
 // Default prompts (used when workspace/prompts/<type>.md 文件缺失时兜底)
 export const DEFAULT_PROMPTS: Record<string, { name: string; instructions: string }> = {
@@ -390,7 +391,8 @@ function buildInstructions(type: string) {
     const skillInstructions = await loadAgentSkills(type, lang)
     const recap = await recapFor(type, requestContext)
     const languageDirective = buildLanguageDirective(lang)
-    return [baseInstructions, skillInstructions, recap, languageDirective]
+    const voiceInstructions = getVoiceReferenceInstructions(type, lang)
+    return [baseInstructions, skillInstructions, recap, voiceInstructions, languageDirective]
       .filter(Boolean)
       .join('\n\n')
   }
