@@ -398,8 +398,9 @@
         "image": "Static image generation: characters, scenes and shots",
         "video": "Direct video generation, Seedance 2.0 by default",
         "subtitle": "Transcribes dialogue in shot videos into subtitles. Default: Alibaba Cloud Model Studio qwen-audio-3.0-asr-flash-filetrans",
-        "audio": "Voice cloning and speech synthesis for the Voice Clone tool; defaults to MiniMax speech-2.8-hd"
-      }
+        "audio": "Voice cloning and speech synthesis; defaults to MiniMax speech-2.8-hd"
+      },
+      "audioScope": "Only used by Tools → Voice Clone; it is not part of the episode production pipeline. For character dialogue voices in shot videos, upload a voice sample on the character card."
     },
     "styles": {
       "title": "Style Presets",

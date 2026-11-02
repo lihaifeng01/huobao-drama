@@ -398,8 +398,9 @@
         "image": "角色图、场景图与镜头图等静态图像生成",
         "video": "镜头视频直出生成，默认 Seedance 2.0",
         "subtitle": "识别镜头视频中的对白生成字幕，默认阿里云百炼 qwen-audio-3.0-asr-flash-filetrans",
-        "audio": "音色复刻与语音合成，用于工具页「音色复刻」，默认 MiniMax speech-2.8-hd"
-      }
+        "audio": "音色复刻与语音合成，默认 MiniMax speech-2.8-hd"
+      },
+      "audioScope": "仅供「工具 → 音色复刻」使用，不参与剧集制作流程。镜头视频里的角色对白音色，请在角色卡片上上传音色样本。"
     },
     "styles": {
       "title": "风格预设",

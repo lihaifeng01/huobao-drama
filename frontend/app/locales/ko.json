@@ -398,8 +398,9 @@
         "image": "캐릭터 이미지, 장면 이미지, 샷 이미지 등 정지 이미지 생성",
         "video": "샷 영상 직접 생성(기본 Seedance 2.0)",
         "subtitle": "샷 영상의 대사를 인식해 자막을 만듭니다. 기본값: Alibaba Cloud Model Studio qwen-audio-3.0-asr-flash-filetrans",
-        "audio": "도구의 「보이스 클론」에서 쓰는 음색 복제와 음성 합성, 기본값 MiniMax speech-2.8-hd"
-      }
+        "audio": "음색 복제와 음성 합성, 기본값 MiniMax speech-2.8-hd"
+      },
+      "audioScope": "「도구 → 보이스 클론」 전용이며 에피소드 제작 흐름에는 쓰이지 않습니다. 샷 영상 속 캐릭터 대사 음색은 캐릭터 카드에서 음색 샘플을 업로드하세요."
     },
     "styles": {
       "title": "스타일 프리셋",

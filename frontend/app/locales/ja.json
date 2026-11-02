@@ -398,8 +398,9 @@
         "image": "キャラクター図、シーン図、ショット図などの静止画生成",
         "video": "ショット動画の直接生成（デフォルト Seedance 2.0）",
         "subtitle": "ショット動画のセリフを認識して字幕を作成します。既定は Alibaba Cloud Model Studio の qwen-audio-3.0-asr-flash-filetrans",
-        "audio": "ツールの「ボイスクローン」で使う声のクローンと音声合成。既定は MiniMax speech-2.8-hd"
-      }
+        "audio": "声のクローンと音声合成。既定は MiniMax speech-2.8-hd"
+      },
+      "audioScope": "「ツール → ボイスクローン」専用で、エピソード制作の流れには使われません。ショット動画のキャラクターの台詞の声は、キャラクターカードで音声サンプルをアップロードしてください。"
     },
     "styles": {
       "title": "スタイルプリセット",

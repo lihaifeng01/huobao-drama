@@ -149,6 +149,7 @@
                 <div class="svc-group-heading">
                   <span class="svc-group-title">{{ st.label }}</span>
                   <div class="svc-group-sub">{{ serviceMeta[st.type].desc }}</div>
+                  <div v-if="st.type === 'audio'" class="scope-note"><Info :size="12" />{{ t('settings.ai.audioScope') }}</div>
                 </div>
                 <span v-if="countActive(st.type)" class="tag tag-accent">{{ t('settings.ai.activeCount', { n: countActive(st.type) }) }}</span>
                 <button class="btn btn-ghost btn-sm ml-auto" @click="startAddCfg(st.type)"><Plus :size="13" /> {{ t('common.add') }}</button>
@@ -504,6 +505,7 @@
           <button type="button" class="btn btn-ghost btn-icon btn-sm" @click="cfgDialog = false"><X :size="14" /></button>
         </div>
         <div class="dialog-body config-dialog-body">
+          <div v-if="cfgForm.service_type === 'audio'" class="scope-note"><Info :size="12" />{{ t('settings.ai.audioScope') }}</div>
           <div class="preset-picker">
             <button
               v-for="preset in presetsByType(cfgForm.service_type)"
@@ -774,7 +776,7 @@
 </template>
 
 <script setup>
-import { Plus, Pencil, Trash2, FileText, ChevronDown, Check, Loader2, Bot, Cpu, Sparkles, Palette, ExternalLink, Star, HardDrive, Database, RefreshCw, Download, Languages, SunMoon, X, Coins } from 'lucide-vue-next'
+import { Plus, Pencil, Trash2, FileText, ChevronDown, Check, Loader2, Bot, Cpu, Sparkles, Palette, ExternalLink, Star, HardDrive, Database, RefreshCw, Download, Languages, SunMoon, X, Coins, Info } from 'lucide-vue-next'
 import BaseSelect from '~/components/BaseSelect.vue'
 import { toast } from 'vue-sonner'
 import { toastError } from '~/composables/useToast'
@@ -1786,6 +1788,9 @@ onBeforeUnmount(stopUsagePoll)
 .svc-group-heading { min-width: 0; }
 .svc-group-title { font-size: 14px; font-weight: 700; color: var(--text-0); }
 .svc-group-sub { font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
+/* 音频服务的适用范围提示：只给工具页「音色复刻」用 */
+.scope-note { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; padding: 6px 10px; border-radius: var(--radius); background: var(--warning-bg); color: var(--tag-warning-text); font-size: 12px; line-height: 1.5; }
+.scope-note svg { flex-shrink: 0; margin-top: 3px; }
 .config-row { display: flex; align-items: center; gap: 12px; padding: 12px 20px; }
 .config-row + .config-row { border-top: 1px solid var(--border); }
 .provider-badge {
