@@ -7,6 +7,7 @@ import { safeTaskError } from '../services/video-download.js'
 import { getActiveConfig, getConfigById } from '../services/ai.js'
 import { getDramaStylePrompt } from '../services/style-preset.js'
 import { accessibleDramaIds, taskDramaId } from '../services/project-access.js'
+import { resolveStoryboardVoiceReferences } from '../services/character-voice-references.js'
 import { logTaskError, logTaskPayload, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
 
 const app = new Hono()
@@ -167,6 +168,12 @@ app.post('/', async (c) => {
         : await getActiveConfig('video')
       const validationError = validateVideoRequest(videoBody, effectiveConfig?.provider)
       if (validationError) return badRequest(c, validationError)
+      const voices = await resolveStoryboardVoiceReferences(String(videoBody.prompt || ''), Number(body.storyboard_id) || undefined, videoBody.reference_audio_urls)
+      videoBody.prompt = voices.prompt
+      videoBody.reference_audio_urls = voices.audioUrls
+      if (voices.hasVoiceReferences && videoBody.generate_audio === false) return badRequest(c, '引用角色音色时需要开启视频声音')
+      const referenceError = validateVideoRequest(videoBody, effectiveConfig?.provider)
+      if (referenceError) return badRequest(c, referenceError)
     }
 
     logTaskStart('TaskAPI', 'generate', {

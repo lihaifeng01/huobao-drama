@@ -121,6 +121,8 @@ export const storyboardAPI = {
 }
 
 export const characterAPI = {
+  uploadVoice: (id: number, file: File) => uploadReq<CharacterVoice>(`/characters/${id}/voice`, file),
+  removeVoice: (id: number) => api.del<CharacterVoice>(`/characters/${id}/voice`),
   create: (data: any) => api.post('/characters', data),
   update: (id: number, data: any) => api.put(`/characters/${id}`, data),
   del: (id: number) => api.del(`/characters/${id}`),
@@ -138,6 +140,11 @@ export const lookAPI = {
   update: (id: number, data: { name?: string; description?: string; image_url?: string | null }) => api.put(`/character-looks/${id}`, data),
   del: (id: number) => api.del(`/character-looks/${id}`),
   generateImage: (id: number, configId?: number, model?: string) => api.post(`/character-looks/${id}/generate-image`, { config_id: configId || undefined, model: model || undefined }),
+}
+
+export interface CharacterVoice {
+  voice_audio_url: string | null
+  voice_audio_name: string | null
 }
 
 export const sceneAPI = {

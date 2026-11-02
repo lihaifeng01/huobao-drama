@@ -69,6 +69,24 @@
 
 ## 变更条目
 
+### 2026-11-02 · 同步上游 v4.0.10：Windows 中文安装路径修复 + 角色音色上传 / 视频提示词 #音色引用
+- **分支**：`feat/upstream-sync-4.0.10`（从 `dev` 拉出，未合并）
+- **来源**：上游 `chatfire-AI/huobao-drama` master 的 2026-10-26 `772e2d5`、2026-11-01 `70c14ea`（cherry-pick -x，提交信息里有原 hash）。2026-11-01 的 `5ac2a34` 只是把桌面版本号改成 4.0.10，本仓库已是 4.1.1，**未合入**。
+- **改动**
+  - `772e2d5`（无冲突）：Windows 安装路径含中文等非 ASCII 字符时，打包资源改用 8.3 短路径；拿不到短路径就把运行时复制到纯 ASCII 目录兜底（`desktop/src/runtime-resources.ts`）。
+  - `70c14ea`：角色可上传一段音色样本（`POST/DELETE /characters/:id/voice`，`CharacterVoice.vue` 出现在项目素材库卡片、编辑弹窗和剧集工作台的角色卡片 / 详情里）。视频提示词里输入 `#` 可选当前镜头已绑定角色的音色，提交时后端把 `#角色名` 改写成「角色名（音色参考音频N）」并把音频追加进 `reference_audio_urls`（`services/character-voice-references.ts`）。Seedance 2.0 / MiniMax 直接用 data URL 内联本地音频，其它厂商需要 `PUBLIC_BASE_URL`；M4A/AAC 用 FFmpeg 转成 WAV，单段 2–15 秒、合计 ≤15 秒（`services/reference-audio.ts`）。storyboard_breaker / prompt_generator 的 instructions 追加音色引用说明（`agents/voice-reference-instructions.ts`）。
+- **本仓库适配（与上游不同之处）**
+  - 冲突：`agents/index.ts` 同时保留前情摘要 `recap` 与音色说明，顺序 `[base, skills, recap, voice, language]`；`routes/tasks.ts`、`routes/characters.ts` 的 import 两边合并；`episode.vue` 样式两边都留。
+  - 新列 `characters.voice_audio_url / voice_audio_name`：上游在 `initSqliteSchema` 里单独写了一段 PRAGMA 补列，这里改成追加到 `ADDED_COLUMNS`。
+  - 角色合并（本仓库独有的 `mergeCharacters`）：目标没有音色就继承源角色的音色；`rewriteMentions` 同时改写 `@源名` 和 `#源名`，否则合并后旧提示词里的 `#源名` 会报「音色引用无效」。
+  - 权限：`/characters/:id/voice` 被 `PATH_RULES` 的 `/characters/(\d+)` 覆盖，非项目成员会收到 403（已实测）。multipart 请求体不经过 `collectRefs` 的 JSON 解析，不受影响。
+  - 测试：上游把 `frontend/tests/remove-audio-voice-structure.test.mjs` 的文件路径改对了，这个文件第一次真正跑起来。其中「settings 不含 audio」的断言 `/serviceTypes[\s\S]*audio/` 会误伤本仓库的字幕识别配置（`qwen-audio-…` 模型名、`generate_audio` 参数），所以收窄成 `/type: 'audio'/`。settings.vue 里一处注释的「本地音频」改成「本地录音文件」（只改注释，不影响逻辑）。`backend/tests/episode-recap-structure.test.mjs` 的 return 断言同步加上 `voiceInstructions`。
+- **注意事项**
+  - 移除音色只解除角色绑定，不删除音频文件（与软删除原则一致）。
+  - 积分：音色只是视频请求的参考输入，视频仍按秒计费，`usage_records` 不用改。
+  - 桌面版没有公网地址：选 Seedance 2.0 / MiniMax 以外的视频模型时，引用本地音色会报中文错误，要求配置 `PUBLIC_BASE_URL`。
+- **验证**：`npm run typecheck` 通过；`npx tsx --test tests/*.ts` 70/70 通过（含上游新增的 3 个音色测试）；后端 `.mjs` 失败 12→11、前端失败 25→24，没有新增失败（失败名单与 dev 对比过）；`npm run generate` 构建成功。用 login 模式起后端做了实测：管理员上传和移除音色正常，非成员上传 / 移除返回 403，非音频文件返回 400。Playwright 打开项目素材库，角色卡片能显示音色面板、上传成功并能播放，控制台没有报错。
+
 ### 2026-10-31 · 新增：用量统计与积分规则（积分一期：只统计，不扣）
 - **分支**：`feat/usage-points`（从 `dev` 拉出，2026-10-31 已合并到 `dev`）
 - **改动**

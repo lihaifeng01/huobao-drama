@@ -56,6 +56,8 @@ export const sqliteSchemaStatements = [
     final_prompt TEXT,
     personality TEXT,
     image_url TEXT,
+    voice_audio_url TEXT,
+    voice_audio_name TEXT,
     reference_images TEXT,
     seed_value TEXT,
     sort_order INTEGER,
@@ -536,6 +538,9 @@ const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: 'library_folders', column: 'parent_id', ddl: 'ALTER TABLE library_folders ADD COLUMN parent_id INTEGER' },
   // 角色别名（JSON 字符串数组），提取去重与 @ 引用时视为同一角色
   { table: 'characters', column: 'aliases', ddl: 'ALTER TABLE characters ADD COLUMN aliases TEXT' },
+  // 角色音色（用户上传的参考音频，视频提示词里用 #角色名 引用；上游 4.0.10 同步）
+  { table: 'characters', column: 'voice_audio_url', ddl: 'ALTER TABLE characters ADD COLUMN voice_audio_url TEXT' },
+  { table: 'characters', column: 'voice_audio_name', ddl: 'ALTER TABLE characters ADD COLUMN voice_audio_name TEXT' },
   // 本集使用的造型（空 = 默认造型）
   { table: 'episode_characters', column: 'look_id', ddl: 'ALTER TABLE episode_characters ADD COLUMN look_id INTEGER' },
   // 单个镜头覆盖造型（空 = 跟随本集，0 = 强制默认造型）

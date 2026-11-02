@@ -925,7 +925,7 @@ const providerPresets = {
     volcengine: { label: 'Seedance 2.0 官方', baseUrl: 'https://ark.cn-beijing.volces.com', models: ['doubao-seedance-2-0-mini-260615', 'doubao-seedance-2-0-fast-260128', 'doubao-seedance-2-0-260128'] },
     minimax: { label: 'MiniMax H3 官方', baseUrl: 'https://api.minimaxi.com', models: ['MiniMax-H3'] },
   },
-  // 录音文件识别：本地音频经百炼临时上传（oss://），需用 dashscope 公共域名；新加坡地域改 dashscope-intl
+  // 录音文件识别：本地录音文件经百炼临时上传（oss://），需用 dashscope 公共域名；新加坡地域改 dashscope-intl
   subtitle: {
     aliyun: { label: '阿里云百炼 录音文件识别', baseUrl: 'https://dashscope.aliyuncs.com', models: ['qwen-audio-3.0-asr-flash-filetrans', 'qwen3-asr-flash-filetrans'] },
   },
