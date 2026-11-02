@@ -17,7 +17,8 @@ test('library tables are created at startup and mapped in drizzle', () => {
 
 test('library route aggregates project folders, user folders and uploaded files', () => {
   const route = read('src/routes/library.ts')
-  const index = read('src/index.ts')
+  // 路由表在 api.ts（index.ts 只挂载 /api/v1）
+  const index = read('src/api.ts')
 
   assert.match(index, /api\.route\('\/library', library\)/)
   // 仅角色 / 场景两类
@@ -46,7 +47,7 @@ test('library folders nest via parent_id with an idempotent column migration', (
   assert.match(ddl, /ALTER TABLE library_folders ADD COLUMN parent_id INTEGER/)
   assert.match(ddl, /PRAGMA table_info/)
   // 同父目录不重名、禁止移入自身子树、删除整棵子树
-  assert.match(route, /async function folderNameTaken\(category: Category, parentId: number \| null/)
+  assert.match(route, /async function folderNameTaken\(category: Category, userId: number \| undefined, parentId: number \| null/)
   assert.match(route, /subtreeIds\(folders, folder\.id\)\.has\(parent\.id\)/)
   assert.match(route, /inArray\(schema\.libraryFolders\.id, ids\)/)
   // 面包屑路径 + 扁平树

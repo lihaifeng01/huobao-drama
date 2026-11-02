@@ -949,7 +949,7 @@
             </div>
             <div v-if="!subtitleConfigs.length" class="sub-config-hint">
               {{ t('episode.sub.noConfig') }}
-              <NuxtLink to="/settings" class="btn btn-sm">{{ t('episode.sub.gotoSettings') }}</NuxtLink>
+              <NuxtLink v-if="isAdmin" to="/settings" class="btn btn-sm">{{ t('episode.sub.gotoSettings') }}</NuxtLink>
             </div>
             <div v-if="!subVideoSbs.length" class="step-empty" style="flex:1">
               <div class="empty-visual"><Captions :size="32" :stroke-width="1.3" /></div>
@@ -1706,12 +1706,14 @@ import {
   Plus, X, ListTodo, CircleHelp, Images, BookOpen, Captions,
 } from 'lucide-vue-next'
 import { api, dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, propAPI, taskAPI, mergeAPI, aiConfigAPI, uploadAPI, subtitleAPI } from '~/composables/useApi'
+import { useAuth } from '~/composables/useAuth'
 import { startTour, autoTour } from '~/composables/useTour'
 import { resolveCharacterLook } from '~/composables/useCharacterIdentity'
 import { useAgent } from '~/composables/useAgent'
 import { resolveTextModelSelection } from '~/utils/text-model-selection'
 import { toastError, mapError, MODERATION_RE } from '~/composables/useToast'
 import LocaleSwitcher from '~/components/LocaleSwitcher.vue'
+const { isAdmin } = useAuth()
 
 definePageMeta({ layout: 'studio' })
 

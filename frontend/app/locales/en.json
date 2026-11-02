@@ -37,11 +37,14 @@
       "projects": "Projects",
       "library": "Assets",
       "tools": "Tools",
-      "settings": "Settings"
+      "settings": "Settings",
+      "users": "Accounts",
+      "usage": "Usage"
     },
     "banner": {
       "missing": "{types} model not configured yet. AI features are unavailable.",
-      "goSettings": "Go to Settings"
+      "goSettings": "Go to Settings",
+      "askAdmin": "Ask an administrator to configure it"
     },
     "theme": {
       "label": "Toggle theme",
@@ -314,7 +317,8 @@
       "styles": "Style Presets",
       "storage": "Storage",
       "about": "About & Updates",
-      "agents": "Agent Config"
+      "agents": "Agent Config",
+      "points": "Points"
     },
     "common": {
       "disabled": "Disabled",
@@ -1270,6 +1274,197 @@
         "done": "Done",
         "failed": "Failed"
       }
+    }
+  },
+  "auth": {
+    "username": "Username",
+    "usernamePlaceholder": "Enter your username",
+    "usernameRule": "3–32 characters: letters, digits, Chinese, or _ . -",
+    "displayName": "Display name",
+    "displayNamePlaceholder": "The name your team sees",
+    "optional": "(optional)",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "passwordRule": "At least 6 characters",
+    "confirmPassword": "Confirm password",
+    "passwordMismatch": "The passwords do not match",
+    "failed": "Something went wrong. Please try again.",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "logout": "Sign out",
+    "login": {
+      "title": "Sign in",
+      "desc": "Sign in to open the projects you belong to.",
+      "submit": "Sign in"
+    },
+    "register": {
+      "title": "Create account",
+      "desc": "New accounts are regular users. You can create projects or be invited to one.",
+      "submit": "Sign up"
+    },
+    "setup": {
+      "title": "Create the super admin",
+      "desc": "First run: create the super admin account. The super admin can manage every project and account, and can promote other accounts to admin.",
+      "submit": "Create and continue"
+    },
+    "role": {
+      "super_admin": "Super admin",
+      "admin": "Admin",
+      "user": "User"
+    },
+    "changePassword": {
+      "title": "Change password",
+      "old": "Current password",
+      "new": "New password",
+      "hint": "Sessions on your other devices will be signed out.",
+      "done": "Password changed"
+    }
+  },
+  "members": {
+    "title": "Project members",
+    "searchPlaceholder": "Search by username or display name",
+    "noMatch": "No matching accounts",
+    "noUsers": "No other accounts yet",
+    "selectedCount": "{n} selected",
+    "createHint": "Only members can see this project and its assets. You and the super admin can change this later.",
+    "teamTitle": "Members: {names}",
+    "count": "{n} people",
+    "creator": "Owner",
+    "unknownCreator": "Unknown",
+    "manageDesc": "Only members can see this project and its assets.",
+    "readonlyDesc": "Only the owner and the super admin can change project members.",
+    "none": "No other members",
+    "saved": "Project members updated",
+    "transfer": {
+      "title": "Transfer project",
+      "placeholder": "Choose the new owner",
+      "action": "Transfer",
+      "hint": "The new owner becomes the project owner. You stay on as a member but can no longer change members or transfer the project.",
+      "confirmTitle": "Transfer project",
+      "confirmMessage": "Transfer \"{title}\" to {name}? Afterwards you can no longer change project members or delete the project.",
+      "done": "Transferred to {name}"
+    }
+  },
+  "users": {
+    "title": "Accounts",
+    "sub": "Set account roles, or disable and delete accounts.",
+    "create": "New account",
+    "col": {
+      "user": "Account",
+      "role": "Role",
+      "status": "Status",
+      "lastLogin": "Last sign-in",
+      "actions": "Actions"
+    },
+    "me": "(me)",
+    "status": {
+      "active": "Active",
+      "disabled": "Disabled"
+    },
+    "disable": "Disable",
+    "enable": "Enable",
+    "resetPassword": "Reset password",
+    "roleNote": "Admins can use Settings (AI services, prompts, skills, and so on); regular users cannot. A project is visible only to its owner, its members, and the super admin.",
+    "resetTitle": "Reset password for \"{name}\"",
+    "resetHint": "The account must sign in again with the new password.",
+    "deleteTitle": "Delete account",
+    "deleteMessage": "Delete the account \"{name}\"? It will no longer be able to sign in. Projects it created are kept, and the super admin can transfer them to someone else.",
+    "neverLoggedIn": "Never",
+    "roleChanged": "Role updated",
+    "created": "Account created",
+    "passwordReset": "Password reset",
+    "deleted": "Account deleted"
+  },
+  "points": {
+    "title": "Point rules",
+    "desc": "Set the default points for each service type, or override them for individual models. Usage records are converted to points with these rules. For now points are only tracked, not deducted.",
+    "default": "Default",
+    "defaultHint": "Leave a model empty to use the default",
+    "followDefault": "Default {n}",
+    "unit": {
+      "image": "pts / image",
+      "video": "pts / second",
+      "subtitle": "pts / minute"
+    },
+    "notInConfig": "No longer configured",
+    "noModels": "No AI service of this type is configured yet",
+    "textNote": "Text models only track token usage and cost no points",
+    "unsaved": "Unsaved changes",
+    "discard": "Discard",
+    "saved": "Point rules saved",
+    "invalid": "Points for \"{name}\" must be a whole number of 0 or more"
+  },
+  "usage": {
+    "title": "Usage",
+    "subAdmin": "AI service usage and points for your team. Click a category to see usage per model.",
+    "subSelf": "Your AI service usage and points. Click a category to see usage per model.",
+    "range": {
+      "month": "This month",
+      "week": "Last 7 days",
+      "days30": "Last 30 days",
+      "all": "All time"
+    },
+    "allMembers": "All members",
+    "type": {
+      "image": "Images",
+      "video": "Videos",
+      "subtitle": "Subtitles",
+      "text": "Text"
+    },
+    "calls": "{n} calls",
+    "pointsUnit": "points",
+    "amount": "Usage {q}",
+    "textOnly": "Tracked only, no points",
+    "status": {
+      "pending": "In progress",
+      "succeeded": "Succeeded",
+      "refunded": "Failed · refunded",
+      "held": "Awaiting recovery",
+      "failed": "Failed"
+    },
+    "byModel": "{type} · by model",
+    "clearModel": "Show all models",
+    "col": {
+      "model": "Model",
+      "count": "Calls",
+      "succeeded": "Succeeded",
+      "amount": "Usage",
+      "points": "Points",
+      "time": "Time",
+      "user": "Member",
+      "project": "Project",
+      "source": "Used for",
+      "status": "Status"
+    },
+    "unknownModel": "Unknown model",
+    "history": "History",
+    "total": "{n} records",
+    "empty": "No records yet",
+    "usageMissingHint": "The service did not report token usage",
+    "prev": "Previous page",
+    "next": "Next page",
+    "note": "Points follow Settings → Point rules. Succeeded, in-progress, and awaiting-recovery calls count; failed calls that were refunded do not. Awaiting recovery means a video task the provider may already have billed and whose result can still be recovered.",
+    "qty": {
+      "image": "{n} images",
+      "video": "{n} s",
+      "subtitle": "{n} min"
+    },
+    "source": {
+      "shot_image": "Shot image",
+      "shot_video": "Shot video",
+      "character_image": "Character image",
+      "look_image": "Look image",
+      "scene_image": "Scene image",
+      "prop_image": "Prop image",
+      "image": "Image",
+      "video": "Video",
+      "shot_subtitle": "Shot subtitles",
+      "tool_subtitle": "Subtitle tool",
+      "agent": "AI chat",
+      "extract": "Asset extraction",
+      "episode_summary": "Episode recap",
+      "video_prompt": "Video prompt",
+      "image_prompt": "Image prompt"
     }
   }
 }

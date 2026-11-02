@@ -15,6 +15,9 @@ import { withNoSubtitleDirective } from './video-prompt-guard.js'
 import { getImageAdapter, getVideoAdapter } from './adapters/registry'
 import type { AIConfig, ProviderRequest } from './adapters/types'
 import { logTaskError, logTaskPayload, logTaskProgress, logTaskStart, logTaskSuccess, logTaskWarn, redactUrl } from '../utils/task-logger.js'
+import { currentActorId } from './actor.js'
+import { completeUsage, failUsage, isRefundableTaskFailure, startUsage } from './usage.js'
+import { taskDramaId } from './project-access.js'
 
 type TaskType = 'image' | 'video'
 
@@ -194,6 +197,7 @@ async function createTask(
   const res = await db.insert(schema.sysTask).values({
     type,
     ...fields,
+    userId: currentActorId(),
     provider: config.provider,
     configId: config.id,
     configBaseUrl: config.baseUrl,
@@ -205,8 +209,36 @@ async function createTask(
   })
 
   const id = getInsertId(res)
+  await trackTaskUsage(id, type, config, fields, params)
   runBackground(id, () => processTask(id, config))
   return id
+}
+
+/** 用量记录：图片按 1 张、视频按请求时长（缺省 5 秒）预估，完成后按实际时长重算。记录失败不影响生成 */
+async function trackTaskUsage(id: number, type: TaskType, config: AIConfig, fields: { storyboardId?: number; characterId?: number; sceneId?: number; propId?: number; dramaId?: number; model?: string | null }, params: Record<string, unknown>) {
+  try {
+    const [row] = await db.select().from(schema.sysTask).where(eq(schema.sysTask.id, id))
+    const source = fields.storyboardId ? `shot_${type}`
+      : params.lookId ? 'look_image'
+        : fields.characterId ? 'character_image'
+          : fields.sceneId ? 'scene_image'
+            : fields.propId ? 'prop_image'
+              : type
+    await startUsage({
+      serviceType: type,
+      provider: config.provider,
+      model: fields.model || config.model,
+      configId: config.id,
+      source,
+      refType: 'sys_task',
+      refId: id,
+      quantity: type === 'video' ? Number(params.duration) || 5 : 1,
+      dramaId: row ? await taskDramaId(row) : fields.dramaId ?? null,
+      userId: row?.userId ?? null,
+    })
+  } catch (err: any) {
+    logTaskWarn('Usage', 'record-start', { taskId: id, error: err.message })
+  }
 }
 
 /**
@@ -423,6 +455,9 @@ async function failTask(id: number, message: string, code?: string) {
   await db.update(schema.sysTask)
     .set({ status: 'failed', errorMsg: safeTaskError(message), ...(code ? { errorCode: code } : {}), updatedAt: now() })
     .where(eq(schema.sysTask.id, id))
+  // 用量：上游没接单或明确失败 → 退还；可能已收费且可恢复 → 待恢复（见 services/usage.ts）
+  const [task] = await db.select().from(schema.sysTask).where(eq(schema.sysTask.id, id))
+  if (task) await failUsage('sys_task', id, { refund: isRefundableTaskFailure(task), errorCode: task.errorCode }).catch(() => {})
 }
 
 type SysTaskRecord = typeof schema.sysTask.$inferSelect
@@ -519,6 +554,7 @@ async function handleImageComplete(record: SysTaskRecord, imageUrl: string) {
     .where(eq(schema.sysTask.id, record.id))
 
   logTaskSuccess('ImageTask', 'downloaded', { id: record.id, provider: record.provider, localPath })
+  await completeUsage('sys_task', record.id).catch(() => {})
 
   await writeBackImageAssets(record, localPath)
 }
@@ -532,6 +568,7 @@ async function handleImageCompleteBase64(record: SysTaskRecord, base64Data: stri
     .where(eq(schema.sysTask.id, record.id))
 
   logTaskSuccess('ImageTask', 'saved-base64', { id: record.id, provider: record.provider, mimeType, localPath })
+  await completeUsage('sys_task', record.id).catch(() => {})
 
   await writeBackImageAssets(record, localPath)
 }
@@ -581,6 +618,8 @@ async function handleVideoComplete(record: SysTaskRecord, videoUrl: string, dura
       tx.update(schema.sysTask).set({ localPath, status: 'completed', stage: 'completed', errorCode: null,
         errorMsg: null, completedAt: now(), updatedAt: now() }).where(eq(schema.sysTask.id, record.id)).run()
     })
+    // 用量按上游返回的实际时长重算，没有就沿用请求时长
+    await completeUsage('sys_task', record.id, { quantity: duration ?? null }).catch(() => {})
   } catch (error) {
     await failTask(record.id, safeTaskError(error), 'delivery_failed')
   }

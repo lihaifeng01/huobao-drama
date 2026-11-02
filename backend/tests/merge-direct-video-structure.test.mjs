@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 
 const mergeService = readFileSync(new URL('../src/services/ffmpeg-merge.ts', import.meta.url), 'utf8')
 const episodesRoute = readFileSync(new URL('../src/routes/episodes.ts', import.meta.url), 'utf8')
-const backendIndex = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8')
+const backendIndex = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8') + readFileSync(new URL('../src/api.ts', import.meta.url), 'utf8')
 const useApi = readFileSync(new URL('../../frontend/app/composables/useApi.ts', import.meta.url), 'utf8')
 const composeRoutePath = new URL('../src/routes/compose.ts', import.meta.url)
 const composeServicePath = new URL('../src/services/ffmpeg-compose.ts', import.meta.url)

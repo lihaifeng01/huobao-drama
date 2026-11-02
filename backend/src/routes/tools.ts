@@ -18,6 +18,11 @@ async function handle(c: any, fn: () => Promise<any>) {
   }
 }
 
+/** 工具任务按用户隔离：只能看到、操作自己的任务（未挂鉴权中间件的测试里不过滤） */
+function uid(c: any): number | undefined {
+  return c.get('user')?.id
+}
+
 async function fileField(c: any): Promise<File> {
   const body = await c.req.parseBody()
   const file = body['file']
@@ -26,16 +31,17 @@ async function fileField(c: any): Promise<File> {
 }
 
 // GET /tools/subtitle-jobs — 字幕工具任务列表（新的在前）
-app.get('/subtitle-jobs', async (c) => success(c, (await listJobs()).map(serializeJob)))
+app.get('/subtitle-jobs', async (c) => success(c, (await listJobs(uid(c))).map(serializeJob)))
 
 // POST /tools/subtitle-jobs — 上传视频（multipart file），新建任务
-app.post('/subtitle-jobs', (c) => handle(c, async () => serializeJob(await createJob(await fileField(c)))))
+app.post('/subtitle-jobs', (c) => handle(c, async () => serializeJob(await createJob(await fileField(c), uid(c)))))
 
-app.get('/subtitle-jobs/:id', (c) => handle(c, async () => serializeJob(await getJob(Number(c.req.param('id'))))))
+app.get('/subtitle-jobs/:id', (c) => handle(c, async () => serializeJob(await getJob(Number(c.req.param('id')), uid(c)))))
 
 // POST /tools/subtitle-jobs/:id/transcribe — 自动识别字幕，body 可带 config_id / model
 app.post('/subtitle-jobs/:id/transcribe', (c) => handle(c, async () => {
   const id = Number(c.req.param('id'))
+  await getJob(id, uid(c))
   const body = await c.req.json().catch(() => ({}))
   await startTranscribe(id, {
     configId: Number(body?.config_id) || undefined,
@@ -45,19 +51,23 @@ app.post('/subtitle-jobs/:id/transcribe', (c) => handle(c, async () => {
 }))
 
 // POST /tools/subtitle-jobs/:id/subtitle — 手动上传字幕文件（multipart file，.srt / .vtt）
-app.post('/subtitle-jobs/:id/subtitle', (c) => handle(c, async () =>
-  serializeJob(await uploadSubtitle(Number(c.req.param('id')), await fileField(c)))))
+app.post('/subtitle-jobs/:id/subtitle', (c) => handle(c, async () => {
+  const id = Number(c.req.param('id'))
+  await getJob(id, uid(c))
+  return serializeJob(await uploadSubtitle(id, await fileField(c)))
+}))
 
 // POST /tools/subtitle-jobs/:id/burn — 合成字幕，body: { font_size, bottom_percent }
 app.post('/subtitle-jobs/:id/burn', (c) => handle(c, async () => {
   const id = Number(c.req.param('id'))
+  await getJob(id, uid(c))
   await startBurn(id, await c.req.json().catch(() => ({})))
   return serializeJob(await getJob(id))
 }))
 
 // DELETE /tools/subtitle-jobs/:id — 软删除
 app.delete('/subtitle-jobs/:id', (c) => handle(c, async () => {
-  await getJob(Number(c.req.param('id')))
+  await getJob(Number(c.req.param('id')), uid(c))
   await deleteJob(Number(c.req.param('id')))
   return null
 }))
@@ -68,16 +78,16 @@ app.delete('/subtitle-jobs/:id', (c) => handle(c, async () => {
 app.post('/merge-clips', (c) => handle(c, async () => mergeTool.uploadClip(await fileField(c))))
 
 // GET /tools/merge-jobs — 合成记录（新的在前）
-app.get('/merge-jobs', async (c) => success(c, (await mergeTool.listJobs()).map(mergeTool.serializeJob)))
+app.get('/merge-jobs', async (c) => success(c, (await mergeTool.listJobs(uid(c))).map(mergeTool.serializeJob)))
 
-app.get('/merge-jobs/:id', (c) => handle(c, async () => mergeTool.serializeJob(await mergeTool.getJob(Number(c.req.param('id'))))))
+app.get('/merge-jobs/:id', (c) => handle(c, async () => mergeTool.serializeJob(await mergeTool.getJob(Number(c.req.param('id')), uid(c)))))
 
 // POST /tools/merge-jobs — 按顺序合成，body: { clips: [{ url, name }], width?, height?, name? }
-app.post('/merge-jobs', (c) => handle(c, async () => mergeTool.serializeJob(await mergeTool.startMerge(await c.req.json().catch(() => ({}))))))
+app.post('/merge-jobs', (c) => handle(c, async () => mergeTool.serializeJob(await mergeTool.startMerge(await c.req.json().catch(() => ({})), uid(c)))))
 
 // DELETE /tools/merge-jobs/:id — 软删除
 app.delete('/merge-jobs/:id', (c) => handle(c, async () => {
-  await mergeTool.deleteJob(Number(c.req.param('id')))
+  await mergeTool.deleteJob(Number(c.req.param('id')), uid(c))
   return null
 }))
 

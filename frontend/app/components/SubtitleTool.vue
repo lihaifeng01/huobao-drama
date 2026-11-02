@@ -96,7 +96,7 @@
             />
             <span v-else class="dim">
               {{ t('episode.sub.noConfig') }}
-              <NuxtLink to="/settings">{{ t('episode.sub.gotoSettings') }}</NuxtLink>
+              <NuxtLink v-if="isAdmin" to="/settings">{{ t('episode.sub.gotoSettings') }}</NuxtLink>
             </span>
           </div>
           <div class="btn-row">
@@ -217,8 +217,10 @@ import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import { Captions, Upload, Loader2, Film, Trash2, Sparkles, FileUp, Download, Clapperboard } from 'lucide-vue-next'
 import { aiConfigAPI, subtitleToolAPI } from '~/composables/useApi'
+import { useAuth } from '~/composables/useAuth'
 import { posterOf } from '~/composables/useMedia'
 import { toastError } from '~/composables/useToast'
+const { isAdmin } = useAuth()
 
 const { t } = useI18n()
 

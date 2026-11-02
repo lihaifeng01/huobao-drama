@@ -6,6 +6,7 @@
  */
 import { Agent } from '@mastra/core/agent'
 import type { RequestContext } from '@mastra/core/request-context'
+import { rememberUsageModel } from './usage.js'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import { getTextConfig, getTextProviderBaseUrl, getConfigById } from '../services/ai.js'
@@ -293,11 +294,13 @@ function createMaxTokensFetch(providerName: string, inner?: typeof fetch): typeo
   }
 }
 
-async function getModel(fileModel: string | undefined, modelOverride?: string, textConfigId?: number) {
+async function getModel(fileModel: string | undefined, modelOverride?: string, textConfigId?: number, requestContext?: RequestContext) {
   // 请求可指定文本配置（含其 provider/baseUrl/apiKey），否则回退到当前启用配置
   const textConfig = (textConfigId ? await getConfigById(textConfigId) : null) || await getTextConfig()
   const modelName = modelOverride || fileModel || textConfig.model
   const providerName = textConfig.provider.toLowerCase()
+  // 用量统计：记下实际用的配置与模型（generateWithUsage 读取）
+  rememberUsageModel(requestContext, { configId: textConfig.id ?? null, provider: textConfig.provider, model: modelName })
   const resolvedBaseURL = getTextProviderBaseUrl(textConfig)
   const temperature = textConfig.temperature ?? null
   const endpointKey = `${providerName}|${resolvedBaseURL}|${modelName}|t=${temperature ?? 'default'}`
@@ -417,6 +420,7 @@ export const auxiliaryAgents: Record<string, Agent> = {
       undefined,
       requestContext?.get('modelOverride' as never) as string | undefined,
       requestContext?.get('textConfigId' as never) as number | undefined,
+      requestContext,
     ),
   }),
 }
@@ -428,7 +432,7 @@ function buildModel(type: string) {
     const promptFile = await loadBasePromptFile(type)
     const modelOverride = requestContext?.get('modelOverride' as never) as string | undefined
     const textConfigId = requestContext?.get('textConfigId' as never) as number | undefined
-    return getModel(promptFile?.model || undefined, modelOverride, textConfigId)
+    return getModel(promptFile?.model || undefined, modelOverride, textConfigId, requestContext)
   }
 }
 

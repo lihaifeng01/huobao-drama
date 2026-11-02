@@ -169,6 +169,8 @@ data/       — 生成资源文件与 SQLite 数据库
 | `FRONTEND_DIST` | `frontend/dist` | 前端静态产物目录 |
 | `FFMPEG_BIN` / `FFPROBE_BIN` | npm 内置二进制 | 自定义 ffmpeg/ffprobe 可执行文件路径 |
 | `PUBLIC_BASE_URL` | — | Seedance 引用本地参考资源时所需的公网地址（服务器部署用） |
+| `HUOBAO_AUTH_MODE` | 桌面版 `none`，其余 `login` | `login`：需要登录（多账号、项目成员）；`none`：免登，以本机超级管理员身份使用 |
+| `HUOBAO_ADMIN_USERNAME` / `HUOBAO_ADMIN_PASSWORD` | — | 首次启动且没有任何账号时自动创建超级管理员；不设置则首次打开页面时创建 |
 
 > **说明**：AI 服务的 API Key、Base URL 和模型参数全部在 Web 界面的「设置」页配置并入库，不在配置文件/环境变量中维护。
 

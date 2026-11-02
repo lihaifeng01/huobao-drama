@@ -51,16 +51,17 @@ export function serializeJob(job: Job) {
   }
 }
 
-export async function getJob(id: number): Promise<Job> {
+/** userId 给出时只认该用户的任务（按用户隔离；别人的任务一律视为不存在） */
+export async function getJob(id: number, userId?: number): Promise<Job> {
   const [job] = await db.select().from(schema.subtitleToolJobs)
     .where(and(eq(schema.subtitleToolJobs.id, id), isNull(schema.subtitleToolJobs.deletedAt)))
-  if (!job) throw new ToolError('任务不存在')
+  if (!job || (userId !== undefined && job.userId !== userId)) throw new ToolError('任务不存在')
   return job
 }
 
-export async function listJobs(): Promise<Job[]> {
+export async function listJobs(userId?: number): Promise<Job[]> {
   return db.select().from(schema.subtitleToolJobs)
-    .where(isNull(schema.subtitleToolJobs.deletedAt))
+    .where(and(isNull(schema.subtitleToolJobs.deletedAt), userId !== undefined ? eq(schema.subtitleToolJobs.userId, userId) : undefined))
     .orderBy(desc(schema.subtitleToolJobs.id))
     .limit(100)
 }
@@ -70,10 +71,11 @@ async function update(id: number, values: Partial<Job>) {
 }
 
 /** 上传视频建任务 */
-export async function createJob(file: File): Promise<Job> {
+export async function createJob(file: File, userId?: number): Promise<Job> {
   const video = await saveToolVideo(file, SUB_DIR)
   const ts = now()
   const res = await db.insert(schema.subtitleToolJobs).values({
+    userId: userId ?? null,
     name: path.basename(file.name).slice(0, 200) || path.basename(video.url),
     videoUrl: video.url,
     width: video.width,
@@ -110,7 +112,9 @@ export async function startTranscribe(id: number, sel: SubtitleSelection = {}) {
 
   ;(async () => {
     const portrait = (job.height || 0) > (job.width || 0)
-    const cues = await transcribeVideoCues(getAbsolutePath(job.videoUrl), config, portrait, LABEL)
+    const cues = await transcribeVideoCues(getAbsolutePath(job.videoUrl), config, portrait, LABEL, {
+      userId: job.userId ?? null, dramaId: null, refType: 'subtitle_tool_job', refId: id, source: 'tool_subtitle', duration: job.duration || 0,
+    })
     if (!cues.length) throw new Error('未识别到语音，可以手动上传字幕文件')
     // 字幕变了，旧成品不再对应，需重新合成
     await update(id, { status: 'idle', subtitleUrl: writeSrt(cues), subtitleSource: 'asr', outputUrl: null })

@@ -226,6 +226,15 @@
           </section>
         </div>
 
+        <!-- ===== 积分规则（用量统计按此折算积分） ===== -->
+        <div v-else-if="tab === 'points'" class="settings-scroll">
+          <div class="settings-head">
+            <h2 class="settings-title">{{ t('points.title') }}</h2>
+            <p class="settings-desc">{{ t('points.desc') }}</p>
+          </div>
+          <PointRulesPanel />
+        </div>
+
         <!-- ===== 存储位置 ===== -->
         <div v-else-if="tab === 'storage'" class="settings-scroll">
           <div class="settings-head">
@@ -764,7 +773,7 @@
 </template>
 
 <script setup>
-import { Plus, Pencil, Trash2, FileText, ChevronDown, Check, Loader2, Bot, Cpu, Sparkles, Palette, ExternalLink, Star, HardDrive, Database, RefreshCw, Download, Languages, SunMoon, X } from 'lucide-vue-next'
+import { Plus, Pencil, Trash2, FileText, ChevronDown, Check, Loader2, Bot, Cpu, Sparkles, Palette, ExternalLink, Star, HardDrive, Database, RefreshCw, Download, Languages, SunMoon, X, Coins } from 'lucide-vue-next'
 import BaseSelect from '~/components/BaseSelect.vue'
 import { toast } from 'vue-sonner'
 import { toastError } from '~/composables/useToast'
@@ -786,6 +795,7 @@ const baseTabs = computed(() => [
   { id: 'general', label: t('settings.tabs.general'), icon: Languages },
   { id: 'styles', label: t('settings.tabs.styles'), icon: Palette },
   { id: 'agents', label: t('settings.tabs.agents'), icon: Bot },
+  { id: 'points', label: t('settings.tabs.points'), icon: Coins },
   { id: 'storage', label: t('settings.tabs.storage'), icon: HardDrive },
   { id: 'about', label: t('settings.tabs.about'), icon: RefreshCw },
 ])

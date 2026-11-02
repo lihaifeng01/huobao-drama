@@ -37,11 +37,14 @@
       "projects": "プロジェクト",
       "library": "素材",
       "tools": "ツール",
-      "settings": "設定"
+      "settings": "設定",
+      "users": "アカウント",
+      "usage": "使用量"
     },
     "banner": {
       "missing": "{types}モデルが未設定のため、AI 機能は使用できません",
-      "goSettings": "設定へ"
+      "goSettings": "設定へ",
+      "askAdmin": "管理者に設定を依頼してください"
     },
     "theme": {
       "label": "テーマを切り替え",
@@ -314,7 +317,8 @@
       "styles": "スタイルプリセット",
       "storage": "保存場所",
       "about": "更新について",
-      "agents": "Agent 設定"
+      "agents": "Agent 設定",
+      "points": "ポイント"
     },
     "common": {
       "disabled": "無効",
@@ -1270,6 +1274,197 @@
         "done": "完了",
         "failed": "失敗"
       }
+    }
+  },
+  "auth": {
+    "username": "ユーザー名",
+    "usernamePlaceholder": "ユーザー名を入力",
+    "usernameRule": "3〜32 文字（漢字・英数字・_ . -）",
+    "displayName": "表示名",
+    "displayNamePlaceholder": "チームに表示される名前",
+    "optional": "（任意）",
+    "password": "パスワード",
+    "passwordPlaceholder": "パスワードを入力",
+    "passwordRule": "6 文字以上",
+    "confirmPassword": "パスワード（確認）",
+    "passwordMismatch": "パスワードが一致しません",
+    "failed": "操作に失敗しました。もう一度お試しください",
+    "noAccount": "アカウントをお持ちでない方",
+    "hasAccount": "アカウントをお持ちの方",
+    "logout": "ログアウト",
+    "login": {
+      "title": "ログイン",
+      "desc": "ログインすると参加しているプロジェクトを開けます。",
+      "submit": "ログイン"
+    },
+    "register": {
+      "title": "アカウント登録",
+      "desc": "登録すると一般ユーザーになります。プロジェクトを作成したり、招待されて参加したりできます。",
+      "submit": "登録"
+    },
+    "setup": {
+      "title": "スーパー管理者を作成",
+      "desc": "初回利用です。まずスーパー管理者アカウントを作成してください。スーパー管理者はすべてのプロジェクトとアカウントを管理でき、他のアカウントを管理者に設定できます。",
+      "submit": "作成して開始"
+    },
+    "role": {
+      "super_admin": "スーパー管理者",
+      "admin": "管理者",
+      "user": "一般ユーザー"
+    },
+    "changePassword": {
+      "title": "パスワード変更",
+      "old": "現在のパスワード",
+      "new": "新しいパスワード",
+      "hint": "変更すると、他の端末ではログアウトされます。",
+      "done": "パスワードを変更しました"
+    }
+  },
+  "members": {
+    "title": "プロジェクトメンバー",
+    "searchPlaceholder": "ユーザー名・表示名で検索",
+    "noMatch": "一致するアカウントがありません",
+    "noUsers": "他のアカウントはまだありません",
+    "selectedCount": "{n} 人を選択",
+    "createHint": "このプロジェクトと素材はメンバーだけが見られます。作成後もあなたとスーパー管理者が変更できます。",
+    "teamTitle": "メンバー：{names}",
+    "count": "{n} 人",
+    "creator": "作成者",
+    "unknownCreator": "不明",
+    "manageDesc": "このプロジェクトと素材はメンバーだけが見られます。",
+    "readonlyDesc": "メンバーを変更できるのは作成者とスーパー管理者だけです。",
+    "none": "他のメンバーはいません",
+    "saved": "メンバーを更新しました",
+    "transfer": {
+      "title": "プロジェクトの譲渡",
+      "placeholder": "譲渡先を選択",
+      "action": "譲渡",
+      "hint": "譲渡先がプロジェクトの作成者になります。あなたはメンバーとして残りますが、メンバー変更や譲渡はできなくなります。",
+      "confirmTitle": "プロジェクトの譲渡",
+      "confirmMessage": "「{title}」を {name} に譲渡しますか？譲渡後はメンバーの変更やプロジェクトの削除ができなくなります。",
+      "done": "{name} に譲渡しました"
+    }
+  },
+  "users": {
+    "title": "アカウント管理",
+    "sub": "アカウントのロール設定、無効化、削除を行います。",
+    "create": "アカウント作成",
+    "col": {
+      "user": "アカウント",
+      "role": "ロール",
+      "status": "状態",
+      "lastLogin": "最終ログイン",
+      "actions": "操作"
+    },
+    "me": "（自分）",
+    "status": {
+      "active": "有効",
+      "disabled": "無効"
+    },
+    "disable": "無効にする",
+    "enable": "有効にする",
+    "resetPassword": "パスワード再設定",
+    "roleNote": "管理者は設定（AI サービス、プロンプト、スキルなど）を使えます。一般ユーザーは使えません。プロジェクトは作成者・メンバー・スーパー管理者だけが見られます。",
+    "resetTitle": "「{name}」のパスワードを再設定",
+    "resetHint": "再設定後、このアカウントは新しいパスワードで再ログインが必要です。",
+    "deleteTitle": "アカウント削除",
+    "deleteMessage": "アカウント「{name}」を削除しますか？ログインできなくなります。作成したプロジェクトは残り、スーパー管理者が他の人に譲渡できます。",
+    "neverLoggedIn": "未ログイン",
+    "roleChanged": "ロールを更新しました",
+    "created": "アカウントを作成しました",
+    "passwordReset": "パスワードを再設定しました",
+    "deleted": "アカウントを削除しました"
+  },
+  "points": {
+    "title": "ポイントルール",
+    "desc": "種類ごとの既定ポイントを設定し、モデルごとに個別に設定することもできます。使用記録はこのルールでポイントに換算されます。現在は記録のみで、残高からは差し引きません。",
+    "default": "既定",
+    "defaultHint": "モデルを空欄にすると既定値を使います",
+    "followDefault": "既定 {n}",
+    "unit": {
+      "image": "pt / 枚",
+      "video": "pt / 秒",
+      "subtitle": "pt / 分"
+    },
+    "notInConfig": "設定から削除済み",
+    "noModels": "この種類の AI サービスはまだ設定されていません",
+    "textNote": "テキストモデルはトークン使用量のみ記録し、ポイントは消費しません",
+    "unsaved": "未保存の変更があります",
+    "discard": "変更を破棄",
+    "saved": "ポイントルールを保存しました",
+    "invalid": "「{name}」のポイントは 0 以上の整数にしてください"
+  },
+  "usage": {
+    "title": "使用記録",
+    "subAdmin": "チームの AI サービス使用量と換算ポイントです。種類をクリックするとモデル別の使用量を表示します。",
+    "subSelf": "あなたの AI サービス使用量と換算ポイントです。種類をクリックするとモデル別の使用量を表示します。",
+    "range": {
+      "month": "今月",
+      "week": "過去 7 日",
+      "days30": "過去 30 日",
+      "all": "すべて"
+    },
+    "allMembers": "全メンバー",
+    "type": {
+      "image": "画像",
+      "video": "動画",
+      "subtitle": "字幕",
+      "text": "テキスト"
+    },
+    "calls": "{n} 回",
+    "pointsUnit": "ポイント",
+    "amount": "使用量 {q}",
+    "textOnly": "記録のみ（ポイントなし）",
+    "status": {
+      "pending": "処理中",
+      "succeeded": "成功",
+      "refunded": "失敗・返還済み",
+      "held": "復旧待ち",
+      "failed": "失敗"
+    },
+    "byModel": "{type} · モデル別",
+    "clearModel": "すべてのモデルを表示",
+    "col": {
+      "model": "モデル",
+      "count": "回数",
+      "succeeded": "成功",
+      "amount": "使用量",
+      "points": "ポイント",
+      "time": "日時",
+      "user": "メンバー",
+      "project": "プロジェクト",
+      "source": "用途",
+      "status": "状態"
+    },
+    "unknownModel": "不明なモデル",
+    "history": "使用明細",
+    "total": "全 {n} 件",
+    "empty": "記録はまだありません",
+    "usageMissingHint": "このサービスはトークン使用量を返しませんでした",
+    "prev": "前のページ",
+    "next": "次のページ",
+    "note": "ポイントは「設定 → ポイントルール」で換算します。成功・処理中・復旧待ちは計上し、返還済みの失敗は計上しません。復旧待ちとは、上流で課金済みの可能性があり、結果をまだ復旧できる動画タスクです。",
+    "qty": {
+      "image": "{n} 枚",
+      "video": "{n} 秒",
+      "subtitle": "{n} 分"
+    },
+    "source": {
+      "shot_image": "カット画像",
+      "shot_video": "カット動画",
+      "character_image": "キャラクター画像",
+      "look_image": "衣装画像",
+      "scene_image": "シーン画像",
+      "prop_image": "小道具画像",
+      "image": "画像生成",
+      "video": "動画生成",
+      "shot_subtitle": "カット字幕",
+      "tool_subtitle": "字幕ツール",
+      "agent": "AI チャット",
+      "extract": "素材抽出",
+      "episode_summary": "あらすじ",
+      "video_prompt": "動画プロンプト",
+      "image_prompt": "画像プロンプト"
     }
   }
 }

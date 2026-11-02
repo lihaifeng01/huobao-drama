@@ -18,7 +18,7 @@ test('backend removes the voice assignment agent and tools', () => {
 })
 
 test('backend removes audio service providers, TTS adapters, and voice routes', () => {
-  const index = read('src/index.ts')
+  const index = read('src/index.ts') + read('src/api.ts')
   const ai = read('src/services/ai.ts')
   const registry = read('src/services/adapters/registry.ts')
   const types = read('src/services/adapters/types.ts')

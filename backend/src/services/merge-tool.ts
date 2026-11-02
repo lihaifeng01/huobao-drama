@@ -50,17 +50,18 @@ export function serializeJob(job: Job) {
   return { ...toSnakeCase(job), clips }
 }
 
-export async function listJobs() {
+export async function listJobs(userId?: number) {
   return db.select().from(schema.mergeToolJobs)
-    .where(isNull(schema.mergeToolJobs.deletedAt))
+    .where(and(isNull(schema.mergeToolJobs.deletedAt), userId !== undefined ? eq(schema.mergeToolJobs.userId, userId) : undefined))
     .orderBy(desc(schema.mergeToolJobs.id))
     .limit(100)
 }
 
-export async function getJob(id: number): Promise<Job> {
+/** userId 给出时只认该用户的任务（按用户隔离；别人的任务一律视为不存在） */
+export async function getJob(id: number, userId?: number): Promise<Job> {
   const [job] = await db.select().from(schema.mergeToolJobs)
     .where(and(eq(schema.mergeToolJobs.id, id), isNull(schema.mergeToolJobs.deletedAt)))
-  if (!job) throw new ToolError('任务不存在')
+  if (!job || (userId !== undefined && job.userId !== userId)) throw new ToolError('任务不存在')
   return job
 }
 
@@ -103,7 +104,7 @@ export function buildMergeArgs(clips: { abs: string; duration: number; hasAudio:
  * 开始合成（异步）。clips 为按顺序排好的片段（只认本工具上传目录下的文件）；
  * size 缺省用第一个片段的分辨率。
  */
-export async function startMerge(input: { clips: { url: string; name?: string }[]; width?: number; height?: number; name?: string }) {
+export async function startMerge(input: { clips: { url: string; name?: string }[]; width?: number; height?: number; name?: string }, userId?: number) {
   const list = Array.isArray(input.clips) ? input.clips : []
   if (list.length < 2) throw new ToolError('至少需要两个视频才能合成')
   if (list.length > MAX_CLIPS) throw new ToolError(`一次最多合成 ${MAX_CLIPS} 个视频`)
@@ -127,6 +128,7 @@ export async function startMerge(input: { clips: { url: string; name?: string }[
   const duration = clips.reduce((n, c) => n + c.duration, 0)
   const ts = now()
   const res = await db.insert(schema.mergeToolJobs).values({
+    userId: userId ?? null,
     name: String(input.name || '').trim().slice(0, 200) || `${clips[0].name.replace(/\.[^.]+$/, '')} 等 ${clips.length} 个视频`,
     clips: JSON.stringify(clips.map(({ abs: _abs, ...c }) => c)),
     width,
@@ -158,8 +160,8 @@ export async function startMerge(input: { clips: { url: string; name?: string }[
   return getJob(id)
 }
 
-export async function deleteJob(id: number) {
-  await getJob(id)
+export async function deleteJob(id: number, userId?: number) {
+  await getJob(id, userId)
   await db.update(schema.mergeToolJobs).set({ deletedAt: now(), updatedAt: now() }).where(eq(schema.mergeToolJobs.id, id))
 }
 

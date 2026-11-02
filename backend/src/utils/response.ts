@@ -23,3 +23,11 @@ export function serverError(c: Context, message = '服务器内部错误') {
 export function now() {
   return new Date().toISOString()
 }
+
+export function unauthorized(c: Context, message = '请先登录') {
+  return c.json({ code: 401, message }, 401)
+}
+
+export function forbidden(c: Context, message = '没有权限') {
+  return c.json({ code: 403, message }, 403)
+}

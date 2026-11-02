@@ -35,7 +35,8 @@ export const requestLogger: MiddlewareHandler = async (c, next) => {
   if (['POST', 'PUT', 'PATCH'].includes(method)) {
     try {
       const clone = c.req.raw.clone()
-      const text = await clone.text()
+      // 登录 / 注册 / 改密码的请求体里有明文密码，打日志前脱敏
+      const text = (await clone.text()).replace(/("\w*password"\s*:\s*)"(?:[^"\\]|\\.)*"/gi, '$1"***"')
       if (text) {
         const truncated = text.length > 500 ? text.slice(0, 500) + '...' : text
         bodyInfo = `\n  ${colors.dim}body: ${truncated}${colors.reset}`

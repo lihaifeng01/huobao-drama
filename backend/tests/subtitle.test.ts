@@ -131,6 +131,16 @@ test('镜头字幕：识别、生成 SRT、压制字幕版，整集字幕按成�
   assert.equal(b.subtitleStatus, 'completed')
   assert.equal(silent.subtitleStatus, 'no_speech')
 
+  // 用量：有音轨的两个镜头各记一次语音识别（按视频时长），无音轨的没调用识别、不记
+  const usage = (await db.select().from(schema.usageRecords)).filter(r => r.serviceType === 'subtitle' && r.refType === 'storyboard_subtitle')
+  assert.deepEqual(usage.map(r => r.refId).sort(), [ids[0], ids[1]].sort())
+  for (const r of usage) {
+    assert.equal(r.status, 'succeeded')
+    assert.equal(r.provider, 'aliyun')
+    assert.ok(r.quantity > 0)
+    assert.equal(r.points, 2) // 默认每分钟 2 积分，不足 1 分钟按 1 分钟
+  }
+
   // 请求核对：上传凭证与识别模型一致；oss:// 地址；异步与 OSS 解析头
   const policy = calls.find(c => c.url.includes('/uploads'))!
   assert.match(policy.url, /action=getPolicy/)

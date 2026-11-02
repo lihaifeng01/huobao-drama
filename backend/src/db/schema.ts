@@ -18,6 +18,7 @@ export const dramas = sqliteTable('dramas', {
   thumbnail: text('thumbnail'),
   tags: text('tags'),
   metadata: text('metadata'),
+  createdBy: integer('created_by'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),
@@ -250,11 +251,13 @@ export const sysTask = sqliteTable('sys_task', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   completedAt: text('completed_at'),
+  userId: integer('user_id'), // 发起人
 })
 
 // 字幕工具任务：status 只表示正在进行的操作（idle / transcribing / burning），有无字幕、成品看 subtitle_url / output_url，最近一次失败原因在 error_msg
 export const subtitleToolJobs = sqliteTable('subtitle_tool_jobs', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id'), // 所属用户（按用户隔离）
   name: text('name').notNull(),
   videoUrl: text('video_url').notNull(),
   width: integer('width').default(0),
@@ -277,6 +280,7 @@ export const subtitleToolJobs = sqliteTable('subtitle_tool_jobs', {
 // 视频合成工具：status = merging / done / failed；clips 为 JSON [{ url, name, width, height, duration, has_audio }]（按合成顺序）
 export const mergeToolJobs = sqliteTable('merge_tool_jobs', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id'), // 所属用户（按用户隔离）
   name: text('name').notNull(),
   clips: text('clips').notNull(),
   width: integer('width').default(0),
@@ -361,6 +365,7 @@ export const appSettings = sqliteTable('app_settings', {
 // 全局素材库：category = character | scene；文件夹可嵌套（parent_id 为空即顶层），文件 folder_id 为空表示根目录
 export const libraryFolders = sqliteTable('library_folders', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id'), // 所属用户（按用户隔离）
   category: text('category').notNull(),
   parentId: integer('parent_id'),
   name: text('name').notNull(),
@@ -371,6 +376,7 @@ export const libraryFolders = sqliteTable('library_folders', {
 
 export const libraryFiles = sqliteTable('library_files', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id'), // 所属用户（按用户隔离）
   category: text('category').notNull(),
   folderId: integer('folder_id'),
   name: text('name').notNull(),
@@ -382,4 +388,66 @@ export const libraryFiles = sqliteTable('library_files', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),
+})
+
+// 账号：role = super_admin | admin | user；status = active | disabled
+export const users = sqliteTable('users', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  username: text('username').notNull(),
+  displayName: text('display_name'),
+  passwordHash: text('password_hash').notNull(),
+  role: text('role').notNull().default('user'),
+  status: text('status').notNull().default('active'),
+  lastLoginAt: text('last_login_at'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+})
+
+export const userSessions = sqliteTable('user_sessions', {
+  tokenHash: text('token_hash').primaryKey(),
+  userId: integer('user_id').notNull(),
+  createdAt: text('created_at').notNull(),
+  expiresAt: text('expires_at').notNull(),
+})
+
+// 项目成员（创建人记在 dramas.created_by）
+export const dramaMembers = sqliteTable('drama_members', {
+  dramaId: integer('drama_id').notNull(),
+  userId: integer('user_id').notNull(),
+  createdAt: text('created_at').notNull(),
+}, (t) => [primaryKey({ columns: [t.dramaId, t.userId] })])
+
+// 用量记录：每次付费调用一行。status：pending / succeeded / refunded（失败已退还，不计积分）/ held（失败但上游可能已收费，计积分）
+export const usageRecords = sqliteTable('usage_records', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id'),
+  dramaId: integer('drama_id'),
+  serviceType: text('service_type').notNull(), // image | video | subtitle | text
+  provider: text('provider'),
+  model: text('model'),
+  configId: integer('config_id'),
+  source: text('source'), // 发起场景，如 shot_image / character_image / agent:extractor
+  refType: text('ref_type'), // sys_task | storyboard_subtitle | subtitle_tool_job | agent
+  refId: integer('ref_id'),
+  quantity: real('quantity').notNull().default(0), // 图片：张；视频：秒；字幕：音频秒数；文本：token
+  unitPoints: integer('unit_points').notNull().default(0), // 发起时按规则取的单价（规则后改不影响）
+  points: integer('points').notNull().default(0),
+  status: text('status').notNull().default('pending'),
+  errorCode: text('error_code'),
+  detail: text('detail'), // JSON：文本的输入 / 输出 token 等
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  completedAt: text('completed_at'),
+})
+
+// 积分规则：model 为空串 = 该类型默认值；provider + model = 单个模型覆盖
+export const pointRules = sqliteTable('point_rules', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  serviceType: text('service_type').notNull(),
+  provider: text('provider').notNull().default(''),
+  model: text('model').notNull().default(''),
+  points: integer('points').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
 })
