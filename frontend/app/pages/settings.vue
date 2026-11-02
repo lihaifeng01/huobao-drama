@@ -1820,7 +1820,9 @@ onBeforeUnmount(stopUsagePoll)
 }
 .cfg-model-star { fill: currentColor; }
 .config-empty { font-size: 12px; color: var(--text-3); padding: 14px 20px; }
-.config-switch { display: inline-flex; flex-shrink: 0; cursor: pointer; }
+/* position: relative 让 sr-only 复选框以开关自身定位：否则它相对页面定位，点击聚焦时浏览器会去滚动
+   overflow:hidden 的 .shell 让它“可见”，整页上移变空且无法滚回（刷新才恢复） */
+.config-switch { position: relative; display: inline-flex; flex-shrink: 0; cursor: pointer; }
 .config-switch input:focus-visible + .switch { box-shadow: 0 0 0 3.5px var(--button-focus); }
 .btn-icon.btn-sm { width: 30px; min-width: 30px; height: 30px; min-height: 30px; }
 
