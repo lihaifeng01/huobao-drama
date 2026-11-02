@@ -89,7 +89,8 @@
   - **没有用真实 MiniMax Key 验证过**，接口细节按官方文档实现：https://platform.minimaxi.com/docs/guides/speech-voice-clone 。`file_id` 纯数字时按数字传（官方示例是整数）。
   - 复刻音色目前只在工具页里用，还没有接到角色音色（`CharacterVoice`）或视频提示词的 `#音色引用`。合成出的 mp3 可以下载后作为角色音色上传。
 - **验证**
-  - 新增 `backend/tests/voice-clone-tool.test.ts`（2 项，模拟 MiniMax）：voice_id 规则；上传校验（格式、时长）→ 复刻请求体 → 试听转存 → 合成请求体与落盘 → 用量记录 → 复刻失败退还用量且保留旧结果 → 删除。`npm run typecheck` 通过。
+  - `usage.test.ts` 原来断言用量汇总固定四个分类，已改为五个（含 audio）。注意：这个测试断言失败后不会退出（模拟服务没关），表现为卡住而不是报错。
+  - 新增 `backend/tests/voice-clone-tool.test.ts`（2 项，模拟 MiniMax）：voice_id 规则；上传校验（格式、时长）→ 复刻请求体 → 试听转存 → 合成请求体与落盘 → 用量记录 → 复刻失败退还用量且保留旧结果 → 删除。`npm run typecheck` 通过；后端 TS 测试 18 个文件全部通过（逐个文件跑）。
   - 结构测试失败名单与 dev 一致（后端 `.mjs` 11 个、前端 24 个）；`npm run generate` 构建成功。
   - 本地端到端：临时数据目录 + 本地模拟 MiniMax，Playwright 在设置页添加音频配置并测试、工具页上传样本 → 复刻 → 合成、用量页查看「音频」卡片，控制台无报错。
 
