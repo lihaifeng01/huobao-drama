@@ -1097,12 +1097,23 @@
       "finishedWithFailed": "자막 제작 종료, {n}개 샷 실패",
       "state": {
         "none": "미생성",
-        "processing": "인식 중",
+        "processing": "처리 중",
         "done": "완료",
         "no_speech": "음성 없음",
         "failed": "실패",
         "stale": "만료됨"
-      }
+      },
+      "noConfigUpload": "활성화된 자막 서비스가 없어 자동 인식을 할 수 없습니다. 설정에서 추가하거나 샷마다 자막 파일(SRT / VTT)을 업로드하세요.",
+      "upload": "업로드",
+      "uploadTitle": "이 샷의 자막 파일(SRT / VTT, 0초부터 시작)을 업로드해 인식 없이 바로 입힙니다",
+      "uploadedTag": "수동 업로드",
+      "uploadStarted": "자막 {n}개를 읽었습니다. 자막 영상을 만드는 중입니다",
+      "uploadFailed": "자막 업로드에 실패했습니다",
+      "uploadInvalid": ".srt / .vtt 자막 파일만 지원합니다",
+      "uploadTooLarge": "자막 파일은 5MB 이하여야 합니다",
+      "overwriteTitle": "자막을 다시 인식할까요?",
+      "overwriteMsg": "이 샷의 자막은 수동으로 업로드한 것입니다. 다시 인식하면 음성 인식 결과로 교체됩니다.",
+      "skippedUploaded": "수동 업로드 자막이 있는 샷 {n}개를 건너뛰었습니다. 다시 인식하려면 선택한 뒤 생성하세요"
     }
   },
   "looks": {

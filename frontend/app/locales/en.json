@@ -1097,12 +1097,23 @@
       "finishedWithFailed": "Subtitles finished, {n} shot(s) failed",
       "state": {
         "none": "Not started",
-        "processing": "Transcribing",
+        "processing": "Processing",
         "done": "Done",
         "no_speech": "No speech",
         "failed": "Failed",
         "stale": "Outdated"
-      }
+      },
+      "noConfigUpload": "No subtitle service is enabled, so subtitles can't be transcribed. Add one in Settings, or upload a subtitle file (SRT / VTT) for each shot.",
+      "upload": "Upload",
+      "uploadTitle": "Upload this shot's subtitle file (SRT / VTT, timed from 0) and burn it in without transcription",
+      "uploadedTag": "Uploaded",
+      "uploadStarted": "Read {n} subtitle lines, burning the subtitled video",
+      "uploadFailed": "Subtitle upload failed",
+      "uploadInvalid": "Only .srt / .vtt subtitle files are supported",
+      "uploadTooLarge": "Subtitle file must be 5MB or smaller",
+      "overwriteTitle": "Transcribe again?",
+      "overwriteMsg": "This shot's subtitles were uploaded manually. Transcribing again will replace them with speech recognition results.",
+      "skippedUploaded": "Skipped {n} shots with uploaded subtitles. Select them explicitly to transcribe again."
     }
   },
   "looks": {

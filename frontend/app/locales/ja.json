@@ -1097,12 +1097,23 @@
       "finishedWithFailed": "字幕制作が終了しました（{n} 件失敗）",
       "state": {
         "none": "未生成",
-        "processing": "認識中",
+        "processing": "処理中",
         "done": "完了",
         "no_speech": "音声なし",
         "failed": "失敗",
         "stale": "期限切れ"
-      }
+      },
+      "noConfigUpload": "字幕サービスが有効になっていないため自動認識できません。設定で追加するか、ショットごとに字幕ファイル（SRT / VTT）をアップロードしてください。",
+      "upload": "アップロード",
+      "uploadTitle": "このショットの字幕ファイル（SRT / VTT、0 秒始まり）をアップロードし、認識せずにそのまま焼き込みます",
+      "uploadedTag": "手動アップロード",
+      "uploadStarted": "字幕 {n} 件を読み込みました。字幕付き動画を作成中です",
+      "uploadFailed": "字幕のアップロードに失敗しました",
+      "uploadInvalid": ".srt / .vtt 字幕ファイルのみ対応しています",
+      "uploadTooLarge": "字幕ファイルは 5MB 以下にしてください",
+      "overwriteTitle": "字幕を再認識しますか？",
+      "overwriteMsg": "このショットの字幕は手動でアップロードされたものです。再認識すると音声認識の結果で置き換えられます。",
+      "skippedUploaded": "手動アップロード字幕のショット {n} 件をスキップしました。再認識する場合は選択してから生成してください"
     }
   },
   "looks": {

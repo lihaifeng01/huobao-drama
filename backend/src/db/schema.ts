@@ -158,6 +158,7 @@ export const storyboards = sqliteTable('storyboards', {
   subtitleError: text('subtitle_error'),
   subtitledVideoUrl: text('subtitled_video_url'),
   subtitleSourceVideo: text('subtitle_source_video'),
+  subtitleOrigin: text('subtitle_origin'),
   composedVideoUrl: text('composed_video_url'),
   status: text('status').default('pending'),
   createdAt: text('created_at').notNull(),

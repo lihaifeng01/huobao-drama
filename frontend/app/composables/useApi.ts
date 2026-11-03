@@ -286,6 +286,8 @@ export const subtitleAPI = {
     ...(storyboardIds?.length ? { storyboard_ids: storyboardIds } : {}),
     ...sel,
   }),
+  // 手动上传字幕文件（.srt / .vtt），跳过识别直接压制
+  upload: (sbId: number, file: File) => uploadReq<{ storyboard_id: number; cues: number }>(`/subtitles/storyboards/${sbId}/upload`, file),
   clear: (sbId: number) => api.del(`/subtitles/storyboards/${sbId}`),
   episodeSrtUrl: (epId: number) => `/api/v1/subtitles/episodes/${epId}/srt`,
 }

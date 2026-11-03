@@ -962,7 +962,7 @@
               </div>
             </div>
             <div v-if="!subtitleConfigs.length" class="sub-config-hint">
-              {{ t('episode.sub.noConfig') }}
+              {{ t('episode.sub.noConfigUpload') }}
               <NuxtLink v-if="isAdmin" to="/settings" class="btn btn-sm">{{ t('episode.sub.gotoSettings') }}</NuxtLink>
             </div>
             <div v-if="!subVideoSbs.length" class="step-empty" style="flex:1">
@@ -1006,6 +1006,7 @@
                         <Loader2 v-if="subState(sb) === 'processing'" :size="10" class="animate-spin" />
                         {{ t('episode.sub.state.' + subState(sb)) }}
                       </span>
+                      <span v-if="isUploadedSubtitle(sb) && subState(sb) !== 'none'" class="sub-origin-tag">{{ t('episode.sub.uploadedTag') }}</span>
                       <span v-if="sb.subtitle_error && ['failed', 'no_speech'].includes(subState(sb))" class="sub-row-error" :title="sb.subtitle_error">{{ sb.subtitle_error }}</span>
                     </div>
                   </div>
@@ -1013,9 +1014,19 @@
                     <button
                       class="btn btn-sm"
                       :disabled="subState(sb) === 'processing' || !subtitleConfigs.length"
-                      @click="genSubtitle(sb)"
+                      @click="onGenSubtitleClick(sb)"
                     >
                       {{ subState(sb) === 'none' ? t('episode.sub.generate') : t('episode.sub.regenerate') }}
+                    </button>
+                    <button
+                      class="btn btn-sm btn-icon"
+                      :disabled="subState(sb) === 'processing' || subUploadingId === sb.id"
+                      :title="t('episode.sub.uploadTitle')"
+                      :aria-label="t('episode.sub.upload')"
+                      @click="pickSubtitleFile(sb)"
+                    >
+                      <Loader2 v-if="subUploadingId === sb.id" :size="12" class="animate-spin" />
+                      <Upload v-else :size="12" />
                     </button>
                     <a
                       v-if="sb.subtitle_url && subState(sb) === 'done'"
@@ -1685,6 +1696,15 @@
         :config-id="chatConfigId() || null"
         @close="recapOpen = false"
       />
+      <input ref="subFileInput" type="file" accept=".srt,.vtt" style="display:none" @change="onSubtitleFileChange" />
+      <ConfirmDialog
+        :open="subOverwriteConfirm.open"
+        :title="t('episode.sub.overwriteTitle')"
+        :message="t('episode.sub.overwriteMsg')"
+        :confirm-text="t('episode.sub.regenerate')"
+        @confirm="confirmOverwriteSubtitle"
+        @cancel="subOverwriteConfirm = { open: false, sb: null }"
+      />
       <ConfirmDialog
         :open="skipConfirmOpen"
         :title="t('episode.script.skipConfirmTitle')"
@@ -1719,7 +1739,7 @@ import { toast } from 'vue-sonner'
 import { useI18n } from 'vue-i18n'
 import {
   Users, FileText, FolderKanban, Clapperboard, Download, Loader2,
-  Plus, X, ListTodo, CircleHelp, Images, BookOpen, Captions,
+  Plus, X, ListTodo, CircleHelp, Images, BookOpen, Captions, Upload,
 } from 'lucide-vue-next'
 import { api, dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, propAPI, taskAPI, mergeAPI, aiConfigAPI, uploadAPI, subtitleAPI } from '~/composables/useApi'
 import { warnIfReferenceDropped } from '~/composables/useAssetReferences'
@@ -3529,8 +3549,10 @@ async function batchSubtitles() {
   try {
     const res = await subtitleAPI.batch(epId.value, ids, subtitleSelection())
     const n = res?.storyboard_ids?.length || 0
+    const skipped = res?.skipped_uploaded || 0
     if (n) toast.success(t('episode.sub.started', { n }))
-    else toast.info(t('episode.sub.nothingQueued'))
+    else if (!skipped) toast.info(t('episode.sub.nothingQueued'))
+    if (skipped) toast.info(t('episode.sub.skippedUploaded', { n: skipped }))
     subSelectMode.value = false
     selectedSubSbIds.value = []
   } catch (e) {
@@ -3539,6 +3561,53 @@ async function batchSubtitles() {
     subBatching.value = false
   }
   await reloadStoryboards()
+}
+// ----- 手动上传字幕 -----
+function isUploadedSubtitle(sb) { return sb?.subtitle_origin === 'upload' }
+const subFileInput = ref(null)
+const subUploadTarget = ref(null)
+const subUploadingId = ref(null)
+function pickSubtitleFile(sb) {
+  subUploadTarget.value = sb
+  if (subFileInput.value) {
+    subFileInput.value.value = ''
+    subFileInput.value.click()
+  }
+}
+async function onSubtitleFileChange(event) {
+  const input = event.target
+  const file = input.files?.[0]
+  input.value = ''
+  const sb = subUploadTarget.value
+  subUploadTarget.value = null
+  if (!file || !sb) return
+  if (!/\.(srt|vtt)$/i.test(file.name)) { toast.error(t('episode.sub.uploadInvalid')); return }
+  if (file.size > 5 * 1024 * 1024) { toast.error(t('episode.sub.uploadTooLarge')); return }
+  subUploadingId.value = sb.id
+  try {
+    const res = await subtitleAPI.upload(sb.id, file)
+    subSelectedId.value = sb.id
+    toast.success(t('episode.sub.uploadStarted', { n: res?.cues || 0 }))
+  } catch (e) {
+    toastError(e, { fallback: 'episode.sub.uploadFailed' })
+  } finally {
+    subUploadingId.value = null
+  }
+  await reloadStoryboards()
+}
+// 重新识别会覆盖手动上传的字幕，先确认
+const subOverwriteConfirm = ref({ open: false, sb: null })
+function onGenSubtitleClick(sb) {
+  if (isUploadedSubtitle(sb) && subState(sb) === 'done') {
+    subOverwriteConfirm.value = { open: true, sb }
+    return
+  }
+  genSubtitle(sb)
+}
+function confirmOverwriteSubtitle() {
+  const sb = subOverwriteConfirm.value.sb
+  subOverwriteConfirm.value = { open: false, sb: null }
+  if (sb) genSubtitle(sb)
 }
 async function clearSubtitle(sb) {
   try {
@@ -6956,8 +7025,9 @@ button.video-task-metric.on { box-shadow: 0 0 0 2px var(--accent); }
 .sub-row-thumb { width: 72px; height: 44px; object-fit: cover; border-radius: 6px; background: var(--media-surface); flex-shrink: 0; pointer-events: none; }
 .sub-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .sub-row-title { font-size: 12.5px; font-weight: 600; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sub-row-meta { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.sub-row-meta { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
 .sub-row-error { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sub-origin-tag { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; line-height: 16px; padding: 0 6px; border-radius: 4px; background: var(--bg-2, rgba(127,127,127,0.12)); color: var(--text-2); }
 .sub-row-actions { display: flex; gap: 4px; flex-shrink: 0; }
 .sub-preview { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
 .sub-preview-head { display: flex; align-items: center; gap: 8px; }
