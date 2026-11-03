@@ -70,7 +70,7 @@
 ## 变更条目
 
 ### 2026-11-03 · 新增：素材生成（角色 / 场景 / 道具）支持参考图
-- **分支**：`feat/asset-reference-images`（从 `origin/dev` 拉出，未合并）
+- **分支**：`feat/asset-reference-images`（从 `origin/dev` 拉出，2026-11-03 已合并到 `dev`）
 - **背景**：图片适配器早就支持参考图（OpenAI edits / Gemini inline_data / 硅基流动字段 + 降级），但角色、场景、道具的 `POST /:id/generate-image` 从来不传参考图，只有造型生图会拿角色主形象当参考。用户没法用自己的照片 / 设定图约束素材长相。
 - **改动**
   - 每个素材保存最多 4 张参考图，存在各表的 `reference_images` 列（JSON 字符串数组，`static/...` 或 http(s) 地址）。`characters` / `props` 建表时就有这一列（以前没用过，`storyboard-tools.ts` 会把角色的这一列原样带给分镜 Agent），`scenes` 通过 `ADDED_COLUMNS` 补列。
