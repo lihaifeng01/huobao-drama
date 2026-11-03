@@ -1376,6 +1376,7 @@
                   </div>
                 </div>
                 <CharacterVoice v-if="assetDetail.type === 'character'" :key="assetDetail.item.id" :character="assetDetail.item" @updated="updateCharacterVoice" />
+                <AssetReferenceImages :key="`refs-${assetDetail.type}-${assetDetail.item.id}`" :kind="assetDetail.type" :item="assetDetail.item" @updated="updateAssetReferences" />
               </aside>
 
               <section class="asset-detail-editor-panel">
@@ -1721,6 +1722,7 @@ import {
   Plus, X, ListTodo, CircleHelp, Images, BookOpen, Captions,
 } from 'lucide-vue-next'
 import { api, dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, propAPI, taskAPI, mergeAPI, aiConfigAPI, uploadAPI, subtitleAPI } from '~/composables/useApi'
+import { warnIfReferenceDropped } from '~/composables/useAssetReferences'
 import { useAuth } from '~/composables/useAuth'
 import { startTour, autoTour } from '~/composables/useTour'
 import { resolveCharacterLook } from '~/composables/useCharacterIdentity'
@@ -1931,6 +1933,15 @@ function updateCharacterVoice(id, voice) {
   const character = chars.value.find(item => item.id === id)
   if (character) Object.assign(character, patch)
   if (assetDetail.value.type === 'character' && assetDetail.value.item?.id === id) Object.assign(assetDetail.value.item, patch)
+}
+// 素材参考图保存后同步到列表与详情弹窗（生成素材图时后端读库里的参考图）
+function updateAssetReferences(id, refs) {
+  const type = assetDetail.value.type
+  const list = type === 'character' ? chars.value : type === 'scene' ? scenes.value : propItems.value
+  const patch = { reference_images: JSON.stringify(refs), referenceImages: JSON.stringify(refs) }
+  const item = list.find(entry => entry.id === id)
+  if (item) Object.assign(item, patch)
+  if (assetDetail.value.item?.id === id) Object.assign(assetDetail.value.item, patch)
 }
 const assetDetailDraft = ref({ appearance: '', styling: '', prompt: '', lighting: '', description: '' })
 // 最终提示词手动编辑：dirty 时才随保存提交，避免无修改保存误清空 Agent 生成的提示词
@@ -3314,7 +3325,8 @@ async function genCharImg(id) {
         await ensureAssetPrompt('character', id)
       } catch {} // 提示词生成失败不阻断：后端生图前会再兜底生成或回退本地拼接
     }
-    await characterAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId())
+    const genRes = await characterAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId())
+    warnIfReferenceDropped(genRes, t)
     toast.success(t('episode.image.generatingChar'))
     await refresh()
     watchAsyncResult(() => {
@@ -3356,7 +3368,8 @@ async function genSceneImg(id) {
         await ensureAssetPrompt('scene', id)
       } catch {} // 提示词生成失败不阻断：后端生图前会再兜底生成或回退本地拼接
     }
-    await sceneAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId())
+    const genRes = await sceneAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId())
+    warnIfReferenceDropped(genRes, t)
     toast.success(t('episode.image.generatingScene'))
     await refresh()
     watchAsyncResult(() => {
@@ -3383,7 +3396,8 @@ async function genPropImg(id) {
         await ensureAssetPrompt('prop', id)
       } catch {} // 提示词生成失败不阻断：后端生图前会再兜底生成或回退本地拼接
     }
-    await propAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId())
+    const genRes = await propAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId())
+    warnIfReferenceDropped(genRes, t)
     toast.success(t('episode.image.generatingProp'))
     await refresh()
     watchAsyncResult(() => {
@@ -3401,7 +3415,7 @@ function batchSceneImages() {
   const ids = scenes.value.filter(s => !(s.image_url || s.imageUrl)).map(s => s.id)
   if (!ids.length) { toast.info(t('episode.image.allScenesDone')); return }
   pendingSceneImageIds.value = [...new Set([...pendingSceneImageIds.value, ...ids])]
-  ids.forEach(id => { sceneAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId()).then(() => refresh()).catch(e => toastError(e)) })
+  ids.forEach(id => { sceneAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId()).then((res) => { warnIfReferenceDropped(res, t); return refresh() }).catch(e => toastError(e)) })
   toast.success(t('episode.image.batchGeneratingScene'))
   watchAsyncResult(() => ids.every(id => {
     const scene = scenes.value.find(s => s.id === id)
@@ -3414,7 +3428,7 @@ function batchPropImages() {
   const ids = propItems.value.filter(p => !(p.image_url || p.imageUrl)).map(p => p.id)
   if (!ids.length) { toast.info(t('episode.image.allPropsDone')); return }
   pendingPropImageIds.value = [...new Set([...pendingPropImageIds.value, ...ids])]
-  ids.forEach(id => { propAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId()).then(() => refresh()).catch(e => toastError(e)) })
+  ids.forEach(id => { propAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId()).then((res) => { warnIfReferenceDropped(res, t); return refresh() }).catch(e => toastError(e)) })
   toast.success(t('episode.image.batchGeneratingProp'))
   watchAsyncResult(() => ids.every(id => {
     const prop = propItems.value.find(p => p.id === id)

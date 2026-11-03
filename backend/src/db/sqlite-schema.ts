@@ -588,6 +588,9 @@ const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: 'merge_tool_jobs', column: 'user_id', ddl: 'ALTER TABLE merge_tool_jobs ADD COLUMN user_id INTEGER' },
   // 生成任务的发起人（用量统计归属；后台续跑时按行上的值，不依赖请求上下文）
   { table: 'sys_task', column: 'user_id', ddl: 'ALTER TABLE sys_task ADD COLUMN user_id INTEGER' },
+  // 素材参考图（JSON 字符串数组，static/... 或 http(s) 地址）：生成素材图时发给图片模型。
+  // characters / props 建表时就有这一列（之前一直没用），只有 scenes 需要补
+  { table: 'scenes', column: 'reference_images', ddl: 'ALTER TABLE scenes ADD COLUMN reference_images TEXT' },
 ]
 
 /** 依赖增量列的索引，须在补列之后建 */

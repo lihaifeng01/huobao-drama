@@ -25,6 +25,32 @@
     "invalidNoVoice": "「{token}」引用了{name}的音色，但{name}还没有上传音色，生成会失败。请在素材库给{name}上传音色，或把 # 改成 {'@'} 只引用形象。",
     "invalidUnknown": "「{token}」不是当前分镜绑定的角色，生成会失败。# 只能引用本分镜已绑定、已上传音色的角色。"
   },
+  "assetRefs": {
+    "title": "参考图",
+    "upload": "上传",
+    "fromLibrary": "素材库",
+    "saving": "保存中…",
+    "alt": "参考图 {n}",
+    "remove": "移除参考图",
+    "pickerTitle": "从素材库选择参考图",
+    "empty": {
+      "character": "上传人物照片或设定图，生成角色图时会参考其五官、发型和服饰。",
+      "scene": "上传场景照片或概念图，生成场景图时会参考其布局、陈设和色调。",
+      "prop": "上传物品照片，生成道具图时会参考其外形、材质和颜色。"
+    },
+    "note": "PNG / JPG / WebP · 单张 ≤10MB · 最多 4 张。重新生成时自动带上；不支持参考图的模型会改为纯文字生成。",
+    "saved": "参考图已保存",
+    "removed": "已移除参考图",
+    "full": "参考图最多 {max} 张",
+    "truncated": "最多 {max} 张，多出的图片未上传",
+    "duplicate": "这张图已经是参考图了",
+    "invalidFormat": "只支持 PNG、JPG、WebP 图片",
+    "tooLarge": "单张图片不能超过 10MB",
+    "fallback": {
+      "model": "当前图片模型不支持参考图，本次已按纯文字生成，结果可能与参考图不一致。",
+      "service": "图片服务拒绝了参考图，本次已按纯文字生成，结果可能与参考图不一致。"
+    }
+  },
   "common": {
     "confirm": "确认",
     "cancel": "取消",

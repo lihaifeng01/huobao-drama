@@ -397,6 +397,7 @@
                   </div>
                 </div>
                 <CharacterVoice v-if="editTarget.kindKey === 'character'" :key="editTarget.id" :character="editTarget" @updated="updateCharacterVoice" />
+                <AssetReferenceImages :key="`refs-${editTarget.kindKey}-${editTarget.id}`" :kind="editTarget.kindKey" :item="editTarget" @updated="updateAssetReferences" />
               </aside>
 
               <!-- 右侧：编辑信息 -->
@@ -711,6 +712,7 @@ import { toast } from 'vue-sonner'
 import { toastError } from '~/composables/useToast'
 import { useI18n } from 'vue-i18n'
 import { dramaAPI, episodeAPI, characterAPI, sceneAPI, propAPI, uploadAPI, userAPI } from '~/composables/useApi'
+import { warnIfReferenceDropped } from '~/composables/useAssetReferences'
 import { useAuth } from '~/composables/useAuth'
 import { parseAliases } from '~/composables/useCharacterIdentity'
 import BaseSelect from '~/components/BaseSelect.vue'
@@ -953,9 +955,10 @@ async function generateMaterial(m) {
   if (pendingMaterials.value.has(key)) return
   pendingMaterials.value = new Set(pendingMaterials.value).add(key)
   try {
-    if (m.kindKey === 'character') await characterAPI.generateImage(m.id, epId)
-    else if (m.kindKey === 'scene') await sceneAPI.generateImage(m.id, epId)
-    else await propAPI.generateImage(m.id, epId)
+    const res = m.kindKey === 'character' ? await characterAPI.generateImage(m.id, epId)
+      : m.kindKey === 'scene' ? await sceneAPI.generateImage(m.id, epId)
+      : await propAPI.generateImage(m.id, epId)
+    warnIfReferenceDropped(res, t)
     toast.success(t('detail.mat.generating', { kind: m.kind, name: m.name }))
     pollMaterial(m)
   } catch (e) {
@@ -1071,6 +1074,16 @@ function updateCharacterVoice(id, voice) {
   const character = drama.value?.characters?.find(item => item.id === id)
   if (character) Object.assign(character, patch)
   if (editTarget.value?.kindKey === 'character' && editTarget.value.id === id) Object.assign(editTarget.value, patch)
+}
+// 素材参考图保存后同步到项目数据与详情弹窗（生成素材图时后端读库里的参考图）
+function updateAssetReferences(id, refs) {
+  const kind = editTarget.value?.kindKey
+  const d = drama.value
+  const list = kind === 'character' ? d?.characters : kind === 'scene' ? d?.scenes : d?.props
+  const patch = { reference_images: JSON.stringify(refs), referenceImages: JSON.stringify(refs) }
+  const item = list?.find(entry => entry.id === id)
+  if (item) Object.assign(item, patch)
+  if (editTarget.value?.id === id) Object.assign(editTarget.value, patch)
 }
 const editDraft = reactive({})
 

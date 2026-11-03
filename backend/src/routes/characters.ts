@@ -10,6 +10,7 @@ import { toSnakeCase } from '../utils/transform.js'
 import { generateImage } from '../services/generation.js'
 import { getDramaStylePrompt } from '../services/style-preset.js'
 import { ensureCharacterFinalPrompt } from '../services/final-prompt.js'
+import { cleanReferenceImagesInput, parseReferenceImages, withReferenceHint } from '../services/asset-reference.js'
 import { logTaskError, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
 import { cleanAliases, findAliasConflict, findCharacterByName, mergeCharacters, projectCharacters } from '../services/character-identity.js'
 
@@ -120,6 +121,12 @@ app.put('/:id', async (c) => {
   // 手动编辑最终提示词时以传入值为准；未传入则保留原值（修改信息时不再自动置空）
   if (body.final_prompt !== undefined) updates.finalPrompt = body.final_prompt || null
   else if (body.finalPrompt !== undefined) updates.finalPrompt = body.finalPrompt || null
+  // 素材参考图：生成素材图时发给图片模型
+  if (body.reference_images !== undefined || body.referenceImages !== undefined) {
+    const cleaned = cleanReferenceImagesInput(body.reference_images !== undefined ? body.reference_images : body.referenceImages)
+    if ('error' in cleaned) return badRequest(c, cleaned.error)
+    updates.referenceImages = cleaned.value
+  }
   // 别名：同项目内不得与其他角色的本名/别名冲突
   if (body.aliases !== undefined) {
     const [char] = await db.select().from(schema.characters).where(eq(schema.characters.id, id))
@@ -172,12 +179,13 @@ app.post('/:id/generate-image', async (c) => {
 
   const stylePrompt = await getDramaStylePrompt(char.dramaId)
   const finalPrompt = await ensureCharacterFinalPrompt(char, ep.id, false, { model: body.text_model, configId: body.text_config_id ?? undefined })
-  const prompt = finalPrompt || characterImagePrompt(char, stylePrompt)
+  const references = parseReferenceImages(char.referenceImages)
+  const prompt = withReferenceHint(finalPrompt || characterImagePrompt(char, stylePrompt), 'character', references)
   try {
-    logTaskStart('CharacterImage', 'generate', { characterId: id, episodeId: ep.id, dramaId: char.dramaId })
-    const genId = await generateImage({ characterId: id, dramaId: char.dramaId, prompt, model: body.model, size: CHARACTER_IMAGE_SIZE, configId: body.config_id ?? ep.imageConfigId ?? undefined })
+    logTaskStart('CharacterImage', 'generate', { characterId: id, episodeId: ep.id, dramaId: char.dramaId, references: references.length })
+    const genId = await generateImage({ characterId: id, dramaId: char.dramaId, prompt, model: body.model, size: CHARACTER_IMAGE_SIZE, referenceImages: references, configId: body.config_id ?? ep.imageConfigId ?? undefined })
     logTaskSuccess('CharacterImage', 'generate', { characterId: id, generationId: genId })
-    return success(c, { image_generation_id: genId })
+    return success(c, { image_generation_id: genId, reference_count: references.length })
   } catch (err: any) {
     logTaskError('CharacterImage', 'generate', { characterId: id, error: err.message })
     return badRequest(c, err.message)
@@ -218,9 +226,10 @@ app.post('/batch-generate-images', async (c) => {
     const [char] = await db.select().from(schema.characters).where(eq(schema.characters.id, cid))
     if (!char) continue
     const finalPrompt = await ensureCharacterFinalPrompt(char, ep.id, false, { model: body.text_model, configId: body.text_config_id ?? undefined })
-    const prompt = finalPrompt || characterImagePrompt(char, stylePrompt)
+    const references = parseReferenceImages(char.referenceImages)
+    const prompt = withReferenceHint(finalPrompt || characterImagePrompt(char, stylePrompt), 'character', references)
     try {
-      const genId = await generateImage({ characterId: cid, dramaId: char.dramaId, prompt, model: body.model, size: CHARACTER_IMAGE_SIZE, configId: body.config_id ?? ep.imageConfigId ?? undefined })
+      const genId = await generateImage({ characterId: cid, dramaId: char.dramaId, prompt, model: body.model, size: CHARACTER_IMAGE_SIZE, referenceImages: references, configId: body.config_id ?? ep.imageConfigId ?? undefined })
       results.push(genId)
     } catch {}
   }

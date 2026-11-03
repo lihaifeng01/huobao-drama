@@ -25,6 +25,32 @@
     "invalidNoVoice": "{token} references {name}'s voice, but {name} has no voice uploaded, so generation will fail. Upload a voice for {name} in the asset library, or change # to {'@'} to reference only the image.",
     "invalidUnknown": "{token} is not a character bound to this shot, so generation will fail. # can only reference bound characters with an uploaded voice."
   },
+  "assetRefs": {
+    "title": "Reference images",
+    "upload": "Upload",
+    "fromLibrary": "Library",
+    "saving": "Saving…",
+    "alt": "Reference image {n}",
+    "remove": "Remove reference image",
+    "pickerTitle": "Pick a reference image from the library",
+    "empty": {
+      "character": "Upload a photo or concept sheet. Character images will follow its face, hair and outfit.",
+      "scene": "Upload a photo or concept art. Scene images will follow its layout, set dressing and colors.",
+      "prop": "Upload a photo of the object. Prop images will follow its shape, material and color."
+    },
+    "note": "PNG / JPG / WebP · up to 10MB each · max 4. Used on every regeneration; models without reference support fall back to text-only.",
+    "saved": "Reference images saved",
+    "removed": "Reference image removed",
+    "full": "Up to {max} reference images",
+    "truncated": "Max {max} images; the extra ones were not uploaded",
+    "duplicate": "This image is already a reference",
+    "invalidFormat": "Only PNG, JPG and WebP images are supported",
+    "tooLarge": "Each image must be 10MB or smaller",
+    "fallback": {
+      "model": "The current image model doesn't support reference images, so this one was generated from text only and may not match the references.",
+      "service": "The image service rejected the reference images, so this one was generated from text only and may not match the references."
+    }
+  },
   "common": {
     "confirm": "Confirm",
     "cancel": "Cancel",

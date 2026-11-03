@@ -69,6 +69,31 @@
 
 ## 变更条目
 
+### 2026-11-03 · 新增：素材生成（角色 / 场景 / 道具）支持参考图
+- **分支**：`feat/asset-reference-images`（从 `origin/dev` 拉出，未合并）
+- **背景**：图片适配器早就支持参考图（OpenAI edits / Gemini inline_data / 硅基流动字段 + 降级），但角色、场景、道具的 `POST /:id/generate-image` 从来不传参考图，只有造型生图会拿角色主形象当参考。用户没法用自己的照片 / 设定图约束素材长相。
+- **改动**
+  - 每个素材保存最多 4 张参考图，存在各表的 `reference_images` 列（JSON 字符串数组，`static/...` 或 http(s) 地址）。`characters` / `props` 建表时就有这一列（以前没用过，`storyboard-tools.ts` 会把角色的这一列原样带给分镜 Agent），`scenes` 通过 `ADDED_COLUMNS` 补列。
+  - `PUT /characters|scenes|props/:id` 接收 `reference_images`（数组；`[]` / `null` 清空），校验在 `services/asset-reference.ts` 的 `cleanReferenceImagesInput`：非数组、非 `static/` / http(s) 地址、超过 4 张都返回 400；`/static/x` 统一存成 `static/x` 并去重。
+  - 三个 `generate-image` 和角色 `batch-generate-images` 读库里的参考图传给 `generateImage({ referenceImages })`，并在提示词末尾追加一段按类型区分的「参考图说明」（角色：保持五官 / 发型 / 服饰，不照搬背景姿势；场景：参照布局陈设色调，仍然不能出现人物；道具：保持外形材质颜色，白底单品）。响应多了 `reference_count`。
+  - 前端新组件 `components/AssetReferenceImages.vue`：放在剧集工作台素材详情弹窗和项目详情页素材弹窗的左栏（角色音色下面）。支持多选上传（PNG / JPG / WebP，单张 ≤10MB）、从素材库选（只有角色 / 场景，素材库没有道具分类）、单张移除；改动立刻保存，不走弹窗的「保存修改」。
+  - 带参考图生成时，`composables/useAssetReferences.ts` 的 `warnIfReferenceDropped` 在后台等任务结束，如果后端降级成纯文字生成（任务 `params.referenceFallback`），弹警告提示。
+  - 顺手修了 `LibraryPicker`：Esc 改为在捕获阶段拦截并 `stopPropagation`。以前它叠在素材详情弹窗上时，一次 Esc 会把选择器和外层弹窗一起关掉（原有的「从素材库选择图片」也有这个问题）。
+- **关键文件**：`backend/src/services/asset-reference.ts`、`backend/src/routes/{characters,scenes,props}.ts`、`frontend/app/components/AssetReferenceImages.vue`、`frontend/app/composables/useAssetReferences.ts`、`frontend/app/views/drama/{episode,detail}.vue`、`frontend/app/components/LibraryPicker.vue`。
+- **设计取舍**
+  - 参考图存在素材上（持久），而不是每次生成时临时选：重绘 / 批量生成都会自动带上，和「素材定妆」的使用方式一致。
+  - 只发给图片模型，不参与分镜视频的参考图（`getShotReferenceImages` 仍只用素材的成品图）。
+  - 角色批量生成（`batch-generate-images`）也会带参考图，但批量接口不返回每个任务的 `reference_count`，所以批量时不弹降级提示；场景 / 道具的「批量」是前端逐个调单个接口，会提示。
+- **注意事项**
+  - 火山引擎（Seedream）图片适配器仍然不发送参考图，用它生成时参考图不起作用，也不会有降级提示（适配器直接忽略，没有标记 `referenceDropped`）。
+  - 硅基流动只发第一张参考图（适配器原有行为）。
+  - 参考图在发送前会压到 768px、JPEG 质量 68（`normalizeReferenceImages` 原有逻辑），细节很多的设定图可能会损失细节。
+  - 造型生图（`/character-looks/:id/generate-image`）仍只用角色主形象做参考，不读角色的参考图。
+- **验证**
+  - `backend/tests/asset-reference.test.ts`（5 项）：解析 / 校验 / 提示词追加。后端 TS 测试 81 项全部通过；结构测试失败名单与 `dev` 完全一致（后端 11、前端 24，均为原有失败）。后端类型检查、前端 `npm run generate` 通过。
+  - 本地模拟 OpenAI 图片服务端到端：设置参考图后三类素材都改走 `/v1/images/edits`，各带 1 张图（`static/x` 与 `/static/x` 已去重），提示词末尾有对应的参考图说明；清空后回到 `/v1/images/generations`、不带图。非法地址 / 超过 4 张 / 非数组返回 400。
+  - Playwright：剧集工作台角色弹窗上传 → 出现缩略图 → 打开素材库选择器 → Esc 只关选择器 → 移除；项目详情页道具弹窗显示已保存的参考图、只有「上传」按钮；无页面报错。
+
 ### 2026-11-02 · 新增：工具页「音色复刻」+ 设置页「音频」服务类型
 - **分支**：`feat/voice-clone`（从 `origin/dev` 拉出，2026-11-02 已合并到 `dev`）
 - **改动**
@@ -430,7 +455,7 @@
   - 当时没能访问硅基流动官方文档，字段规则来自搜索到的摘要和博客。→ 已对照官方文档核实并校正，见 2026-10-26「硅基流动请求体对照官方文档校正」条目。
   - **按模型名判断是启发式的**：名字里没有 edit / kolors / kontext、但其实支持参考图的模型，会被当成纯文生图（会提示，不会报错）。要扩充的话改 `siliconFlowReferenceField` 即可。
   - `image2` / `image3` 和 `image_size` 的处理已在后一条校正（`image_size` 对非 Edit 模型是必填，这里原来的「沿用 `size`」是错的）。
-  - 降级提示目前只在造型面板里显示。其他带参考图的生图入口（`POST /tasks` 的 `reference_images`）同样会降级，但只记日志和任务参数，界面上不提示。
+  - 降级提示目前只在造型面板里显示。其他带参考图的生图入口（`POST /tasks` 的 `reference_images`）同样会降级，但只记日志和任务参数，界面上不提示。 → 素材（角色 / 场景 / 道具）生图也会提示了，见 2026-11-03「素材生成支持参考图」条目。
 - **验证**
   - `backend/tests/image-reference-fallback.test.ts`（8 项，在进程内拦截 fetch，走真实的 `generateImage` → 任务 → 回写流程）：硅基流动的 Edit / Kontext / 纯文生图三种模型、`images` 响应解析、OpenAI 兼容中转 edits 404 后降级、401 不降级、不带参考图时行为不变。
   - Playwright：模拟一个 edits 返回 404 的中转服务，界面上弹出降级提示，造型图正常生成。

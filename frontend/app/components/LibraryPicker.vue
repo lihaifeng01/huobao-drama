@@ -179,12 +179,18 @@ watch(() => [props.open, props.category], ([open]) => {
   else load()
 }, { immediate: true })
 
-function onKeydown(e) { if (e.key === 'Escape') emit('close') }
+// 捕获阶段拦截 Esc 并阻止传播：选择器常叠在素材详情弹窗上，外层弹窗也在 window 上监听 Esc，
+// 不拦的话一次 Esc 会把两层一起关掉
+function onKeydown(e) {
+  if (e.key !== 'Escape') return
+  e.stopPropagation()
+  emit('close')
+}
 watch(() => props.open, (v) => {
-  if (v) window.addEventListener('keydown', onKeydown)
-  else window.removeEventListener('keydown', onKeydown)
+  if (v) window.addEventListener('keydown', onKeydown, true)
+  else window.removeEventListener('keydown', onKeydown, true)
 }, { immediate: true })
-onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+onUnmounted(() => window.removeEventListener('keydown', onKeydown, true))
 </script>
 
 <style scoped>
