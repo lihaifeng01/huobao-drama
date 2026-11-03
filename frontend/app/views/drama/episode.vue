@@ -962,7 +962,7 @@
               </div>
             </div>
             <div v-if="!subtitleConfigs.length" class="sub-config-hint">
-              {{ t('episode.sub.noConfig') }}
+              {{ t('episode.sub.noConfigUpload') }}
               <NuxtLink v-if="isAdmin" to="/settings" class="btn btn-sm">{{ t('episode.sub.gotoSettings') }}</NuxtLink>
             </div>
             <div v-if="!subVideoSbs.length" class="step-empty" style="flex:1">
@@ -1006,6 +1006,7 @@
                         <Loader2 v-if="subState(sb) === 'processing'" :size="10" class="animate-spin" />
                         {{ t('episode.sub.state.' + subState(sb)) }}
                       </span>
+                      <span v-if="isUploadedSubtitle(sb) && subState(sb) !== 'none'" class="sub-origin-tag">{{ t('episode.sub.uploadedTag') }}</span>
                       <span v-if="sb.subtitle_error && ['failed', 'no_speech'].includes(subState(sb))" class="sub-row-error" :title="sb.subtitle_error">{{ sb.subtitle_error }}</span>
                     </div>
                   </div>
@@ -1013,9 +1014,19 @@
                     <button
                       class="btn btn-sm"
                       :disabled="subState(sb) === 'processing' || !subtitleConfigs.length"
-                      @click="genSubtitle(sb)"
+                      @click="onGenSubtitleClick(sb)"
                     >
                       {{ subState(sb) === 'none' ? t('episode.sub.generate') : t('episode.sub.regenerate') }}
+                    </button>
+                    <button
+                      class="btn btn-sm btn-icon"
+                      :disabled="subState(sb) === 'processing' || subUploadingId === sb.id"
+                      :title="t('episode.sub.uploadTitle')"
+                      :aria-label="t('episode.sub.upload')"
+                      @click="pickSubtitleFile(sb)"
+                    >
+                      <Loader2 v-if="subUploadingId === sb.id" :size="12" class="animate-spin" />
+                      <Upload v-else :size="12" />
                     </button>
                     <a
                       v-if="sb.subtitle_url && subState(sb) === 'done'"
@@ -1376,6 +1387,7 @@
                   </div>
                 </div>
                 <CharacterVoice v-if="assetDetail.type === 'character'" :key="assetDetail.item.id" :character="assetDetail.item" @updated="updateCharacterVoice" />
+                <AssetReferenceImages :key="`refs-${assetDetail.type}-${assetDetail.item.id}`" :kind="assetDetail.type" :item="assetDetail.item" @updated="updateAssetReferences" />
               </aside>
 
               <section class="asset-detail-editor-panel">
@@ -1684,6 +1696,15 @@
         :config-id="chatConfigId() || null"
         @close="recapOpen = false"
       />
+      <input ref="subFileInput" type="file" accept=".srt,.vtt" style="display:none" @change="onSubtitleFileChange" />
+      <ConfirmDialog
+        :open="subOverwriteConfirm.open"
+        :title="t('episode.sub.overwriteTitle')"
+        :message="t('episode.sub.overwriteMsg')"
+        :confirm-text="t('episode.sub.regenerate')"
+        @confirm="confirmOverwriteSubtitle"
+        @cancel="subOverwriteConfirm = { open: false, sb: null }"
+      />
       <ConfirmDialog
         :open="skipConfirmOpen"
         :title="t('episode.script.skipConfirmTitle')"
@@ -1718,9 +1739,10 @@ import { toast } from 'vue-sonner'
 import { useI18n } from 'vue-i18n'
 import {
   Users, FileText, FolderKanban, Clapperboard, Download, Loader2,
-  Plus, X, ListTodo, CircleHelp, Images, BookOpen, Captions,
+  Plus, X, ListTodo, CircleHelp, Images, BookOpen, Captions, Upload,
 } from 'lucide-vue-next'
 import { api, dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, propAPI, taskAPI, mergeAPI, aiConfigAPI, uploadAPI, subtitleAPI } from '~/composables/useApi'
+import { warnIfReferenceDropped } from '~/composables/useAssetReferences'
 import { useAuth } from '~/composables/useAuth'
 import { startTour, autoTour } from '~/composables/useTour'
 import { resolveCharacterLook } from '~/composables/useCharacterIdentity'
@@ -1931,6 +1953,15 @@ function updateCharacterVoice(id, voice) {
   const character = chars.value.find(item => item.id === id)
   if (character) Object.assign(character, patch)
   if (assetDetail.value.type === 'character' && assetDetail.value.item?.id === id) Object.assign(assetDetail.value.item, patch)
+}
+// 素材参考图保存后同步到列表与详情弹窗（生成素材图时后端读库里的参考图）
+function updateAssetReferences(id, refs) {
+  const type = assetDetail.value.type
+  const list = type === 'character' ? chars.value : type === 'scene' ? scenes.value : propItems.value
+  const patch = { reference_images: JSON.stringify(refs), referenceImages: JSON.stringify(refs) }
+  const item = list.find(entry => entry.id === id)
+  if (item) Object.assign(item, patch)
+  if (assetDetail.value.item?.id === id) Object.assign(assetDetail.value.item, patch)
 }
 const assetDetailDraft = ref({ appearance: '', styling: '', prompt: '', lighting: '', description: '' })
 // 最终提示词手动编辑：dirty 时才随保存提交，避免无修改保存误清空 Agent 生成的提示词
@@ -3314,7 +3345,8 @@ async function genCharImg(id) {
         await ensureAssetPrompt('character', id)
       } catch {} // 提示词生成失败不阻断：后端生图前会再兜底生成或回退本地拼接
     }
-    await characterAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId())
+    const genRes = await characterAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId())
+    warnIfReferenceDropped(genRes, t)
     toast.success(t('episode.image.generatingChar'))
     await refresh()
     watchAsyncResult(() => {
@@ -3356,7 +3388,8 @@ async function genSceneImg(id) {
         await ensureAssetPrompt('scene', id)
       } catch {} // 提示词生成失败不阻断：后端生图前会再兜底生成或回退本地拼接
     }
-    await sceneAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId())
+    const genRes = await sceneAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId())
+    warnIfReferenceDropped(genRes, t)
     toast.success(t('episode.image.generatingScene'))
     await refresh()
     watchAsyncResult(() => {
@@ -3383,7 +3416,8 @@ async function genPropImg(id) {
         await ensureAssetPrompt('prop', id)
       } catch {} // 提示词生成失败不阻断：后端生图前会再兜底生成或回退本地拼接
     }
-    await propAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId())
+    const genRes = await propAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId())
+    warnIfReferenceDropped(genRes, t)
     toast.success(t('episode.image.generatingProp'))
     await refresh()
     watchAsyncResult(() => {
@@ -3401,7 +3435,7 @@ function batchSceneImages() {
   const ids = scenes.value.filter(s => !(s.image_url || s.imageUrl)).map(s => s.id)
   if (!ids.length) { toast.info(t('episode.image.allScenesDone')); return }
   pendingSceneImageIds.value = [...new Set([...pendingSceneImageIds.value, ...ids])]
-  ids.forEach(id => { sceneAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId()).then(() => refresh()).catch(e => toastError(e)) })
+  ids.forEach(id => { sceneAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId()).then((res) => { warnIfReferenceDropped(res, t); return refresh() }).catch(e => toastError(e)) })
   toast.success(t('episode.image.batchGeneratingScene'))
   watchAsyncResult(() => ids.every(id => {
     const scene = scenes.value.find(s => s.id === id)
@@ -3414,7 +3448,7 @@ function batchPropImages() {
   const ids = propItems.value.filter(p => !(p.image_url || p.imageUrl)).map(p => p.id)
   if (!ids.length) { toast.info(t('episode.image.allPropsDone')); return }
   pendingPropImageIds.value = [...new Set([...pendingPropImageIds.value, ...ids])]
-  ids.forEach(id => { propAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId()).then(() => refresh()).catch(e => toastError(e)) })
+  ids.forEach(id => { propAPI.generateImage(id, epId.value, bareModelName(imageModel.value) || undefined, ownerConfigId(imageModelOptions.value, imageModel.value), chatModelOverride(), chatConfigId()).then((res) => { warnIfReferenceDropped(res, t); return refresh() }).catch(e => toastError(e)) })
   toast.success(t('episode.image.batchGeneratingProp'))
   watchAsyncResult(() => ids.every(id => {
     const prop = propItems.value.find(p => p.id === id)
@@ -3515,8 +3549,10 @@ async function batchSubtitles() {
   try {
     const res = await subtitleAPI.batch(epId.value, ids, subtitleSelection())
     const n = res?.storyboard_ids?.length || 0
+    const skipped = res?.skipped_uploaded || 0
     if (n) toast.success(t('episode.sub.started', { n }))
-    else toast.info(t('episode.sub.nothingQueued'))
+    else if (!skipped) toast.info(t('episode.sub.nothingQueued'))
+    if (skipped) toast.info(t('episode.sub.skippedUploaded', { n: skipped }))
     subSelectMode.value = false
     selectedSubSbIds.value = []
   } catch (e) {
@@ -3525,6 +3561,53 @@ async function batchSubtitles() {
     subBatching.value = false
   }
   await reloadStoryboards()
+}
+// ----- 手动上传字幕 -----
+function isUploadedSubtitle(sb) { return sb?.subtitle_origin === 'upload' }
+const subFileInput = ref(null)
+const subUploadTarget = ref(null)
+const subUploadingId = ref(null)
+function pickSubtitleFile(sb) {
+  subUploadTarget.value = sb
+  if (subFileInput.value) {
+    subFileInput.value.value = ''
+    subFileInput.value.click()
+  }
+}
+async function onSubtitleFileChange(event) {
+  const input = event.target
+  const file = input.files?.[0]
+  input.value = ''
+  const sb = subUploadTarget.value
+  subUploadTarget.value = null
+  if (!file || !sb) return
+  if (!/\.(srt|vtt)$/i.test(file.name)) { toast.error(t('episode.sub.uploadInvalid')); return }
+  if (file.size > 5 * 1024 * 1024) { toast.error(t('episode.sub.uploadTooLarge')); return }
+  subUploadingId.value = sb.id
+  try {
+    const res = await subtitleAPI.upload(sb.id, file)
+    subSelectedId.value = sb.id
+    toast.success(t('episode.sub.uploadStarted', { n: res?.cues || 0 }))
+  } catch (e) {
+    toastError(e, { fallback: 'episode.sub.uploadFailed' })
+  } finally {
+    subUploadingId.value = null
+  }
+  await reloadStoryboards()
+}
+// 重新识别会覆盖手动上传的字幕，先确认
+const subOverwriteConfirm = ref({ open: false, sb: null })
+function onGenSubtitleClick(sb) {
+  if (isUploadedSubtitle(sb) && subState(sb) === 'done') {
+    subOverwriteConfirm.value = { open: true, sb }
+    return
+  }
+  genSubtitle(sb)
+}
+function confirmOverwriteSubtitle() {
+  const sb = subOverwriteConfirm.value.sb
+  subOverwriteConfirm.value = { open: false, sb: null }
+  if (sb) genSubtitle(sb)
 }
 async function clearSubtitle(sb) {
   try {
@@ -6942,8 +7025,9 @@ button.video-task-metric.on { box-shadow: 0 0 0 2px var(--accent); }
 .sub-row-thumb { width: 72px; height: 44px; object-fit: cover; border-radius: 6px; background: var(--media-surface); flex-shrink: 0; pointer-events: none; }
 .sub-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .sub-row-title { font-size: 12.5px; font-weight: 600; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sub-row-meta { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.sub-row-meta { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
 .sub-row-error { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sub-origin-tag { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; line-height: 16px; padding: 0 6px; border-radius: 4px; background: var(--bg-2, rgba(127,127,127,0.12)); color: var(--text-2); }
 .sub-row-actions { display: flex; gap: 4px; flex-shrink: 0; }
 .sub-preview { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
 .sub-preview-head { display: flex; align-items: center; gap: 8px; }

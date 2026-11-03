@@ -69,6 +69,53 @@
 
 ## 变更条目
 
+### 2026-11-03 · 新增：字幕制作支持手动上传字幕
+- **分支**：`feat/subtitle-upload`（从 `origin/dev` 拉出，2026-11-03 已合并到 `dev`）
+- **改动**
+  - 剧集工作台「字幕制作」每个镜头行多了一个上传按钮（只有图标，悬停有说明）。选一个 `.srt` / `.vtt` 文件后跳过语音识别，直接按工作流的固定样式压制字幕版视频。结果和识别出来的一样：可预览、下载 SRT，拼接导出、整集字幕都照常使用。
+  - 不需要字幕服务：没配字幕服务时「生成字幕」仍然禁用，但上传可用，顶部提示文案也改成说明可以手动上传。没有音轨的视频也能上传字幕（压制时 `-an`，不再 `-c:a copy`）。
+  - 接口：`POST /api/v1/subtitles/storyboards/:id/upload`（multipart `file`，≤5MB）。编码支持 UTF-8 / UTF-16 / GBK（复用工具页的 `decodeSubtitleFile` + `parseSrt`），统一转存为 UTF-8 SRT 到 `static/subtitles/`。返回 `{ storyboard_id, cues }`。
+  - 新列 `storyboards.subtitle_origin`（`asr` / `upload`，老数据为空按识别处理），清除字幕时一起清空。列表里手动上传的显示「手动上传」标签；状态文案「识别中」改为「制作中」（上传时并不识别）。
+  - 保护手动字幕：「全部生成字幕」（没有勾选镜头时）会跳过手动上传且仍有效的镜头，响应里返回 `skipped_uploaded`，前端提示跳过了几个；全部被跳过时直接返回，不要求有字幕服务。显式勾选的镜头照常重新识别。单个镜头点「重新生成」时，如果当前字幕是手动上传的，先弹确认框。
+- **关键文件**：`backend/src/services/subtitle.ts`（`enqueueUploadedSubtitle`、`burnUploadedSubtitle`，队列项多了 `uploadedSrt`）、`backend/src/routes/subtitles.ts`、`frontend/app/views/drama/episode.vue`（`prodTab === 'subtitles'`）。
+- **设计取舍**
+  - 上传的字幕走同一个并发队列（最多 2 个同时压制），状态同样记在 `storyboards` 上，重启中断的处理方式也一样（标记失败，需重新上传）。
+  - 校验在入队前同步完成，失败直接 400：扩展名、空文件、大小、解析不出条目、镜头没有视频或视频文件丢失、该镜头正在处理中。另外，字幕的**所有**条目都在视频结束之后时拒绝（多半是传成了整集字幕或别的镜头的字幕），部分越界允许。
+  - 不做整集 SRT 上传后按镜头时长自动拆分，用户只要求了镜头级上传；以后要做可以按 `buildEpisodeSrt` 的偏移逻辑反过来拆。
+  - 字幕内容原样使用，不按横竖屏宽度重新切行，太长的行交给 libass 自动换行。
+- **注意事项**
+  - 路由里 `parseBody()` 不能 `.catch` 吞掉异常：请求没有 `Content-Length` 时，`bodyLimit` 的超限错误在读取请求体时才抛出，吞掉后会变成「请选择字幕文件」（写测试时踩到）。
+  - 空文件在 multipart 解析后不是 `File`，接口返回「请选择字幕文件」，不是「字幕文件为空」。
+  - 字幕样式仍是工作流固定样式，上传也一样，没有接入工具页的字号 / 位置设置。
+- **验证**
+  - `backend/tests/subtitle-upload.test.ts`（2 项，真实 ffmpeg）：不配字幕服务，上传 GBK 编码的 VTT（省略小时、带样式设置和 `<v>` 标签）→ 转成 UTF-8 SRT → 压制，字幕版保留音轨；无音轨视频压制后也没有音轨；整集 SRT 偏移正确；「全部生成」跳过两个手动镜头；清除后来源清空。另一项覆盖各类校验、处理中重复上传、5MB 上限（无 `Content-Length`）、部分越界允许。后端 TS 测试 83 项全部通过，结构测试失败名单与 `dev` 一致（后端 11、前端 24）。后端类型检查、前端 `npm run generate` 通过。
+  - Playwright（不配字幕服务）：两个镜头分别上传 SRT（其中一个视频无音轨）→ 制作中 → 已完成 + 「手动上传」标签，字幕内容和字幕版预览正确，非法扩展名被前端拦截；截帧确认中文字幕已压进画面。之后加上字幕服务：手动镜头点「重新生成」弹确认框，「全部生成字幕」只提示跳过、不发起识别。
+
+### 2026-11-03 · 新增：素材生成（角色 / 场景 / 道具）支持参考图
+- **分支**：`feat/asset-reference-images`（从 `origin/dev` 拉出，2026-11-03 已合并到 `dev`）
+- **背景**：图片适配器早就支持参考图（OpenAI edits / Gemini inline_data / 硅基流动字段 + 降级），但角色、场景、道具的 `POST /:id/generate-image` 从来不传参考图，只有造型生图会拿角色主形象当参考。用户没法用自己的照片 / 设定图约束素材长相。
+- **改动**
+  - 每个素材保存最多 4 张参考图，存在各表的 `reference_images` 列（JSON 字符串数组，`static/...` 或 http(s) 地址）。`characters` / `props` 建表时就有这一列（以前没用过，`storyboard-tools.ts` 会把角色的这一列原样带给分镜 Agent），`scenes` 通过 `ADDED_COLUMNS` 补列。
+  - `PUT /characters|scenes|props/:id` 接收 `reference_images`（数组；`[]` / `null` 清空），校验在 `services/asset-reference.ts` 的 `cleanReferenceImagesInput`：非数组、非 `static/` / http(s) 地址、超过 4 张都返回 400；`/static/x` 统一存成 `static/x` 并去重。
+  - 三个 `generate-image` 和角色 `batch-generate-images` 读库里的参考图传给 `generateImage({ referenceImages })`，并在提示词末尾追加一段按类型区分的「参考图说明」（角色：保持五官 / 发型 / 服饰，不照搬背景姿势；场景：参照布局陈设色调，仍然不能出现人物；道具：保持外形材质颜色，白底单品）。响应多了 `reference_count`。
+  - 前端新组件 `components/AssetReferenceImages.vue`：放在剧集工作台素材详情弹窗和项目详情页素材弹窗的左栏（角色音色下面）。支持多选上传（PNG / JPG / WebP，单张 ≤10MB）、从素材库选（只有角色 / 场景，素材库没有道具分类）、单张移除；改动立刻保存，不走弹窗的「保存修改」。
+  - 带参考图生成时，`composables/useAssetReferences.ts` 的 `warnIfReferenceDropped` 在后台等任务结束，如果后端降级成纯文字生成（任务 `params.referenceFallback`），弹警告提示。
+  - 顺手修了 `LibraryPicker`：Esc 改为在捕获阶段拦截并 `stopPropagation`。以前它叠在素材详情弹窗上时，一次 Esc 会把选择器和外层弹窗一起关掉（原有的「从素材库选择图片」也有这个问题）。
+- **关键文件**：`backend/src/services/asset-reference.ts`、`backend/src/routes/{characters,scenes,props}.ts`、`frontend/app/components/AssetReferenceImages.vue`、`frontend/app/composables/useAssetReferences.ts`、`frontend/app/views/drama/{episode,detail}.vue`、`frontend/app/components/LibraryPicker.vue`。
+- **设计取舍**
+  - 参考图存在素材上（持久），而不是每次生成时临时选：重绘 / 批量生成都会自动带上，和「素材定妆」的使用方式一致。
+  - 只发给图片模型，不参与分镜视频的参考图（`getShotReferenceImages` 仍只用素材的成品图）。
+  - 角色批量生成（`batch-generate-images`）也会带参考图，但批量接口不返回每个任务的 `reference_count`，所以批量时不弹降级提示；场景 / 道具的「批量」是前端逐个调单个接口，会提示。
+- **注意事项**
+  - 火山引擎（Seedream）图片适配器仍然不发送参考图，用它生成时参考图不起作用，也不会有降级提示（适配器直接忽略，没有标记 `referenceDropped`）。
+  - 硅基流动只发第一张参考图（适配器原有行为）。
+  - 参考图在发送前会压到 768px、JPEG 质量 68（`normalizeReferenceImages` 原有逻辑），细节很多的设定图可能会损失细节。
+  - 造型生图（`/character-looks/:id/generate-image`）仍只用角色主形象做参考，不读角色的参考图。
+- **验证**
+  - `backend/tests/asset-reference.test.ts`（5 项）：解析 / 校验 / 提示词追加。后端 TS 测试 81 项全部通过；结构测试失败名单与 `dev` 完全一致（后端 11、前端 24，均为原有失败）。后端类型检查、前端 `npm run generate` 通过。
+  - 本地模拟 OpenAI 图片服务端到端：设置参考图后三类素材都改走 `/v1/images/edits`，各带 1 张图（`static/x` 与 `/static/x` 已去重），提示词末尾有对应的参考图说明；清空后回到 `/v1/images/generations`、不带图。非法地址 / 超过 4 张 / 非数组返回 400。
+  - Playwright：剧集工作台角色弹窗上传 → 出现缩略图 → 打开素材库选择器 → Esc 只关选择器 → 移除；项目详情页道具弹窗显示已保存的参考图、只有「上传」按钮；无页面报错。
+
 ### 2026-11-02 · 新增：工具页「音色复刻」+ 设置页「音频」服务类型
 - **分支**：`feat/voice-clone`（从 `origin/dev` 拉出，2026-11-02 已合并到 `dev`）
 - **改动**
@@ -430,7 +477,7 @@
   - 当时没能访问硅基流动官方文档，字段规则来自搜索到的摘要和博客。→ 已对照官方文档核实并校正，见 2026-10-26「硅基流动请求体对照官方文档校正」条目。
   - **按模型名判断是启发式的**：名字里没有 edit / kolors / kontext、但其实支持参考图的模型，会被当成纯文生图（会提示，不会报错）。要扩充的话改 `siliconFlowReferenceField` 即可。
   - `image2` / `image3` 和 `image_size` 的处理已在后一条校正（`image_size` 对非 Edit 模型是必填，这里原来的「沿用 `size`」是错的）。
-  - 降级提示目前只在造型面板里显示。其他带参考图的生图入口（`POST /tasks` 的 `reference_images`）同样会降级，但只记日志和任务参数，界面上不提示。
+  - 降级提示目前只在造型面板里显示。其他带参考图的生图入口（`POST /tasks` 的 `reference_images`）同样会降级，但只记日志和任务参数，界面上不提示。 → 素材（角色 / 场景 / 道具）生图也会提示了，见 2026-11-03「素材生成支持参考图」条目。
 - **验证**
   - `backend/tests/image-reference-fallback.test.ts`（8 项，在进程内拦截 fetch，走真实的 `generateImage` → 任务 → 回写流程）：硅基流动的 Edit / Kontext / 纯文生图三种模型、`images` 响应解析、OpenAI 兼容中转 edits 404 后降级、401 不降级、不带参考图时行为不变。
   - Playwright：模拟一个 edits 返回 404 的中转服务，界面上弹出降级提示，造型图正常生成。

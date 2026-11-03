@@ -25,6 +25,32 @@
     "invalidNoVoice": "「{token}」引用了{name}的音色，但{name}还没有上传音色，生成会失败。请在素材库给{name}上传音色，或把 # 改成 {'@'} 只引用形象。",
     "invalidUnknown": "「{token}」不是当前分镜绑定的角色，生成会失败。# 只能引用本分镜已绑定、已上传音色的角色。"
   },
+  "assetRefs": {
+    "title": "参考图",
+    "upload": "上传",
+    "fromLibrary": "素材库",
+    "saving": "保存中…",
+    "alt": "参考图 {n}",
+    "remove": "移除参考图",
+    "pickerTitle": "从素材库选择参考图",
+    "empty": {
+      "character": "上传人物照片或设定图，生成角色图时会参考其五官、发型和服饰。",
+      "scene": "上传场景照片或概念图，生成场景图时会参考其布局、陈设和色调。",
+      "prop": "上传物品照片，生成道具图时会参考其外形、材质和颜色。"
+    },
+    "note": "PNG / JPG / WebP · 单张 ≤10MB · 最多 4 张。重新生成时自动带上；不支持参考图的模型会改为纯文字生成。",
+    "saved": "参考图已保存",
+    "removed": "已移除参考图",
+    "full": "参考图最多 {max} 张",
+    "truncated": "最多 {max} 张，多出的图片未上传",
+    "duplicate": "这张图已经是参考图了",
+    "invalidFormat": "只支持 PNG、JPG、WebP 图片",
+    "tooLarge": "单张图片不能超过 10MB",
+    "fallback": {
+      "model": "当前图片模型不支持参考图，本次已按纯文字生成，结果可能与参考图不一致。",
+      "service": "图片服务拒绝了参考图，本次已按纯文字生成，结果可能与参考图不一致。"
+    }
+  },
   "common": {
     "confirm": "确认",
     "cancel": "取消",
@@ -1071,12 +1097,23 @@
       "finishedWithFailed": "字幕制作结束，{n} 个镜头失败",
       "state": {
         "none": "未生成",
-        "processing": "识别中",
+        "processing": "制作中",
         "done": "已完成",
         "no_speech": "无语音",
         "failed": "失败",
         "stale": "已过期"
-      }
+      },
+      "noConfigUpload": "还没有启用字幕服务，无法自动识别；可以在设置中添加，也可以为镜头手动上传字幕文件（SRT / VTT）。",
+      "upload": "上传",
+      "uploadTitle": "上传这个镜头的字幕文件（SRT / VTT，时间从 0 开始），跳过识别直接压制",
+      "uploadedTag": "手动上传",
+      "uploadStarted": "已读取 {n} 条字幕，正在压制字幕版视频",
+      "uploadFailed": "字幕上传失败",
+      "uploadInvalid": "仅支持 .srt / .vtt 字幕文件",
+      "uploadTooLarge": "字幕文件不能超过 5MB",
+      "overwriteTitle": "重新识别字幕？",
+      "overwriteMsg": "这个镜头的字幕是手动上传的，重新识别会用语音识别结果替换它。",
+      "skippedUploaded": "已跳过 {n} 个手动上传字幕的镜头，如需重新识别请勾选后生成"
     }
   },
   "looks": {

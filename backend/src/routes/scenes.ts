@@ -5,6 +5,7 @@ import { success, created, badRequest, now } from '../utils/response.js'
 import { generateImage } from '../services/generation.js'
 import { getDramaStylePrompt } from '../services/style-preset.js'
 import { ensureSceneFinalPrompt } from '../services/final-prompt.js'
+import { cleanReferenceImagesInput, parseReferenceImages, withReferenceHint } from '../services/asset-reference.js'
 import { logTaskError, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
 
 const app = new Hono()
@@ -59,6 +60,12 @@ app.put('/:id', async (c) => {
   // 手动编辑最终提示词时以传入值为准；未传入则保留原值（修改信息时不再自动置空）
   if (body.final_prompt !== undefined) updates.finalPrompt = body.final_prompt || null
   else if (body.finalPrompt !== undefined) updates.finalPrompt = body.finalPrompt || null
+  // 素材参考图：生成素材图时发给图片模型
+  if (body.reference_images !== undefined || body.referenceImages !== undefined) {
+    const cleaned = cleanReferenceImagesInput(body.reference_images !== undefined ? body.reference_images : body.referenceImages)
+    if ('error' in cleaned) return badRequest(c, cleaned.error)
+    updates.referenceImages = cleaned.value
+  }
   await db.update(schema.scenes).set(updates).where(eq(schema.scenes.id, id))
   return success(c)
 })
@@ -75,8 +82,9 @@ app.post('/:id/generate-image', async (c) => {
 
   const stylePrompt = await getDramaStylePrompt(scene.dramaId)
   const finalPrompt = await ensureSceneFinalPrompt(scene, ep.id, false, { model: body.text_model, configId: body.text_config_id ?? undefined })
+  const references = parseReferenceImages(scene.referenceImages)
   // 回退拼接也要守住无人物约束：场景描述(prompt)可能含人物活动，直接拼会让人混进图里
-  const prompt = finalPrompt || [
+  const basePrompt = finalPrompt || [
     stylePrompt || '',
     scene.location,
     scene.time || '',
@@ -84,12 +92,13 @@ app.post('/:id/generate-image', async (c) => {
     scene.lighting || '电影感光影',
     '画面中没有任何人物，空场景，只有场景本身',
   ].filter(Boolean).join(', ')
+  const prompt = withReferenceHint(basePrompt, 'scene', references)
   try {
-    logTaskStart('SceneImage', 'generate', { sceneId: id, episodeId: ep.id, dramaId: scene.dramaId, location: scene.location })
+    logTaskStart('SceneImage', 'generate', { sceneId: id, episodeId: ep.id, dramaId: scene.dramaId, location: scene.location, references: references.length })
     await db.update(schema.scenes).set({ status: 'processing', updatedAt: now() }).where(eq(schema.scenes.id, id))
-    const genId = await generateImage({ sceneId: id, dramaId: scene.dramaId, prompt, model: body.model, configId: body.config_id ?? ep.imageConfigId ?? undefined })
+    const genId = await generateImage({ sceneId: id, dramaId: scene.dramaId, prompt, model: body.model, referenceImages: references, configId: body.config_id ?? ep.imageConfigId ?? undefined })
     logTaskSuccess('SceneImage', 'generate', { sceneId: id, generationId: genId })
-    return success(c, { image_generation_id: genId })
+    return success(c, { image_generation_id: genId, reference_count: references.length })
   } catch (err: any) {
     logTaskError('SceneImage', 'generate', { sceneId: id, error: err.message })
     await db.update(schema.scenes).set({ status: 'failed', updatedAt: now() }).where(eq(schema.scenes.id, id))

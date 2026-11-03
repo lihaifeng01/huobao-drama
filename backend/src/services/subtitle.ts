@@ -3,6 +3,7 @@
  *
  * 状态直接记在 storyboards 上：subtitle_status = processing / completed / no_speech / failed。
  * subtitle_source_video 记录生成时依据的 video_url，镜头视频重新生成后两者不一致，即视为字幕过期。
+ * 字幕来源（subtitle_origin）：asr = 语音识别；upload = 用户上传 SRT / VTT，跳过识别直接压制（不需要字幕服务，没有音轨也行）。
  */
 import { spawn } from 'child_process'
 import fs from 'fs'
@@ -16,7 +17,7 @@ import { getAbsolutePath } from '../utils/storage.js'
 import { STORAGE_ROOT } from '../utils/paths.js'
 import { ffmpeg, ffmpegPath, checkFfmpegSuite } from '../utils/ffmpeg.js'
 import { extractVideoPoster } from '../utils/video-poster.js'
-import { cuesToSrt, parseSrt, sentencesToCues, type SrtCue } from '../utils/srt.js'
+import { cuesToSrt, decodeSubtitleFile, parseSrt, sentencesToCues, type SrtCue } from '../utils/srt.js'
 import { logTaskError, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
 import { getActiveConfig, getConfigById, type AIConfig } from './ai.js'
 import { transcribeAudioFile } from './adapters/aliyun-asr.js'
@@ -73,7 +74,9 @@ export function isSubtitleCurrent(sb: Storyboard) {
 
 // 入队时记下所选配置与模型，处理时按它解析（用户中途切换顶栏选择不影响已入队的镜头）
 // userId 也在入队时记下：出队处理时已经不在发起请求的上下文里了（用量统计归属）
-const queue: { id: number; sel: SubtitleSelection; userId: number | null }[] = []
+// uploadedSrt：手动上传的字幕（已转存的 static/subtitles/*.srt），有值时跳过识别直接压制
+interface QueueItem { id: number; sel: SubtitleSelection; userId: number | null; uploadedSrt?: string }
+const queue: QueueItem[] = []
 const queued = new Set<number>()
 let running = 0
 
@@ -97,11 +100,60 @@ export async function enqueueSubtitles(storyboardIds: number[], sel: SubtitleSel
   return accepted
 }
 
+export class SubtitleUploadError extends Error {}
+
+export const SUBTITLE_UPLOAD_EXT = new Set(['.srt', '.vtt'])
+export const SUBTITLE_UPLOAD_MAX_BYTES = 5 * 1024 * 1024
+
+/**
+ * 手动上传镜头字幕（SRT / WebVTT，UTF-8 / UTF-16 / GBK）：统一转存为 UTF-8 SRT 后入队压制。
+ * 校验失败抛 SubtitleUploadError（路由返回 400）。返回解析出的字幕条数。
+ */
+export async function enqueueUploadedSubtitle(storyboardId: number, file: File): Promise<{ cues: number }> {
+  const name = file.name || ''
+  const ext = name.includes('.') ? name.slice(name.lastIndexOf('.')).toLowerCase() : ''
+  if (!SUBTITLE_UPLOAD_EXT.has(ext)) throw new SubtitleUploadError('仅支持 .srt / .vtt 字幕文件')
+  if (!file.size) throw new SubtitleUploadError('字幕文件为空')
+  if (file.size > SUBTITLE_UPLOAD_MAX_BYTES) throw new SubtitleUploadError('字幕文件不能超过 5MB')
+  if (queued.has(storyboardId)) throw new SubtitleUploadError('该镜头的字幕正在制作中，请等当前任务结束后再上传')
+
+  const [sb] = await db.select().from(schema.storyboards).where(eq(schema.storyboards.id, storyboardId))
+  if (!sb?.videoUrl) throw new SubtitleUploadError('该镜头还没有视频，请先生成视频')
+  const videoAbs = getAbsolutePath(sb.videoUrl)
+  if (!fs.existsSync(videoAbs)) throw new SubtitleUploadError('镜头视频文件已丢失（本地文件不存在），请重新生成视频')
+
+  const cues = parseSrt(decodeSubtitleFile(Buffer.from(await file.arrayBuffer())))
+    .filter(c => c.end > c.start)
+  if (!cues.length) throw new SubtitleUploadError('字幕文件里没有可识别的字幕条目，请检查格式')
+
+  await ensureFfmpeg()
+  // 时间轴整体落在视频之后，多半是传成了整集字幕或别的镜头的字幕，压出来会一句都看不到
+  const { duration } = await probeVideo(videoAbs)
+  if (duration > 0 && cues[0].start >= duration * 1000 && cues.every(c => c.start >= duration * 1000)) {
+    throw new SubtitleUploadError(`字幕时间轴都在视频结束（${duration.toFixed(1)} 秒）之后，请确认上传的是这个镜头的字幕（时间从 0 开始）`)
+  }
+
+  const subDir = path.join(STORAGE_ROOT, 'subtitles')
+  fs.mkdirSync(subDir, { recursive: true })
+  const srtName = `${uuid()}.srt`
+  fs.writeFileSync(path.join(subDir, srtName), cuesToSrt(cues), 'utf-8')
+
+  queued.add(storyboardId)
+  queue.push({ id: storyboardId, sel: {}, userId: currentActorId(), uploadedSrt: `static/subtitles/${srtName}` })
+  await db.update(schema.storyboards)
+    .set({ subtitleStatus: 'processing', subtitleError: null, updatedAt: now() })
+    .where(eq(schema.storyboards.id, storyboardId))
+  logTaskStart(LABEL, 'upload', { storyboardId, cues: cues.length, file: name })
+  pump()
+  return { cues: cues.length }
+}
+
 function pump() {
   while (running < MAX_CONCURRENCY && queue.length) {
-    const { id, sel, userId } = queue.shift()!
+    const { id, sel, userId, uploadedSrt } = queue.shift()!
     running++
-    processStoryboard(id, sel, userId)
+    const job = uploadedSrt ? burnUploadedSubtitle(id, uploadedSrt) : processStoryboard(id, sel, userId)
+    job
       .catch(async (err: Error) => {
         logTaskError(LABEL, 'subtitle', { storyboardId: id, error: err.message })
         await db.update(schema.storyboards)
@@ -163,8 +215,29 @@ async function processStoryboard(id: number, sel: SubtitleSelection, userId: num
   const subtitledVideoUrl = `static/subtitled/${videoName}`
   await extractVideoPoster(subtitledVideoUrl)
 
-  await finish(id, sourceVideo, { status: 'completed', subtitleUrl, subtitledVideoUrl })
+  await finish(id, sourceVideo, { status: 'completed', subtitleUrl, subtitledVideoUrl, origin: 'asr' })
   logTaskSuccess(LABEL, 'subtitle', { storyboardId: id, cues: cues.length, subtitleUrl, subtitledVideoUrl })
+}
+
+/** 手动上传的字幕：不识别，直接按工作流固定样式压制 */
+async function burnUploadedSubtitle(id: number, subtitleUrl: string) {
+  const [sb] = await db.select().from(schema.storyboards).where(eq(schema.storyboards.id, id))
+  if (!sb?.videoUrl) throw new Error('镜头还没有视频')
+  const sourceVideo = sb.videoUrl
+  const videoAbs = getAbsolutePath(sourceVideo)
+  if (!fs.existsSync(videoAbs)) throw new Error('镜头视频文件已丢失（本地文件不存在），请重新生成视频')
+  const srtAbs = getAbsolutePath(subtitleUrl)
+
+  const info = await probeVideo(videoAbs)
+  const videoDir = path.join(STORAGE_ROOT, 'subtitled')
+  fs.mkdirSync(videoDir, { recursive: true })
+  const videoName = `${uuid()}.mp4`
+  await burnSubtitles(videoAbs, srtAbs, path.join(videoDir, videoName), info.height > info.width, info.hasAudio)
+  const subtitledVideoUrl = `static/subtitled/${videoName}`
+  await extractVideoPoster(subtitledVideoUrl)
+
+  await finish(id, sourceVideo, { status: 'completed', subtitleUrl, subtitledVideoUrl, origin: 'upload' })
+  logTaskSuccess(LABEL, 'upload', { storyboardId: id, subtitleUrl, subtitledVideoUrl })
 }
 
 /** 用量统计上下文：谁发起、归属哪个项目、对应哪条业务记录、音频时长（秒） */
@@ -204,13 +277,14 @@ export async function transcribeVideoCues(videoAbs: string, config: AIConfig, po
   }
 }
 
-async function finish(id: number, sourceVideo: string, r: { status: string; error?: string; subtitleUrl?: string; subtitledVideoUrl?: string }) {
+async function finish(id: number, sourceVideo: string, r: { status: string; error?: string; subtitleUrl?: string; subtitledVideoUrl?: string; origin?: 'asr' | 'upload' }) {
   await db.update(schema.storyboards).set({
     subtitleStatus: r.status,
     subtitleError: r.error ?? null,
     subtitleUrl: r.subtitleUrl ?? null,
     subtitledVideoUrl: r.subtitledVideoUrl ?? null,
     subtitleSourceVideo: sourceVideo,
+    subtitleOrigin: r.origin ?? 'asr',
     updatedAt: now(),
   }).where(eq(schema.storyboards.id, id))
 }
@@ -259,7 +333,7 @@ export function subtitleFont() {
   return 'WenQuanYi Micro Hei'
 }
 
-function burnSubtitles(videoAbs: string, srtAbs: string, outAbs: string, portrait: boolean) {
+function burnSubtitles(videoAbs: string, srtAbs: string, outAbs: string, portrait: boolean, hasAudio = true) {
   // SRT 渲染时 libass 以 384x288 为坐标基准，竖屏画面横向更窄，字号相应缩小
   const style = [
     `FontName=${subtitleFont()}`,
@@ -275,7 +349,7 @@ function burnSubtitles(videoAbs: string, srtAbs: string, outAbs: string, portrai
     '-y', '-i', videoAbs,
     '-vf', `subtitles=${path.basename(srtAbs)}:charenc=UTF-8:force_style='${style}'`,
     '-c:v', 'libx264', '-preset', 'medium', '-crf', '20',
-    '-c:a', 'copy',
+    ...(hasAudio ? ['-c:a', 'copy'] : ['-an']),
     '-movflags', '+faststart',
     outAbs,
   ], path.dirname(srtAbs))
