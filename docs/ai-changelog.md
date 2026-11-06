@@ -70,7 +70,7 @@
 ## 变更条目
 
 ### 2026-11-06 · 新增：品牌主题（白标）设置，仅超级管理员
-- **分支**：`claude/friendly-knuth-z401ct`（从 `dev` 拉出，未合并）
+- **分支**：`claude/friendly-knuth-z401ct`（基于 4.1.3，未合并）
 - **改动**：设置页新增「品牌主题」tab（只对超级管理员显示），可改应用名称、副标题（可隐藏）、Logo、网站图标、浅色/深色主题主色（预设 7 色 + 自定义）、圆角风格（胶囊/柔和/方正）、顶栏 GitHub 链接开关。编辑即预览，保存后对所有用户生效（包括登录页）。
 - **关键文件**：`backend/src/services/branding.ts`、`backend/src/routes/settings.ts`（`GET/PUT/DELETE /settings/branding`）、`backend/src/middleware/auth.ts`、`frontend/app/composables/useBranding.ts`、`frontend/app/utils/brand-color.ts`、`frontend/app/plugins/branding.client.ts`、`frontend/app/pages/settings.vue`
 - **设计取舍**：
