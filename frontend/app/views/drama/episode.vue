@@ -935,6 +935,132 @@
           </div>
 
           <!-- Sub: Subtitles（字幕制作：识别镜头视频语音 → SRT → 压制字幕版） -->
+          <div v-if="prodTab === 'upscale'" class="prod-content">
+            <div class="prod-section-bar">
+              <span class="dim" style="font-size:12px">{{ t('episode.prod.upscale') }}</span>
+              <span class="tag mono">{{ t('episode.upscale.stat', { done: upDoneCount, total: subVideoSbs.length }) }}</span>
+              <span class="tag mono" :title="t('episode.upscale.engineTitle')">FFmpeg</span>
+              <div class="ml-auto flex gap-1 items-center">
+                <span class="dim" style="font-size:12px">{{ t('episode.upscale.target') }}</span>
+                <BaseSelect v-model="upscaleTarget" :options="upscaleTargetOptions" :searchable="false" class="up-target-select" />
+                <button class="btn btn-sm" :class="{ 'is-on': upSelectMode }" :disabled="!subVideoSbs.length" @click="toggleUpSelectMode">
+                  {{ upSelectMode ? t('episode.vid.selectDone', { n: selectedUpSbIds.length }) : t('episode.vid.select') }}
+                </button>
+                <button class="btn btn-sm btn-primary" :disabled="!subVideoSbs.length || upBatching" @click="batchUpscale">
+                  <Loader2 v-if="upBatching" :size="11" class="animate-spin" />
+                  <Sparkles v-else :size="12" />
+                  {{ upSelectMode && selectedUpSbIds.length ? t('episode.upscale.batchSelected', { n: selectedUpSbIds.length }) : t('episode.upscale.batchAll') }}
+                </button>
+              </div>
+            </div>
+            <div class="up-intro">{{ t('episode.upscale.intro') }}</div>
+            <div v-if="!subVideoSbs.length" class="step-empty" style="flex:1">
+              <div class="empty-visual"><Sparkles :size="32" :stroke-width="1.3" /></div>
+              <div class="empty-title">{{ t('episode.upscale.emptyTitle') }}</div>
+              <div class="empty-desc">{{ t('episode.upscale.emptyDesc') }}</div>
+              <button class="btn btn-primary" @click="prodTab = 'videos'">{{ t('episode.sub.gotoVideos') }}</button>
+            </div>
+            <div v-else class="sub-workbench">
+              <section class="sub-list">
+                <div v-if="upSelectMode" class="shot-quick-actions">
+                  <button class="shot-quick-btn" @click="selectedUpSbIds = subVideoSbs.map(sb => sb.id)">{{ t('episode.sb.selectAll') }}</button>
+                  <button class="shot-quick-btn" @click="selectedUpSbIds = subVideoSbs.filter(sb => ['none', 'stale', 'failed'].includes(upState(sb))).map(sb => sb.id)">{{ t('episode.upscale.selectMissing') }}</button>
+                  <button class="shot-quick-btn" @click="selectedUpSbIds = []">{{ t('episode.sb.clear') }}</button>
+                </div>
+                <div
+                  v-for="sb in subVideoSbs"
+                  :key="sb.id"
+                  :class="['sub-row', { active: !upSelectMode && upSelected?.id === sb.id, 'is-selected': upSelectMode && selectedUpSbIds.includes(sb.id) }]"
+                  role="button"
+                  tabindex="0"
+                  @click="onUpRowClick(sb)"
+                  @keydown.enter.prevent="onUpRowClick(sb)"
+                >
+                  <span v-if="upSelectMode" class="shot-check" :class="{ on: selectedUpSbIds.includes(sb.id) }">
+                    <svg v-if="selectedUpSbIds.includes(sb.id)" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  </span>
+                  <video
+                    class="sub-row-thumb"
+                    :src="'/' + getVideoUrl(sb)"
+                    :poster="posterOf('/' + getVideoUrl(sb)) || undefined"
+                    preload="none"
+                    muted
+                    playsinline
+                    tabindex="-1"
+                  />
+                  <div class="sub-row-main">
+                    <div class="sub-row-title">#{{ sb.storyboard_number }} {{ sb.title || '' }}</div>
+                    <div class="sub-row-meta">
+                      <span :class="['video-task-status', 'is-' + upStateClass(sb)]">
+                        <Loader2 v-if="upState(sb) === 'processing'" :size="10" class="animate-spin" />
+                        {{ t('episode.upscale.state.' + upState(sb)) }}
+                      </span>
+                      <span v-if="isUpscaleCurrent(sb)" class="sub-origin-tag mono" :title="t('episode.upscale.sizeTitle')">{{ sizeLabel(sb.upscale_source_size) }} → {{ sizeLabel(sb.upscale_size) }}</span>
+                      <span v-if="sb.upscale_status === 'failed' && sb.upscale_error" class="sub-row-error" :title="sb.upscale_error">{{ sb.upscale_error }}</span>
+                    </div>
+                  </div>
+                  <div class="sub-row-actions" @click.stop>
+                    <button
+                      class="btn btn-sm"
+                      :disabled="upState(sb) === 'processing' || upSubmittingId === sb.id"
+                      :title="t('episode.upscale.runTitle', { target: upscaleTargetLabel(upscaleTarget) })"
+                      @click="genUpscale(sb)"
+                    >
+                      <Loader2 v-if="upSubmittingId === sb.id" :size="11" class="animate-spin" />
+                      {{ upState(sb) === 'none' || upState(sb) === 'failed' ? t('episode.upscale.run') : t('episode.upscale.rerun') }}
+                    </button>
+                  </div>
+                </div>
+              </section>
+              <section class="sub-preview">
+                <template v-if="upSelected">
+                  <div class="sub-preview-head">
+                    <span class="sub-preview-title">#{{ upSelected.storyboard_number }} {{ upSelected.title || '' }}</span>
+                    <div v-if="isUpscaleCurrent(upSelected)" class="ml-auto flex gap-1">
+                      <button type="button" :class="['btn btn-sm', { 'is-on': upPreviewMode === 'upscaled' }]" @click="upPreviewMode = 'upscaled'">
+                        {{ t('episode.upscale.previewUpscaled') }} · {{ sizeLabel(upSelected.upscale_size) }}
+                      </button>
+                      <button type="button" :class="['btn btn-sm', { 'is-on': upPreviewMode === 'original' }]" @click="upPreviewMode = 'original'">
+                        {{ t('episode.upscale.previewOriginal') }} · {{ sizeLabel(upSelected.upscale_source_size) }}
+                      </button>
+                    </div>
+                  </div>
+                  <div class="sub-player">
+                    <video :key="upPreviewSrc" :src="upPreviewSrc" :poster="posterOf(upPreviewSrc) || undefined" controls playsinline preload="metadata" />
+                  </div>
+                  <div class="sub-cues">
+                    <div class="sub-cues-head">
+                      <span>{{ t('episode.upscale.usage') }}</span>
+                      <a
+                        v-if="isUpscaleCurrent(upSelected)"
+                        class="btn btn-sm ml-auto"
+                        :href="'/' + upSelected.upscaled_video_url"
+                        :download="`shot-${upSelected.storyboard_number}-${upSelected.upscale_target || 'upscaled'}.mp4`"
+                      >
+                        <Download :size="11" /> {{ t('episode.upscale.download') }}
+                      </a>
+                      <button
+                        v-if="upSelected.upscaled_video_url && upState(upSelected) !== 'processing'"
+                        class="btn btn-sm btn-ghost"
+                        :class="{ 'ml-auto': !isUpscaleCurrent(upSelected) }"
+                        @click="upClearConfirm = { open: true, sb: upSelected }"
+                      >{{ t('episode.upscale.clear') }}</button>
+                    </div>
+                    <div class="sub-cue-empty up-usage">
+                      <template v-if="upState(upSelected) === 'done'">{{ t('episode.upscale.usageUpscaled', { size: sizeLabel(upSelected.upscale_size) }) }}</template>
+                      <template v-else-if="upState(upSelected) === 'stale'">{{ t('episode.upscale.staleHint') }}</template>
+                      <template v-else-if="upState(upSelected) === 'processing'">{{ t('episode.upscale.processingHint') }}</template>
+                      <template v-else>{{ t('episode.upscale.usageOriginal') }}</template>
+                      <div v-if="isUpscaleCurrent(upSelected) && upSelected.upscale_status === 'failed' && upSelected.upscale_error" class="up-rerun-failed">
+                        {{ t('episode.upscale.rerunFailed', { error: upSelected.upscale_error }) }}
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </section>
+            </div>
+          </div>
+
           <div v-if="prodTab === 'subtitles'" class="prod-content">
             <div class="prod-section-bar">
               <span class="dim" style="font-size:12px">{{ t('episode.prod.subtitles') }}</span>
@@ -975,7 +1101,7 @@
               <section class="sub-list">
                 <div v-if="subSelectMode" class="shot-quick-actions">
                   <button class="shot-quick-btn" @click="selectedSubSbIds = subVideoSbs.map(sb => sb.id)">{{ t('episode.sb.selectAll') }}</button>
-                  <button class="shot-quick-btn" @click="selectedSubSbIds = subVideoSbs.filter(sb => ['none', 'stale', 'failed'].includes(subState(sb))).map(sb => sb.id)">{{ t('episode.sub.selectMissing') }}</button>
+                  <button class="shot-quick-btn" @click="selectedSubSbIds = subVideoSbs.filter(sb => ['none', 'stale', 'failed', 'reburn'].includes(subState(sb))).map(sb => sb.id)">{{ t('episode.sub.selectMissing') }}</button>
                   <button class="shot-quick-btn" @click="selectedSubSbIds = []">{{ t('episode.sb.clear') }}</button>
                 </div>
                 <div
@@ -992,8 +1118,8 @@
                   </span>
                   <video
                     class="sub-row-thumb"
-                    :src="'/' + getVideoUrl(sb)"
-                    :poster="posterOf('/' + getVideoUrl(sb)) || undefined"
+                    :src="'/' + effectiveVideoUrl(sb)"
+                    :poster="posterOf('/' + effectiveVideoUrl(sb)) || undefined"
                     preload="none"
                     muted
                     playsinline
@@ -1007,11 +1133,21 @@
                         {{ t('episode.sub.state.' + subState(sb)) }}
                       </span>
                       <span v-if="isUploadedSubtitle(sb) && subState(sb) !== 'none'" class="sub-origin-tag">{{ t('episode.sub.uploadedTag') }}</span>
+                      <span v-if="isUpscaleCurrent(sb)" class="sub-origin-tag" :title="t('episode.sub.onUpscaledTitle')">{{ t('episode.upscale.badge', { target: upscaleTargetLabel(sb.upscale_target) }) }}</span>
                       <span v-if="sb.subtitle_error && ['failed', 'no_speech'].includes(subState(sb))" class="sub-row-error" :title="sb.subtitle_error">{{ sb.subtitle_error }}</span>
                     </div>
                   </div>
                   <div class="sub-row-actions" @click.stop>
                     <button
+                      v-if="canReburnSubtitle(sb)"
+                      class="btn btn-sm"
+                      :title="t('episode.sub.reburnTitle')"
+                      @click="reburnSubtitle(sb)"
+                    >
+                      {{ t('episode.sub.reburn') }}
+                    </button>
+                    <button
+                      v-else
                       class="btn btn-sm"
                       :disabled="subState(sb) === 'processing' || !subtitleConfigs.length"
                       @click="onGenSubtitleClick(sb)"
@@ -1071,7 +1207,7 @@
                         <span>{{ c.text }}</span>
                       </div>
                     </div>
-                    <div v-else class="sub-cue-empty">{{ subState(subSelected) === 'stale' ? t('episode.sub.staleHint') : t('episode.sub.noCues') }}</div>
+                    <div v-else class="sub-cue-empty">{{ subState(subSelected) === 'stale' ? t('episode.sub.staleHint') : subState(subSelected) === 'reburn' ? t('episode.sub.reburnHint') : t('episode.sub.noCues') }}</div>
                   </div>
                 </template>
               </section>
@@ -1208,7 +1344,10 @@
                       playsinline
                       tabindex="-1"
                     />
-                    <span v-if="exportUsesSubtitled(sb)" class="exp-sub-badge" :title="t('episode.export.withSubtitlesTitle')"><Captions :size="10" /></span>
+                    <span v-if="exportUsesSubtitled(sb) || isUpscaleCurrent(sb)" class="exp-badges">
+                      <span v-if="exportUsesSubtitled(sb)" class="exp-sub-badge" :title="t('episode.export.withSubtitlesTitle')"><Captions :size="10" /></span>
+                      <span v-if="isUpscaleCurrent(sb)" class="exp-up-badge" :title="t('episode.export.upscaledTitle', { size: sizeLabel(sb.upscale_size) })"><Sparkles :size="10" /></span>
+                    </span>
                     <div v-else-if="!hasVid(sb)" class="exp-thumb-empty">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
                     </div>
@@ -1576,6 +1715,7 @@
             <div class="image-viewer-title">{{ t('episode.export.shotPreview', { n: shotNumberOf(previewShot) }) }}</div>
             <span v-if="previewShot.duration" class="dim" style="font-size:11px">{{ previewShot.duration }}s</span>
             <span v-if="exportUsesSubtitled(previewShot)" class="tag tag-accent"><Captions :size="11" /> {{ t('episode.sub.previewSubtitled') }}</span>
+            <span v-if="isUpscaleCurrent(previewShot)" class="tag tag-accent"><Sparkles :size="11" /> {{ t('episode.upscale.badge', { target: upscaleTargetLabel(previewShot.upscale_target) }) }} · {{ sizeLabel(previewShot.upscale_size) }}</span>
             <a :href="'/' + exportVideoUrl(previewShot)" download class="btn btn-sm" style="margin-left:auto">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               {{ t('common.download') }}
@@ -1696,6 +1836,14 @@
         :config-id="chatConfigId() || null"
         @close="recapOpen = false"
       />
+      <ConfirmDialog
+        :open="upClearConfirm.open"
+        :title="t('episode.upscale.clearTitle')"
+        :message="t('episode.upscale.clearMsg')"
+        :confirm-text="t('episode.upscale.clear')"
+        @confirm="confirmClearUpscale"
+        @cancel="upClearConfirm = { open: false, sb: null }"
+      />
       <input ref="subFileInput" type="file" accept=".srt,.vtt" style="display:none" @change="onSubtitleFileChange" />
       <ConfirmDialog
         :open="subOverwriteConfirm.open"
@@ -1739,9 +1887,9 @@ import { toast } from 'vue-sonner'
 import { useI18n } from 'vue-i18n'
 import {
   Users, FileText, FolderKanban, Clapperboard, Download, Loader2,
-  Plus, X, ListTodo, CircleHelp, Images, BookOpen, Captions, Upload,
+  Plus, X, ListTodo, CircleHelp, Images, BookOpen, Captions, Upload, Sparkles,
 } from 'lucide-vue-next'
-import { api, dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, propAPI, taskAPI, mergeAPI, aiConfigAPI, uploadAPI, subtitleAPI } from '~/composables/useApi'
+import { api, dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, propAPI, taskAPI, mergeAPI, aiConfigAPI, uploadAPI, subtitleAPI, upscaleAPI } from '~/composables/useApi'
 import { warnIfReferenceDropped } from '~/composables/useAssetReferences'
 import { useAuth } from '~/composables/useAuth'
 import { startTour, autoTour } from '~/composables/useTour'
@@ -1820,7 +1968,7 @@ async function loadExportMerges() {
 const scriptStep = ref(storedPanel ? (storedPanel.scriptStep === 0 ? 0 : 1) : 0)
 // 旧版本地存储的 'storyboard' 子步骤已并入 'videos'（视频制作）
 const storedProdTab = storedPanel?.prodTab === 'storyboard' ? 'videos' : storedPanel?.prodTab
-const prodTab = ref(['assets', 'videos', 'subtitles'].includes(storedProdTab) ? storedProdTab : 'assets')
+const prodTab = ref(['assets', 'videos', 'upscale', 'subtitles'].includes(storedProdTab) ? storedProdTab : 'assets')
 // 面板位置变化即持久化
 watch([panel, scriptStep, prodTab], ([p, s, pt]) => {
   try { localStorage.setItem(PANEL_STORE_KEY, JSON.stringify({ panel: p, scriptStep: s, prodTab: pt })) } catch { /* 静默 */ }
@@ -2771,6 +2919,7 @@ const assetReadyCount = computed(() => charImgCount.value + sceneImgCount.value 
 const prodTabDefs = computed(() => [
   { id: 'assets', label: t('episode.prod.assets'), icon: FolderKanban, badge: assetTotalCount.value ? `${assetReadyCount.value}/${assetTotalCount.value}` : '' },
   { id: 'videos', label: t('episode.prod.videos'), icon: Clapperboard, badge: sbs.value.length ? `${shotVidCount.value}/${sbs.value.length}` : '' },
+  { id: 'upscale', label: t('episode.prod.upscale'), icon: Sparkles, badge: subVideoSbs.value.length ? `${upDoneCount.value}/${subVideoSbs.value.length}` : '' },
   { id: 'subtitles', label: t('episode.prod.subtitles'), icon: Captions, badge: subVideoSbs.value.length ? `${subDoneCount.value}/${subVideoSbs.value.length}` : '' },
 ])
 
@@ -2778,6 +2927,7 @@ const mainStageDefs = computed(() => ([
   { id: 'script', label: t('episode.stage.script'), desc: t('episode.stage.scriptDesc'), icon: FileText },
   { id: 'assets', label: t('episode.prod.assets'), desc: t('episode.stage.assetsDesc'), icon: FolderKanban },
   { id: 'videos', label: t('episode.stage.videos'), desc: t('episode.stage.videosDesc'), icon: Clapperboard },
+  { id: 'upscale', label: t('episode.prod.upscale'), desc: t('episode.stage.upscaleDesc'), icon: Sparkles },
   { id: 'subtitles', label: t('episode.prod.subtitles'), desc: t('episode.stage.subtitlesDesc'), icon: Captions },
   { id: 'export', label: t('episode.stage.export'), desc: t('episode.stage.exportDesc'), icon: Download },
 ]))
@@ -2797,6 +2947,7 @@ const sidebarSections = computed(() => ([
     items: [
       { key: 'prod:assets', label: t('episode.prod.assets'), desc: '', icon: Users },
       { key: 'prod:videos', label: t('episode.prod.videos'), desc: '', icon: Clapperboard },
+      { key: 'prod:upscale', label: t('episode.prod.upscale'), desc: '', icon: Sparkles },
       { key: 'prod:subtitles', label: t('episode.prod.subtitles'), desc: '', icon: Captions },
     ],
   },
@@ -2830,7 +2981,7 @@ function sectionState(sectionId) {
 const activeMainStage = computed(() => {
   if (panel.value === 'export') return 'export'
   if (panel.value === 'production') {
-    return prodTab.value === 'assets' ? 'assets' : prodTab.value === 'subtitles' ? 'subtitles' : 'videos'
+    return ['assets', 'upscale', 'subtitles'].includes(prodTab.value) ? prodTab.value : 'videos'
   }
   return 'script'
 })
@@ -2841,6 +2992,7 @@ function mainStageDone(stageId) {
   if (stageId === 'videos') {
     return !!sbs.value.length && shotVidCount.value === sbs.value.length
   }
+  if (stageId === 'upscale') return !!subVideoSbs.value.length && upDoneCount.value === subVideoSbs.value.length
   if (stageId === 'subtitles') return !!subVideoSbs.value.length && subDoneCount.value === subVideoSbs.value.length
   if (stageId === 'export') return exportDone.value
   return false
@@ -2862,9 +3014,9 @@ function goMainStage(stageId) {
     prodTab.value = 'videos'
     return
   }
-  if (stageId === 'subtitles') {
+  if (stageId === 'upscale' || stageId === 'subtitles') {
     panel.value = 'production'
-    prodTab.value = 'subtitles'
+    prodTab.value = stageId
     return
   }
   panel.value = 'export'
@@ -2879,11 +3031,12 @@ const activeSubStepKey = computed(() => {
   return 'export:merge'
 })
 
-// 步骤跑马灯：五段主流程（剧本 → 资产制作 → 视频制作 → 字幕制作 → 导出），段点击跳转、当前段流动光效
+// 步骤跑马灯：六段主流程（剧本 → 资产制作 → 视频制作 → 画质增强 → 字幕制作 → 导出），段点击跳转、当前段流动光效
 const mainProgressSteps = computed(() => [
   { id: 'script', label: t('episode.stage.script') },
   { id: 'assets', label: t('episode.prod.assets') },
   { id: 'videos', label: t('episode.stage.videos') },
+  { id: 'upscale', label: t('episode.prod.upscale') },
   { id: 'subtitles', label: t('episode.prod.subtitles') },
   { id: 'export', label: t('episode.stage.export') },
 ])
@@ -3460,6 +3613,123 @@ function batchPropImages() {
 function getVideoUrl(s) { return s?.video_url || s?.videoUrl || s?.composed_video_url || s?.composedVideoUrl || null }
 function hasVid(s) { return !!getVideoUrl(s) }
 
+// ===== 画质增强（超分，第一期 FFmpeg） =====
+// 有视频的镜头（画质增强与字幕制作共用）
+const subVideoSbs = computed(() => sbs.value.filter(sb => sb.video_url || sb.videoUrl))
+// 镜头视频三个版本（与后端 shot-video.ts 一致）：原视频 video_url（视频制作页的主视频）、
+// 增强版 upscaled_video_url（单独保存，不覆盖原视频）、生效视频（有效的增强版，否则原视频）。
+// 增强版只有在增强时依据的正是当前原视频时才有效；原视频重新生成后自动作废。字幕压制和导出都用生效视频。
+function isUpscaleCurrent(sb) {
+  return !!(sb?.upscaled_video_url && sb.video_url && sb.upscale_source_video === sb.video_url)
+}
+function effectiveVideoUrl(sb) { return isUpscaleCurrent(sb) ? sb.upscaled_video_url : getVideoUrl(sb) }
+const UPSCALE_TARGETS = ['1080p', '1440p', '2160p']
+const UPSCALE_TARGET_KEY = 'huobao:upscale:target'
+function readUpscaleTarget() {
+  try { const v = localStorage.getItem(UPSCALE_TARGET_KEY); return UPSCALE_TARGETS.includes(v) ? v : '1080p' } catch { return '1080p' }
+}
+const upscaleTarget = ref(readUpscaleTarget())
+watch(upscaleTarget, (v) => { try { localStorage.setItem(UPSCALE_TARGET_KEY, v) } catch { /* 静默 */ } })
+const upscaleTargetOptions = computed(() => UPSCALE_TARGETS.map(v => ({ value: v, label: upscaleTargetLabel(v) })))
+function upscaleTargetLabel(v) { return v ? t(`episode.upscale.targets.${v}`) : '' }
+function sizeLabel(size) { return size ? String(size).replace('x', '×') : '' }
+// none 未增强 / processing 增强中 / done 增强版生效中 / stale 原视频已重新生成，增强版作废 / failed 失败且没有可用的增强版
+// 重新增强失败时之前的增强版仍生效：状态仍是 done，另外显示失败原因
+function upState(sb) {
+  if (sb?.upscale_status === 'processing') return 'processing'
+  if (isUpscaleCurrent(sb)) return 'done'
+  if (sb?.upscaled_video_url) return 'stale'
+  if (sb?.upscale_status === 'failed') return 'failed'
+  return 'none'
+}
+function upStateClass(sb) {
+  const st = upState(sb)
+  if (st === 'done') return 'done'
+  if (st === 'failed') return 'failed'
+  return 'pending'
+}
+const upDoneCount = computed(() => subVideoSbs.value.filter(sb => isUpscaleCurrent(sb)).length)
+const upProcessingCount = computed(() => subVideoSbs.value.filter(sb => upState(sb) === 'processing').length)
+const upSelectedId = ref(null)
+const upSelected = computed(() => subVideoSbs.value.find(sb => sb.id === upSelectedId.value) || subVideoSbs.value[0] || null)
+const upPreviewMode = ref('upscaled')
+const upPreviewSrc = computed(() => {
+  const sb = upSelected.value
+  if (!sb) return ''
+  const useUp = upPreviewMode.value === 'upscaled' && isUpscaleCurrent(sb)
+  return '/' + (useUp ? sb.upscaled_video_url : getVideoUrl(sb))
+})
+const upSelectMode = ref(false)
+const selectedUpSbIds = ref([])
+const upBatching = ref(false)
+const upSubmittingId = ref(null)
+function toggleUpSelectMode() {
+  upSelectMode.value = !upSelectMode.value
+  if (!upSelectMode.value) selectedUpSbIds.value = []
+}
+function onUpRowClick(sb) {
+  if (!upSelectMode.value) { upSelectedId.value = sb.id; return }
+  const ids = selectedUpSbIds.value
+  selectedUpSbIds.value = ids.includes(sb.id) ? ids.filter(id => id !== sb.id) : [...ids, sb.id]
+}
+async function genUpscale(sb) {
+  upSubmittingId.value = sb.id
+  try {
+    await upscaleAPI.upscale(sb.id, upscaleTarget.value)
+    toast.success(t('episode.upscale.started', { n: 1 }))
+  } catch (e) {
+    toastError(e, { fallback: 'episode.upscale.failed' })
+  } finally {
+    upSubmittingId.value = null
+  }
+  await reloadStoryboards()
+}
+async function batchUpscale() {
+  const ids = upSelectMode.value && selectedUpSbIds.value.length ? [...selectedUpSbIds.value] : undefined
+  upBatching.value = true
+  try {
+    const res = await upscaleAPI.batch(epId.value, ids, upscaleTarget.value)
+    const n = res?.storyboard_ids?.length || 0
+    const skipped = res?.skipped || []
+    if (n) toast.success(t('episode.upscale.started', { n }))
+    if (skipped.length) toast.info(t('episode.upscale.skipped', { n: skipped.length, reason: skipped[0].message }), { duration: 6000 })
+    if (!n && !skipped.length) toast.info(t('episode.upscale.allDone', { target: upscaleTargetLabel(upscaleTarget.value) }))
+    upSelectMode.value = false
+    selectedUpSbIds.value = []
+  } catch (e) {
+    toastError(e, { fallback: 'episode.upscale.failed' })
+  } finally {
+    upBatching.value = false
+  }
+  await reloadStoryboards()
+}
+// 清除增强结果：导出和字幕改回使用原视频（文件保留），先确认
+const upClearConfirm = ref({ open: false, sb: null })
+async function confirmClearUpscale() {
+  const sb = upClearConfirm.value.sb
+  upClearConfirm.value = { open: false, sb: null }
+  if (!sb) return
+  try {
+    await upscaleAPI.clear(sb.id)
+    toast.success(t('episode.upscale.cleared'))
+  } catch (e) { toastError(e) }
+  await reloadStoryboards()
+}
+let upPollTimer = null
+watch(upProcessingCount, (n, prev) => {
+  if (n > 0 && !upPollTimer) upPollTimer = setInterval(reloadStoryboards, 4000)
+  if (n === 0 && upPollTimer) {
+    clearInterval(upPollTimer)
+    upPollTimer = null
+    if (prev > 0) {
+      const failed = subVideoSbs.value.filter(sb => sb.upscale_status === 'failed').length
+      if (failed) toast.warning(t('episode.upscale.finishedWithFailed', { n: failed }))
+      else toast.success(t('episode.upscale.finished'))
+    }
+  }
+})
+onBeforeUnmount(() => { if (upPollTimer) clearInterval(upPollTimer) })
+
 // ===== 字幕制作 =====
 // 状态来自镜头字段：subtitle_status + subtitle_source_video（与当前 video_url 不一致即字幕过期）
 // 生效模型：顶栏所选，未选则为默认（优先级最高的启用配置的首个模型）
@@ -3470,14 +3740,26 @@ function subtitleSelection() {
     config_id: ownerConfigId(subtitleModelOptions.value, subtitleModel.value),
   }
 }
-const subVideoSbs = computed(() => sbs.value.filter(sb => sb.video_url || sb.videoUrl))
+// 字幕拆成两件事（与后端 shot-video.ts 一致）：字幕文本属于原视频；字幕版视频压在「生效视频」上。
+// 画质增强做了 / 清除后字幕文本仍有效，只是字幕版要用现有 SRT 重新压制（reburn，自动进行，不重新识别）
+function isSubtitleTextCurrent(sb) {
+  return !!sb?.subtitle_source_video && sb.subtitle_source_video === (sb.video_url || sb.videoUrl)
+}
+function subtitledBaseOf(sb) { return sb?.subtitled_base_video || sb?.subtitle_source_video || null }
 function subState(sb) {
   const status = sb?.subtitle_status
   if (!status) return 'none'
   if (status === 'processing') return 'processing'
   if (status === 'failed') return 'failed'
-  if (sb.subtitle_source_video !== (sb.video_url || sb.videoUrl)) return 'stale'
-  return status === 'no_speech' ? 'no_speech' : 'done'
+  if (!isSubtitleTextCurrent(sb)) return 'stale'
+  if (status === 'no_speech') return 'no_speech'
+  if (subtitledBaseOf(sb) !== effectiveVideoUrl(sb)) return 'reburn'
+  return 'done'
+}
+// 字幕文本仍有效、字幕版压在旧的生效视频上（含重新压制失败的情况）
+function canReburnSubtitle(sb) {
+  return !!sb?.subtitle_url && sb.subtitle_status !== 'processing' && sb.subtitle_status !== 'no_speech'
+    && isSubtitleTextCurrent(sb) && subtitledBaseOf(sb) !== effectiveVideoUrl(sb)
 }
 function subStateClass(sb) {
   const st = subState(sb)
@@ -3494,7 +3776,7 @@ const subPreviewSrc = computed(() => {
   const sb = subSelected.value
   if (!sb) return ''
   const useSub = subPreviewMode.value === 'subtitled' && subState(sb) === 'done' && sb.subtitled_video_url
-  return '/' + (useSub ? sb.subtitled_video_url : getVideoUrl(sb))
+  return '/' + (useSub ? sb.subtitled_video_url : effectiveVideoUrl(sb))
 })
 const subSelectMode = ref(false)
 const selectedSubSbIds = ref([])
@@ -3523,7 +3805,7 @@ function parseSrtText(text) {
 watch(() => [subSelected.value?.id, subSelected.value?.subtitle_url, subState(subSelected.value)], async () => {
   const sb = subSelected.value
   subCues.value = []
-  if (!sb?.subtitle_url || subState(sb) !== 'done') return
+  if (!sb?.subtitle_url || !['done', 'reburn'].includes(subState(sb))) return
   try {
     const res = await fetch('/' + sb.subtitle_url)
     if (res.ok && subSelected.value?.id === sb.id) subCues.value = parseSrtText(await res.text())
@@ -3608,6 +3890,13 @@ function confirmOverwriteSubtitle() {
   const sb = subOverwriteConfirm.value.sb
   subOverwriteConfirm.value = { open: false, sb: null }
   if (sb) genSubtitle(sb)
+}
+async function reburnSubtitle(sb) {
+  try {
+    await subtitleAPI.reburn(sb.id)
+    toast.success(t('episode.sub.reburnStarted'))
+  } catch (e) { toastError(e) }
+  await reloadStoryboards()
 }
 async function clearSubtitle(sb) {
   try {
@@ -4124,8 +4413,9 @@ const exportHasSubtitled = computed(() => sbs.value.some(sb => subState(sb) === 
 function exportUsesSubtitled(sb) {
   return !!(mergeWithSubtitles.value && sb?.subtitled_video_url && subState(sb) === 'done')
 }
+// 导出与预览：字幕版（开关打开且有效）> 生效视频（有效的画质增强版 > 原视频），与后端拼接选片一致
 function exportVideoUrl(sb) {
-  return exportUsesSubtitled(sb) ? sb.subtitled_video_url : getVideoUrl(sb)
+  return exportUsesSubtitled(sb) ? sb.subtitled_video_url : effectiveVideoUrl(sb)
 }
 async function doMerge(ids) {
   const storyboardIds = Array.isArray(ids) ? ids : undefined
@@ -6620,8 +6910,8 @@ button.video-task-metric.on { box-shadow: 0 0 0 2px var(--accent); }
   background: rgba(0,0,0,0.35);
   color: #fff;
 }
-.exp-sub-badge {
-  position: absolute; left: 6px; bottom: 6px;
+.exp-badges { position: absolute; left: 6px; bottom: 6px; display: inline-flex; gap: 4px; }
+.exp-sub-badge, .exp-up-badge {
   display: inline-flex; align-items: center; justify-content: center;
   width: 18px; height: 18px; border-radius: 5px;
   background: var(--accent); color: var(--on-accent);
@@ -7028,6 +7318,10 @@ button.video-task-metric.on { box-shadow: 0 0 0 2px var(--accent); }
 .sub-row-meta { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
 .sub-row-error { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sub-origin-tag { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; line-height: 16px; padding: 0 6px; border-radius: 4px; background: var(--bg-2, rgba(127,127,127,0.12)); color: var(--text-2); }
+.up-target-select { width: 150px; }
+.up-intro { padding: 8px 12px; border-radius: var(--radius); background: var(--bg-2); color: var(--text-2); font-size: 12px; line-height: 1.6; }
+.up-usage { text-align: left; line-height: 1.7; }
+.up-rerun-failed { margin-top: 6px; color: var(--action-danger); }
 .sub-row-actions { display: flex; gap: 4px; flex-shrink: 0; }
 .sub-preview { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
 .sub-preview-head { display: flex; align-items: center; gap: 8px; }

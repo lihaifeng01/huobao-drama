@@ -658,7 +658,8 @@
       "exportDone": "Export · done",
       "exportWaiting": "Export · waiting to merge",
       "workbench": "Workbench",
-      "subtitlesDesc": "Speech recognition and burn-in"
+      "subtitlesDesc": "Speech recognition and burn-in",
+      "upscaleDesc": "Enlarge to a higher resolution"
     },
     "script": {
       "raw": "Raw Content",
@@ -701,7 +702,8 @@
       "startExtract": "Start Extraction",
       "scriptFirst": "Please finish the script first",
       "goBack": "Go back",
-      "subtitles": "Subtitles"
+      "subtitles": "Subtitles",
+      "upscale": "Upscale"
     },
     "asset": {
       "fallbackType": "Asset",
@@ -1006,7 +1008,8 @@
       "unmarkDoneToast": "Done mark removed",
       "withSubtitles": "With subtitles",
       "withoutSubtitles": "Without subtitles",
-      "withSubtitlesTitle": "When merging, use the subtitled video for shots that have subtitles"
+      "withSubtitlesTitle": "When merging, use the subtitled video for shots that have subtitles",
+      "upscaledTitle": "Uses the upscaled version ({size})"
     },
     "image": {
       "generatingChar": "Character image generating",
@@ -1086,7 +1089,7 @@
       "regenerate": "Regenerate",
       "clear": "Clear subtitles",
       "previewSubtitled": "Subtitled",
-      "previewOriginal": "Original",
+      "previewOriginal": "No subtitles",
       "cues": "Subtitle lines",
       "noCues": "No subtitles",
       "staleHint": "The shot video was regenerated, so these subtitles are out of date. Generate them again.",
@@ -1101,7 +1104,8 @@
         "done": "Done",
         "no_speech": "No speech",
         "failed": "Failed",
-        "stale": "Outdated"
+        "stale": "Outdated",
+        "reburn": "Needs re-burn"
       },
       "noConfigUpload": "No subtitle service is enabled, so subtitles can't be transcribed. Add one in Settings, or upload a subtitle file (SRT / VTT) for each shot.",
       "upload": "Upload",
@@ -1113,7 +1117,59 @@
       "uploadTooLarge": "Subtitle file must be 5MB or smaller",
       "overwriteTitle": "Transcribe again?",
       "overwriteMsg": "This shot's subtitles were uploaded manually. Transcribing again will replace them with speech recognition results.",
-      "skippedUploaded": "Skipped {n} shots with uploaded subtitles. Select them explicitly to transcribe again."
+      "skippedUploaded": "Skipped {n} shots with uploaded subtitles. Select them explicitly to transcribe again.",
+      "reburn": "Re-burn",
+      "reburnTitle": "Burn the existing subtitles onto the current video again (no transcription, free)",
+      "reburnHint": "The upscale changed, so subtitles need to be burned onto the current video again (usually automatic, no new transcription)",
+      "reburnStarted": "Re-burning subtitles",
+      "onUpscaledTitle": "Subtitles and export use the upscaled version"
+    },
+    "upscale": {
+      "stat": "{done}/{total} upscaled",
+      "engineTitle": "Current engine: FFmpeg interpolation + sharpening (runs locally, free)",
+      "target": "Target",
+      "targets": {
+        "1080p": "1080p",
+        "1440p": "2K (1440p)",
+        "2160p": "4K (2160p)"
+      },
+      "batchSelected": "Upscale selected ({n})",
+      "batchAll": "Upscale all",
+      "intro": "Enlarges shot videos to the target resolution. The upscaled version is saved separately and never replaces the original video in Video production. Once upscaled, Subtitles and Export use it automatically, and existing subtitles are re-burned automatically (no new transcription). The current FFmpeg engine only interpolates and sharpens: the picture gets larger and crisper, but it can't add detail the original doesn't have.",
+      "emptyTitle": "No videos to upscale yet",
+      "emptyDesc": "Generate shot videos in Video production first, then come back to upscale",
+      "selectMissing": "Select not upscaled",
+      "state": {
+        "none": "Not upscaled",
+        "processing": "Upscaling",
+        "done": "Upscaled",
+        "stale": "Outdated",
+        "failed": "Failed"
+      },
+      "sizeTitle": "Original size → upscaled size",
+      "runTitle": "Upscale this shot to {target}",
+      "run": "Upscale",
+      "rerun": "Upscale again",
+      "previewUpscaled": "Upscaled",
+      "previewOriginal": "Original",
+      "usage": "Used for export and subtitles",
+      "download": "Download upscaled",
+      "clear": "Remove upscale",
+      "usageUpscaled": "Upscaled version ({size}). Subtitles and Export both use it; Video production still shows the original.",
+      "usageOriginal": "Original video (not upscaled yet).",
+      "staleHint": "The shot video was regenerated. The previous upscale belongs to the old video and is no longer used; Export and Subtitles now use the new original. Upscale again if needed.",
+      "processingHint": "Upscaling. Export and Subtitles keep using the current video until it finishes, then switch to the upscaled version automatically.",
+      "rerunFailed": "The latest upscale attempt failed: {error}. The previous upscaled version is still in use.",
+      "started": "Started upscaling {n} shots",
+      "failed": "Upscale failed",
+      "skipped": "{n} shots were not upscaled: {reason}",
+      "allDone": "All shots are already upscaled to {target}",
+      "cleared": "Upscale removed. Export and Subtitles use the original video again",
+      "finished": "Upscaling finished",
+      "finishedWithFailed": "Upscaling finished, {n} shots failed",
+      "clearTitle": "Remove the upscaled version?",
+      "clearMsg": "Export and Subtitles will use the original video again. Subtitles burned on the upscaled version will be re-burned on the original automatically.",
+      "badge": "Upscaled {target}"
     }
   },
   "looks": {

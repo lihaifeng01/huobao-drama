@@ -658,7 +658,8 @@
       "exportDone": "납출 단계 · 완료",
       "exportWaiting": "납출 단계 · 병합 대기",
       "workbench": "워크벤치",
-      "subtitlesDesc": "음성 인식과 자막 합성"
+      "subtitlesDesc": "음성 인식과 자막 합성",
+      "upscaleDesc": "더 높은 해상도로 확대"
     },
     "script": {
       "raw": "원문",
@@ -701,7 +702,8 @@
       "startExtract": "추출 시작",
       "scriptFirst": "먼저 대본을 완성하세요",
       "goBack": "처리로 돌아가기",
-      "subtitles": "자막 제작"
+      "subtitles": "자막 제작",
+      "upscale": "화질 향상"
     },
     "asset": {
       "fallbackType": "에셋",
@@ -1006,7 +1008,8 @@
       "unmarkDoneToast": "완료 표시를 해제했습니다",
       "withSubtitles": "자막 버전 사용",
       "withoutSubtitles": "자막 버전 미사용",
-      "withSubtitlesTitle": "병합 시 자막을 만든 샷은 자막이 합성된 영상을 사용합니다"
+      "withSubtitlesTitle": "병합 시 자막을 만든 샷은 자막이 합성된 영상을 사용합니다",
+      "upscaledTitle": "향상본 사용 ({size})"
     },
     "image": {
       "generatingChar": "캐릭터 이미지 생성 중",
@@ -1086,7 +1089,7 @@
       "regenerate": "다시 생성",
       "clear": "자막 지우기",
       "previewSubtitled": "자막 버전",
-      "previewOriginal": "원본 영상",
+      "previewOriginal": "자막 없음",
       "cues": "자막 내용",
       "noCues": "자막 없음",
       "staleHint": "샷 영상이 다시 생성되어 자막이 오래되었습니다. 다시 생성하세요.",
@@ -1101,7 +1104,8 @@
         "done": "완료",
         "no_speech": "음성 없음",
         "failed": "실패",
-        "stale": "만료됨"
+        "stale": "만료됨",
+        "reburn": "다시 입히기 대기"
       },
       "noConfigUpload": "활성화된 자막 서비스가 없어 자동 인식을 할 수 없습니다. 설정에서 추가하거나 샷마다 자막 파일(SRT / VTT)을 업로드하세요.",
       "upload": "업로드",
@@ -1113,7 +1117,59 @@
       "uploadTooLarge": "자막 파일은 5MB 이하여야 합니다",
       "overwriteTitle": "자막을 다시 인식할까요?",
       "overwriteMsg": "이 샷의 자막은 수동으로 업로드한 것입니다. 다시 인식하면 음성 인식 결과로 교체됩니다.",
-      "skippedUploaded": "수동 업로드 자막이 있는 샷 {n}개를 건너뛰었습니다. 다시 인식하려면 선택한 뒤 생성하세요"
+      "skippedUploaded": "수동 업로드 자막이 있는 샷 {n}개를 건너뛰었습니다. 다시 인식하려면 선택한 뒤 생성하세요",
+      "reburn": "다시 입히기",
+      "reburnTitle": "기존 자막을 현재 영상에 다시 입힙니다(재인식 없음, 무료)",
+      "reburnHint": "화질 향상 결과가 바뀌어 자막을 현재 영상에 다시 입혀야 합니다(보통 자동, 재인식 없음)",
+      "reburnStarted": "자막 다시 입히기를 시작했습니다",
+      "onUpscaledTitle": "자막과 내보내기에 향상본 사용"
+    },
+    "upscale": {
+      "stat": "{done}/{total} 향상됨",
+      "engineTitle": "현재 엔진: FFmpeg 보간 확대 + 선명화 (로컬 처리, 무료)",
+      "target": "목표",
+      "targets": {
+        "1080p": "1080p",
+        "1440p": "2K (1440p)",
+        "2160p": "4K (2160p)"
+      },
+      "batchSelected": "선택 항목 향상 ({n})",
+      "batchAll": "모두 향상",
+      "intro": "샷 영상을 목표 해상도로 확대합니다. 향상본은 따로 저장되며 영상 제작의 원본 영상을 덮어쓰지 않습니다. 향상 후에는 자막 제작과 내보내기가 자동으로 향상본을 사용하고, 만들어 둔 자막도 자동으로 다시 입힙니다(재인식 없음). 현재 FFmpeg 엔진은 보간 확대와 선명화만 하므로 원본에 없는 디테일은 만들지 못합니다.",
+      "emptyTitle": "향상할 영상이 없습니다",
+      "emptyDesc": "먼저 「영상 제작」에서 샷 영상을 생성한 뒤 돌아오세요",
+      "selectMissing": "미처리 선택",
+      "state": {
+        "none": "미처리",
+        "processing": "향상 중",
+        "done": "향상됨",
+        "stale": "만료됨",
+        "failed": "실패"
+      },
+      "sizeTitle": "원본 크기 → 향상본 크기",
+      "runTitle": "이 샷을 {target}(으)로 향상",
+      "run": "향상",
+      "rerun": "다시 향상",
+      "previewUpscaled": "향상본",
+      "previewOriginal": "원본",
+      "usage": "내보내기와 자막에 사용",
+      "download": "향상본 다운로드",
+      "clear": "향상 해제",
+      "usageUpscaled": "향상본({size}). 자막 제작과 내보내기에 사용됩니다. 영상 제작 페이지에는 원본이 표시됩니다.",
+      "usageOriginal": "원본 영상(아직 향상하지 않음).",
+      "staleHint": "샷 영상이 다시 생성되었습니다. 이전 향상본은 이전 영상의 것이라 더 이상 사용하지 않으며, 내보내기와 자막은 새 원본을 사용합니다. 필요하면 다시 향상하세요.",
+      "processingHint": "향상 중입니다. 완료 전까지 내보내기와 자막은 현재 영상을 사용하고, 완료되면 향상본으로 자동 전환됩니다.",
+      "rerunFailed": "최근 다시 향상에 실패했습니다: {error}. 이전 향상본을 계속 사용합니다.",
+      "started": "샷 {n}개의 화질 향상을 시작했습니다",
+      "failed": "화질 향상에 실패했습니다",
+      "skipped": "샷 {n}개는 향상하지 않았습니다: {reason}",
+      "allDone": "모든 샷이 이미 {target}(으)로 향상되었습니다",
+      "cleared": "향상본을 해제했습니다. 내보내기와 자막은 원본을 다시 사용합니다",
+      "finished": "화질 향상이 완료되었습니다",
+      "finishedWithFailed": "화질 향상이 끝났습니다. {n}개 샷 실패",
+      "clearTitle": "향상본을 해제할까요?",
+      "clearMsg": "내보내기와 자막이 원본 영상을 다시 사용합니다. 향상본에 입힌 자막은 원본에 자동으로 다시 입혀집니다.",
+      "badge": "향상 {target}"
     }
   },
   "looks": {

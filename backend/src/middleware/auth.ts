@@ -71,6 +71,8 @@ const PATH_RULES: [RegExp, EntityKind][] = [
   [/^\/merge\/episodes\/(\d+)(\/|$)/, 'episode'],
   [/^\/subtitles\/episodes\/(\d+)(\/|$)/, 'episode'],
   [/^\/subtitles\/storyboards\/(\d+)(\/|$)/, 'storyboard'],
+  [/^\/upscale\/episodes\/(\d+)(\/|$)/, 'episode'],
+  [/^\/upscale\/storyboards\/(\d+)(\/|$)/, 'storyboard'],
   [/^\/library\/[a-z]+\/projects\/(\d+)(\/|$)/, 'drama'],
 ]
 
@@ -88,7 +90,7 @@ const REF_FIELDS: Record<string, EntityKind> = {
   source_ids: 'character', // POST /characters/:id/merge
 }
 
-const PROJECT_SCOPED = /^\/(dramas|episodes|storyboards|characters|character-looks|scenes|props|tasks|merge|subtitles|agent)(\/|$)/
+const PROJECT_SCOPED = /^\/(dramas|episodes|storyboards|characters|character-looks|scenes|props|tasks|merge|subtitles|upscale|agent)(\/|$)/
 
 async function collectRefs(c: Context, path: string): Promise<[EntityKind, number][]> {
   const refs: [EntityKind, number][] = []

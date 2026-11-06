@@ -581,6 +581,18 @@ const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: 'storyboards', column: 'subtitle_source_video', ddl: 'ALTER TABLE storyboards ADD COLUMN subtitle_source_video TEXT' },
   // 镜头字幕来源：asr = 语音识别，upload = 用户手动上传的字幕文件（老数据为空，按识别处理）
   { table: 'storyboards', column: 'subtitle_origin', ddl: 'ALTER TABLE storyboards ADD COLUMN subtitle_origin TEXT' },
+  // 字幕版视频是压在哪个视频上的（原视频或画质增强版）；老数据为空，视为压在 subtitle_source_video 上
+  { table: 'storyboards', column: 'subtitled_base_video', ddl: 'ALTER TABLE storyboards ADD COLUMN subtitled_base_video TEXT' },
+  // 画质增强（超分）：结果单独存放，不覆盖 video_url。upscale_source_video 记录增强时依据的 video_url，
+  // 镜头视频重新生成后两者不一致即视为过期。status 只表示最近一次操作（processing / completed / failed）
+  { table: 'storyboards', column: 'upscaled_video_url', ddl: 'ALTER TABLE storyboards ADD COLUMN upscaled_video_url TEXT' },
+  { table: 'storyboards', column: 'upscale_status', ddl: 'ALTER TABLE storyboards ADD COLUMN upscale_status TEXT' },
+  { table: 'storyboards', column: 'upscale_error', ddl: 'ALTER TABLE storyboards ADD COLUMN upscale_error TEXT' },
+  { table: 'storyboards', column: 'upscale_source_video', ddl: 'ALTER TABLE storyboards ADD COLUMN upscale_source_video TEXT' },
+  // 目标规格（1080p / 1440p / 2160p）与实际尺寸（WxH），界面上展示「720p → 1080p」
+  { table: 'storyboards', column: 'upscale_target', ddl: 'ALTER TABLE storyboards ADD COLUMN upscale_target TEXT' },
+  { table: 'storyboards', column: 'upscale_size', ddl: 'ALTER TABLE storyboards ADD COLUMN upscale_size TEXT' },
+  { table: 'storyboards', column: 'upscale_source_size', ddl: 'ALTER TABLE storyboards ADD COLUMN upscale_source_size TEXT' },
   // 项目创建人（账号体系之前的老项目为空，创建超级管理员时归到超级管理员名下）
   { table: 'dramas', column: 'created_by', ddl: 'ALTER TABLE dramas ADD COLUMN created_by INTEGER' },
   // 按用户隔离：我的文件夹 / 上传素材、字幕工具、视频合成工具（老数据为空，启动时归到超级管理员名下）

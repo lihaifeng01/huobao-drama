@@ -11,6 +11,7 @@ import { requestLogger, errorHandler } from './middleware/logger.js'
 import { initAuth } from './services/auth.js'
 import { resumeInterruptedTasks } from './services/generation.js'
 import { resetInterruptedSubtitles } from './services/subtitle.js'
+import { resetInterruptedUpscales } from './services/upscale.js'
 import { resetInterruptedToolJobs } from './services/subtitle-tool.js'
 import { resetInterruptedVoiceJobs } from './services/voice-clone-tool.js'
 import { resetInterruptedMergeJobs } from './services/merge-tool.js'
@@ -59,6 +60,7 @@ console.log(`🚀 Huobao Drama TS server on http://localhost:${port}`)
 await initAuth()
 await resumeInterruptedTasks()
 await resetInterruptedSubtitles()
+await resetInterruptedUpscales()
 await resetInterruptedToolJobs()
 await resetInterruptedVoiceJobs()
 await resetInterruptedMergeJobs()

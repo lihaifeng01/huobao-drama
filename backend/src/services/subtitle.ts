@@ -4,6 +4,8 @@
  * 状态直接记在 storyboards 上：subtitle_status = processing / completed / no_speech / failed。
  * subtitle_source_video 记录生成时依据的 video_url，镜头视频重新生成后两者不一致，即视为字幕过期。
  * 字幕来源（subtitle_origin）：asr = 语音识别；upload = 用户上传 SRT / VTT，跳过识别直接压制（不需要字幕服务，没有音轨也行）。
+ * 字幕版压在「生效视频」上（有画质增强版就用增强版），记录在 subtitled_base_video；有效性规则见 shot-video.ts。
+ * 生效视频变化后（做了 / 清除了画质增强）用现有 SRT 自动重新压制（mode = reburn），不重新识别。
  */
 import { spawn } from 'child_process'
 import fs from 'fs'
@@ -24,6 +26,9 @@ import { transcribeAudioFile } from './adapters/aliyun-asr.js'
 import { currentActorId } from './actor.js'
 import { completeUsage, failUsage, startUsage } from './usage.js'
 import { dramaOf } from './project-access.js'
+import { effectiveShotVideo, isSubtitleCurrent, needsSubtitleReburn } from './shot-video.js'
+
+export { isSubtitleCurrent }
 
 type Storyboard = typeof schema.storyboards.$inferSelect
 
@@ -65,17 +70,12 @@ export async function ensureFfmpeg() {
   }
 }
 
-/** 字幕是否对应当前镜头视频（视频重新生成后字幕过期） */
-export function isSubtitleCurrent(sb: Storyboard) {
-  return !!sb.subtitleSourceVideo && sb.subtitleSourceVideo === sb.videoUrl
-}
-
 // ---------- 并发队列：识别和压制都较重，限制同时处理的镜头数 ----------
 
 // 入队时记下所选配置与模型，处理时按它解析（用户中途切换顶栏选择不影响已入队的镜头）
 // userId 也在入队时记下：出队处理时已经不在发起请求的上下文里了（用量统计归属）
-// uploadedSrt：手动上传的字幕（已转存的 static/subtitles/*.srt），有值时跳过识别直接压制
-interface QueueItem { id: number; sel: SubtitleSelection; userId: number | null; uploadedSrt?: string }
+// mode：asr = 识别后压制；upload = 用手动上传的 SRT（uploadedSrt）压制；reburn = 用镜头现有的 SRT 重新压制到当前生效视频
+interface QueueItem { id: number; sel: SubtitleSelection; userId: number | null; mode: 'asr' | 'upload' | 'reburn'; uploadedSrt?: string }
 const queue: QueueItem[] = []
 const queued = new Set<number>()
 let running = 0
@@ -90,7 +90,7 @@ export async function enqueueSubtitles(storyboardIds: number[], sel: SubtitleSel
     const [sb] = await db.select().from(schema.storyboards).where(eq(schema.storyboards.id, id))
     if (!sb?.videoUrl) continue
     queued.add(id)
-    queue.push({ id, sel, userId: currentActorId() })
+    queue.push({ id, sel, userId: currentActorId(), mode: 'asr' })
     accepted.push(id)
     await db.update(schema.storyboards)
       .set({ subtitleStatus: 'processing', subtitleError: null, updatedAt: now() })
@@ -119,7 +119,7 @@ export async function enqueueUploadedSubtitle(storyboardId: number, file: File):
 
   const [sb] = await db.select().from(schema.storyboards).where(eq(schema.storyboards.id, storyboardId))
   if (!sb?.videoUrl) throw new SubtitleUploadError('该镜头还没有视频，请先生成视频')
-  const videoAbs = getAbsolutePath(sb.videoUrl)
+  const videoAbs = getAbsolutePath(effectiveShotVideo(sb)!)
   if (!fs.existsSync(videoAbs)) throw new SubtitleUploadError('镜头视频文件已丢失（本地文件不存在），请重新生成视频')
 
   const cues = parseSrt(decodeSubtitleFile(Buffer.from(await file.arrayBuffer())))
@@ -139,7 +139,7 @@ export async function enqueueUploadedSubtitle(storyboardId: number, file: File):
   fs.writeFileSync(path.join(subDir, srtName), cuesToSrt(cues), 'utf-8')
 
   queued.add(storyboardId)
-  queue.push({ id: storyboardId, sel: {}, userId: currentActorId(), uploadedSrt: `static/subtitles/${srtName}` })
+  queue.push({ id: storyboardId, sel: {}, userId: currentActorId(), mode: 'upload', uploadedSrt: `static/subtitles/${srtName}` })
   await db.update(schema.storyboards)
     .set({ subtitleStatus: 'processing', subtitleError: null, updatedAt: now() })
     .where(eq(schema.storyboards.id, storyboardId))
@@ -148,11 +148,35 @@ export async function enqueueUploadedSubtitle(storyboardId: number, file: File):
   return { cues: cues.length }
 }
 
+/**
+ * 生效视频变化后，把字幕仍有效的镜头用现有 SRT 重新压制（不识别、不计费）。
+ * 返回实际入队的 id；不需要重新压制或已在队列中的跳过（在队列中的会在当前任务结束后再检查一次）。
+ */
+export async function enqueueSubtitleReburn(storyboardIds: number[]): Promise<number[]> {
+  const accepted: number[] = []
+  for (const id of storyboardIds) {
+    if (queued.has(id)) continue
+    const [sb] = await db.select().from(schema.storyboards).where(eq(schema.storyboards.id, id))
+    if (!sb || !needsSubtitleReburn(sb)) continue
+    if (!accepted.length) await ensureFfmpeg()
+    queued.add(id)
+    queue.push({ id, sel: {}, userId: currentActorId(), mode: 'reburn' })
+    accepted.push(id)
+    await db.update(schema.storyboards)
+      .set({ subtitleStatus: 'processing', subtitleError: null, updatedAt: now() })
+      .where(eq(schema.storyboards.id, id))
+  }
+  pump()
+  return accepted
+}
+
 function pump() {
   while (running < MAX_CONCURRENCY && queue.length) {
-    const { id, sel, userId, uploadedSrt } = queue.shift()!
+    const { id, sel, userId, mode, uploadedSrt } = queue.shift()!
     running++
-    const job = uploadedSrt ? burnUploadedSubtitle(id, uploadedSrt) : processStoryboard(id, sel, userId)
+    const job = mode === 'upload' ? burnUploadedSubtitle(id, uploadedSrt!)
+      : mode === 'reburn' ? reburnSubtitle(id)
+      : processStoryboard(id, sel, userId)
     job
       .catch(async (err: Error) => {
         logTaskError(LABEL, 'subtitle', { storyboardId: id, error: err.message })
@@ -163,6 +187,8 @@ function pump() {
       .finally(() => {
         running--
         queued.delete(id)
+        // 处理期间生效视频又变了（例如画质增强刚好完成），按新的生效视频再压一次
+        enqueueSubtitleReburn([id]).catch(() => {})
         pump()
       })
   }
@@ -177,19 +203,28 @@ export async function resetInterruptedSubtitles() {
 
 // ---------- 单个镜头处理 ----------
 
-async function processStoryboard(id: number, sel: SubtitleSelection, userId: number | null) {
+/** 读取镜头的原视频与生效视频（字幕文本属于原视频，字幕版压在生效视频上） */
+async function loadShotVideos(id: number) {
   const [sb] = await db.select().from(schema.storyboards).where(eq(schema.storyboards.id, id))
   if (!sb?.videoUrl) throw new Error('镜头还没有视频')
   const sourceVideo = sb.videoUrl
+  const baseVideo = effectiveShotVideo(sb)!
   const videoAbs = getAbsolutePath(sourceVideo)
   if (!fs.existsSync(videoAbs)) throw new Error('镜头视频文件已丢失（本地文件不存在），请重新生成视频')
+  const baseAbs = getAbsolutePath(baseVideo)
+  if (!fs.existsSync(baseAbs)) throw new Error('画质增强版视频文件已丢失，请重新增强或清除增强结果')
+  return { sb, sourceVideo, videoAbs, baseVideo, baseAbs }
+}
+
+async function processStoryboard(id: number, sel: SubtitleSelection, userId: number | null) {
+  const { sourceVideo, videoAbs, baseVideo, baseAbs } = await loadShotVideos(id)
 
   const config = await getSubtitleConfig(sel)
   logTaskStart(LABEL, 'subtitle', { storyboardId: id, configId: config.id, model: config.model })
 
   const info = await probeVideo(videoAbs)
   if (!info.hasAudio) {
-    await finish(id, sourceVideo, { status: 'no_speech', error: '视频没有音轨，无法识别字幕' })
+    await finish(id, sourceVideo, baseVideo, { status: 'no_speech', error: '视频没有音轨，无法识别字幕' })
     return
   }
 
@@ -198,7 +233,7 @@ async function processStoryboard(id: number, sel: SubtitleSelection, userId: num
     userId, dramaId: await dramaOf('storyboard', id), refType: 'storyboard_subtitle', refId: id, source: 'shot_subtitle', duration: info.duration,
   })
   if (!cues.length) {
-    await finish(id, sourceVideo, { status: 'no_speech', error: '未识别到语音' })
+    await finish(id, sourceVideo, baseVideo, { status: 'no_speech', error: '未识别到语音' })
     return
   }
 
@@ -211,33 +246,46 @@ async function processStoryboard(id: number, sel: SubtitleSelection, userId: num
   const videoDir = path.join(STORAGE_ROOT, 'subtitled')
   fs.mkdirSync(videoDir, { recursive: true })
   const videoName = `${uuid()}.mp4`
-  await burnSubtitles(videoAbs, path.join(subDir, srtName), path.join(videoDir, videoName), portrait)
+  await burnSubtitles(baseAbs, path.join(subDir, srtName), path.join(videoDir, videoName), portrait)
   const subtitledVideoUrl = `static/subtitled/${videoName}`
   await extractVideoPoster(subtitledVideoUrl)
 
-  await finish(id, sourceVideo, { status: 'completed', subtitleUrl, subtitledVideoUrl, origin: 'asr' })
+  await finish(id, sourceVideo, baseVideo, { status: 'completed', subtitleUrl, subtitledVideoUrl, origin: 'asr' })
   logTaskSuccess(LABEL, 'subtitle', { storyboardId: id, cues: cues.length, subtitleUrl, subtitledVideoUrl })
+}
+
+/** 把一份 SRT 按工作流固定样式压到镜头当前的生效视频上 */
+async function burnSrtOnShot(id: number, subtitleUrl: string, origin: 'asr' | 'upload') {
+  const { sourceVideo, baseVideo, baseAbs } = await loadShotVideos(id)
+  const srtAbs = getAbsolutePath(subtitleUrl)
+  if (!fs.existsSync(srtAbs)) throw new Error('字幕文件已丢失，请重新生成或重新上传字幕')
+
+  const info = await probeVideo(baseAbs)
+  const videoDir = path.join(STORAGE_ROOT, 'subtitled')
+  fs.mkdirSync(videoDir, { recursive: true })
+  const videoName = `${uuid()}.mp4`
+  await burnSubtitles(baseAbs, srtAbs, path.join(videoDir, videoName), info.height > info.width, info.hasAudio)
+  const subtitledVideoUrl = `static/subtitled/${videoName}`
+  await extractVideoPoster(subtitledVideoUrl)
+
+  await finish(id, sourceVideo, baseVideo, { status: 'completed', subtitleUrl, subtitledVideoUrl, origin })
+  return subtitledVideoUrl
 }
 
 /** 手动上传的字幕：不识别，直接按工作流固定样式压制 */
 async function burnUploadedSubtitle(id: number, subtitleUrl: string) {
-  const [sb] = await db.select().from(schema.storyboards).where(eq(schema.storyboards.id, id))
-  if (!sb?.videoUrl) throw new Error('镜头还没有视频')
-  const sourceVideo = sb.videoUrl
-  const videoAbs = getAbsolutePath(sourceVideo)
-  if (!fs.existsSync(videoAbs)) throw new Error('镜头视频文件已丢失（本地文件不存在），请重新生成视频')
-  const srtAbs = getAbsolutePath(subtitleUrl)
-
-  const info = await probeVideo(videoAbs)
-  const videoDir = path.join(STORAGE_ROOT, 'subtitled')
-  fs.mkdirSync(videoDir, { recursive: true })
-  const videoName = `${uuid()}.mp4`
-  await burnSubtitles(videoAbs, srtAbs, path.join(videoDir, videoName), info.height > info.width, info.hasAudio)
-  const subtitledVideoUrl = `static/subtitled/${videoName}`
-  await extractVideoPoster(subtitledVideoUrl)
-
-  await finish(id, sourceVideo, { status: 'completed', subtitleUrl, subtitledVideoUrl, origin: 'upload' })
+  const subtitledVideoUrl = await burnSrtOnShot(id, subtitleUrl, 'upload')
   logTaskSuccess(LABEL, 'upload', { storyboardId: id, subtitleUrl, subtitledVideoUrl })
+}
+
+/** 生效视频变了：用镜头现有的 SRT 重新压制，字幕来源保持不变 */
+async function reburnSubtitle(id: number) {
+  const [sb] = await db.select().from(schema.storyboards).where(eq(schema.storyboards.id, id))
+  if (!sb?.subtitleUrl || !isSubtitleCurrent(sb)) throw new Error('字幕已过期，请重新生成字幕')
+  const origin = sb.subtitleOrigin === 'upload' ? 'upload' : 'asr'
+  logTaskStart(LABEL, 'reburn', { storyboardId: id, base: effectiveShotVideo(sb) })
+  const subtitledVideoUrl = await burnSrtOnShot(id, sb.subtitleUrl, origin)
+  logTaskSuccess(LABEL, 'reburn', { storyboardId: id, subtitledVideoUrl })
 }
 
 /** 用量统计上下文：谁发起、归属哪个项目、对应哪条业务记录、音频时长（秒） */
@@ -277,13 +325,14 @@ export async function transcribeVideoCues(videoAbs: string, config: AIConfig, po
   }
 }
 
-async function finish(id: number, sourceVideo: string, r: { status: string; error?: string; subtitleUrl?: string; subtitledVideoUrl?: string; origin?: 'asr' | 'upload' }) {
+async function finish(id: number, sourceVideo: string, baseVideo: string, r: { status: string; error?: string; subtitleUrl?: string; subtitledVideoUrl?: string; origin?: 'asr' | 'upload' }) {
   await db.update(schema.storyboards).set({
     subtitleStatus: r.status,
     subtitleError: r.error ?? null,
     subtitleUrl: r.subtitleUrl ?? null,
     subtitledVideoUrl: r.subtitledVideoUrl ?? null,
     subtitleSourceVideo: sourceVideo,
+    subtitledBaseVideo: baseVideo,
     subtitleOrigin: r.origin ?? 'asr',
     updatedAt: now(),
   }).where(eq(schema.storyboards.id, id))
@@ -366,7 +415,8 @@ export async function buildEpisodeSrt(episodeId: number): Promise<string> {
   const all: SrtCue[] = []
   let offset = 0
   for (const sb of sbs) {
-    const videoAbs = getAbsolutePath(sb.videoUrl!)
+    // 时长按拼接时实际使用的生效视频取（增强版与原视频时长一致，原视频丢失时也能拼）
+    const videoAbs = getAbsolutePath(effectiveShotVideo(sb)!)
     if (!fs.existsSync(videoAbs)) continue
     const duration = (await probeVideo(videoAbs).catch(() => null))?.duration ?? (sb.duration || 0)
     if (sb.subtitleUrl && isSubtitleCurrent(sb)) {

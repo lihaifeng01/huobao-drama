@@ -658,7 +658,8 @@
       "exportDone": "导出阶段 · 已完成",
       "exportWaiting": "导出阶段 · 等待拼接",
       "workbench": "工作台",
-      "subtitlesDesc": "语音识别与字幕压制"
+      "subtitlesDesc": "语音识别与字幕压制",
+      "upscaleDesc": "放大到更高分辨率"
     },
     "script": {
       "raw": "原始内容",
@@ -701,7 +702,8 @@
       "startExtract": "开始提取",
       "scriptFirst": "请先完成剧本编写",
       "goBack": "返回处理",
-      "subtitles": "字幕制作"
+      "subtitles": "字幕制作",
+      "upscale": "画质增强"
     },
     "asset": {
       "fallbackType": "资产",
@@ -1006,7 +1008,8 @@
       "unmarkDoneToast": "已取消完成标记",
       "withSubtitles": "使用字幕版",
       "withoutSubtitles": "不用字幕版",
-      "withSubtitlesTitle": "拼接时，已制作字幕的镜头使用压制了字幕的视频"
+      "withSubtitlesTitle": "拼接时，已制作字幕的镜头使用压制了字幕的视频",
+      "upscaledTitle": "使用画质增强版（{size}）"
     },
     "image": {
       "generatingChar": "角色图片生成中",
@@ -1086,7 +1089,7 @@
       "regenerate": "重新生成",
       "clear": "清除字幕",
       "previewSubtitled": "字幕版",
-      "previewOriginal": "原视频",
+      "previewOriginal": "无字幕",
       "cues": "字幕内容",
       "noCues": "暂无字幕",
       "staleHint": "镜头视频已重新生成，字幕已过期，请重新生成",
@@ -1101,7 +1104,8 @@
         "done": "已完成",
         "no_speech": "无语音",
         "failed": "失败",
-        "stale": "已过期"
+        "stale": "已过期",
+        "reburn": "待重新压制"
       },
       "noConfigUpload": "还没有启用字幕服务，无法自动识别；可以在设置中添加，也可以为镜头手动上传字幕文件（SRT / VTT）。",
       "upload": "上传",
@@ -1113,7 +1117,59 @@
       "uploadTooLarge": "字幕文件不能超过 5MB",
       "overwriteTitle": "重新识别字幕？",
       "overwriteMsg": "这个镜头的字幕是手动上传的，重新识别会用语音识别结果替换它。",
-      "skippedUploaded": "已跳过 {n} 个手动上传字幕的镜头，如需重新识别请勾选后生成"
+      "skippedUploaded": "已跳过 {n} 个手动上传字幕的镜头，如需重新识别请勾选后生成",
+      "reburn": "重新压制",
+      "reburnTitle": "用现有字幕重新压制到当前视频（不重新识别、不收费）",
+      "reburnHint": "画质增强结果有变化，字幕需要重新压制到当前视频上（通常会自动进行，不会重新识别）",
+      "reburnStarted": "已开始重新压制字幕",
+      "onUpscaledTitle": "字幕压制和导出使用画质增强版"
+    },
+    "upscale": {
+      "stat": "{done}/{total} 已增强",
+      "engineTitle": "当前引擎：FFmpeg 插值放大 + 锐化（本地处理，不收费）",
+      "target": "目标",
+      "targets": {
+        "1080p": "1080p",
+        "1440p": "2K（1440p）",
+        "2160p": "4K（2160p）"
+      },
+      "batchSelected": "增强所选 ({n})",
+      "batchAll": "全部增强",
+      "intro": "把镜头视频放大到目标分辨率。增强版单独保存，不会覆盖视频制作里的原视频；增强后字幕制作和拼接导出会自动改用增强版，已做好的字幕会自动重新压制（不重新识别）。当前引擎 FFmpeg 只做插值放大和锐化，画面更大更清晰，但不会补出原视频没有的细节。",
+      "emptyTitle": "还没有可增强的视频",
+      "emptyDesc": "先在「视频制作」中生成镜头视频，再回来做画质增强",
+      "selectMissing": "选择未增强",
+      "state": {
+        "none": "未增强",
+        "processing": "增强中",
+        "done": "已增强",
+        "stale": "已过期",
+        "failed": "失败"
+      },
+      "sizeTitle": "原视频尺寸 → 增强版尺寸",
+      "runTitle": "按 {target} 增强这个镜头",
+      "run": "增强",
+      "rerun": "重新增强",
+      "previewUpscaled": "增强版",
+      "previewOriginal": "原视频",
+      "usage": "导出与字幕使用",
+      "download": "下载增强版",
+      "clear": "清除增强",
+      "usageUpscaled": "增强版（{size}）。字幕制作和拼接导出都会使用增强版；视频制作页显示的仍是原视频。",
+      "usageOriginal": "原视频（尚未增强）。",
+      "staleHint": "镜头视频已重新生成，之前的增强版对应旧视频，已不再使用；导出和字幕现在使用新的原视频。需要的话请重新增强。",
+      "processingHint": "正在增强。完成前导出和字幕继续使用当前视频；完成后自动切换到增强版。",
+      "rerunFailed": "最近一次重新增强失败：{error}。之前的增强版仍在使用。",
+      "started": "已提交 {n} 个镜头的画质增强",
+      "failed": "画质增强失败",
+      "skipped": "{n} 个镜头未增强：{reason}",
+      "allDone": "所有镜头都已增强到 {target}",
+      "cleared": "已清除增强版，导出和字幕改回使用原视频",
+      "finished": "画质增强完成",
+      "finishedWithFailed": "画质增强结束，{n} 个镜头失败",
+      "clearTitle": "清除增强版？",
+      "clearMsg": "清除后拼接导出和字幕会改回使用原视频，已压在增强版上的字幕会自动改压回原视频。",
+      "badge": "增强 {target}"
     }
   },
   "looks": {

@@ -11,6 +11,7 @@ import { logTaskError, logTaskStart, logTaskSuccess } from '../utils/task-logger
 import { extractVideoPoster } from '../utils/video-poster.js'
 import { ffmpeg, checkFfmpegSuite } from '../utils/ffmpeg.js'
 import { DATA_ROOT, STORAGE_ROOT } from '../utils/paths.js'
+import { effectiveShotVideo, isSubtitledVideoCurrent } from './shot-video.js'
 
 function toAbsPath(relativePath: string): string {
   if (path.isAbsolute(relativePath)) return relativePath
@@ -18,15 +19,15 @@ function toAbsPath(relativePath: string): string {
   return path.join(STORAGE_ROOT, relativePath)
 }
 
-/** 字幕版视频：仅当字幕依据的正是当前镜头视频时使用（视频重新生成后字幕版过期） */
+/** 字幕版视频：字幕文本有效、且压在当前生效视频上时才用（规则见 shot-video.ts） */
 function subtitledUrlOf(sb: typeof schema.storyboards.$inferSelect) {
-  return sb.subtitledVideoUrl && sb.subtitleSourceVideo === sb.videoUrl ? sb.subtitledVideoUrl : null
+  return isSubtitledVideoCurrent(sb) ? sb.subtitledVideoUrl : null
 }
 
 /**
  * 拼接一集的镜头视频。
  * withSubtitles 为 true 时，已制作字幕的镜头使用压制了字幕的版本。
- * 优先使用视频生成产物，兼容历史的 composedVideoUrl 数据。
+ * 否则用生效视频（有效的画质增强版，否则原视频），兼容历史的 composedVideoUrl 数据。
  * 传入 storyboardIds 时只拼接所选镜头（仍按镜号顺序）。
  */
 export async function mergeEpisodeVideos(episodeId: number, dramaId: number, storyboardIds?: number[], withSubtitles = true): Promise<number> {
@@ -41,7 +42,7 @@ export async function mergeEpisodeVideos(episodeId: number, dramaId: number, sto
 
   // 允许部分拼接:按镜号顺序拼接已生成的镜头,未生成的跳过
   const clips = storyboards
-    .map(sb => ({ sb, url: (withSubtitles && subtitledUrlOf(sb)) || sb.videoUrl || sb.composedVideoUrl }))
+    .map(sb => ({ sb, url: (withSubtitles && subtitledUrlOf(sb)) || effectiveShotVideo(sb) || sb.composedVideoUrl }))
     .filter(c => Boolean(c.url)) as { sb: typeof storyboards[number]; url: string }[]
 
   if (clips.length === 0) throw new Error('所选镜头还没有可拼接的视频')

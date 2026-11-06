@@ -658,7 +658,8 @@
       "exportDone": "書き出し段階 · 完了",
       "exportWaiting": "書き出し段階 · 結合待ち",
       "workbench": "ワークベンチ",
-      "subtitlesDesc": "音声認識と字幕焼き込み"
+      "subtitlesDesc": "音声認識と字幕焼き込み",
+      "upscaleDesc": "より高い解像度に拡大"
     },
     "script": {
       "raw": "原文",
@@ -701,7 +702,8 @@
       "startExtract": "抽出を開始",
       "scriptFirst": "先に脚本を完成させてください",
       "goBack": "処理に戻る",
-      "subtitles": "字幕制作"
+      "subtitles": "字幕制作",
+      "upscale": "高画質化"
     },
     "asset": {
       "fallbackType": "資産",
@@ -1006,7 +1008,8 @@
       "unmarkDoneToast": "完了マークを解除しました",
       "withSubtitles": "字幕版を使用",
       "withoutSubtitles": "字幕版を使わない",
-      "withSubtitlesTitle": "結合時、字幕を作成したショットは字幕焼き込み済みの動画を使用します"
+      "withSubtitlesTitle": "結合時、字幕を作成したショットは字幕焼き込み済みの動画を使用します",
+      "upscaledTitle": "高画質版を使用（{size}）"
     },
     "image": {
       "generatingChar": "キャラクター画像を生成中",
@@ -1086,7 +1089,7 @@
       "regenerate": "再生成",
       "clear": "字幕を削除",
       "previewSubtitled": "字幕版",
-      "previewOriginal": "元動画",
+      "previewOriginal": "字幕なし",
       "cues": "字幕内容",
       "noCues": "字幕なし",
       "staleHint": "ショット動画が再生成されたため字幕が古くなっています。再生成してください。",
@@ -1101,7 +1104,8 @@
         "done": "完了",
         "no_speech": "音声なし",
         "failed": "失敗",
-        "stale": "期限切れ"
+        "stale": "期限切れ",
+        "reburn": "焼き直し待ち"
       },
       "noConfigUpload": "字幕サービスが有効になっていないため自動認識できません。設定で追加するか、ショットごとに字幕ファイル（SRT / VTT）をアップロードしてください。",
       "upload": "アップロード",
@@ -1113,7 +1117,59 @@
       "uploadTooLarge": "字幕ファイルは 5MB 以下にしてください",
       "overwriteTitle": "字幕を再認識しますか？",
       "overwriteMsg": "このショットの字幕は手動でアップロードされたものです。再認識すると音声認識の結果で置き換えられます。",
-      "skippedUploaded": "手動アップロード字幕のショット {n} 件をスキップしました。再認識する場合は選択してから生成してください"
+      "skippedUploaded": "手動アップロード字幕のショット {n} 件をスキップしました。再認識する場合は選択してから生成してください",
+      "reburn": "焼き直し",
+      "reburnTitle": "既存の字幕を現在の動画に焼き直します（再認識なし、無料）",
+      "reburnHint": "高画質化の結果が変わったため、字幕を現在の動画に焼き直す必要があります（通常は自動、再認識なし）",
+      "reburnStarted": "字幕の焼き直しを開始しました",
+      "onUpscaledTitle": "字幕と書き出しは高画質版を使用"
+    },
+    "upscale": {
+      "stat": "{done}/{total} 高画質化済み",
+      "engineTitle": "現在のエンジン：FFmpeg による補間拡大 + シャープ化（ローカル処理、無料）",
+      "target": "目標",
+      "targets": {
+        "1080p": "1080p",
+        "1440p": "2K（1440p）",
+        "2160p": "4K（2160p）"
+      },
+      "batchSelected": "選択を高画質化 ({n})",
+      "batchAll": "すべて高画質化",
+      "intro": "ショット動画を目標解像度に拡大します。高画質版は別に保存され、動画制作の元動画は上書きされません。高画質化後は字幕制作と書き出しが自動で高画質版を使い、作成済みの字幕も自動で焼き直します（再認識なし）。現在の FFmpeg エンジンは補間拡大とシャープ化のみで、元動画にない細部は補えません。",
+      "emptyTitle": "高画質化できる動画がありません",
+      "emptyDesc": "先に「動画制作」でショット動画を生成してから戻ってください",
+      "selectMissing": "未処理を選択",
+      "state": {
+        "none": "未処理",
+        "processing": "処理中",
+        "done": "高画質化済み",
+        "stale": "期限切れ",
+        "failed": "失敗"
+      },
+      "sizeTitle": "元動画サイズ → 高画質版サイズ",
+      "runTitle": "このショットを {target} に高画質化",
+      "run": "高画質化",
+      "rerun": "再処理",
+      "previewUpscaled": "高画質版",
+      "previewOriginal": "元動画",
+      "usage": "書き出しと字幕で使用",
+      "download": "高画質版をダウンロード",
+      "clear": "高画質版を解除",
+      "usageUpscaled": "高画質版（{size}）。字幕制作と書き出しで使用します。動画制作ページには元動画が表示されます。",
+      "usageOriginal": "元動画（未処理）。",
+      "staleHint": "ショット動画が再生成されました。以前の高画質版は古い動画のもので、使用されません。書き出しと字幕は新しい元動画を使います。必要なら再処理してください。",
+      "processingHint": "処理中です。完了までは書き出しと字幕は現在の動画を使い、完了後に高画質版へ自動で切り替わります。",
+      "rerunFailed": "直近の再処理に失敗しました：{error}。以前の高画質版を引き続き使用しています。",
+      "started": "{n} 件のショットの高画質化を開始しました",
+      "failed": "高画質化に失敗しました",
+      "skipped": "{n} 件は高画質化されませんでした：{reason}",
+      "allDone": "すべてのショットが {target} に高画質化済みです",
+      "cleared": "高画質版を解除しました。書き出しと字幕は元動画に戻ります",
+      "finished": "高画質化が完了しました",
+      "finishedWithFailed": "高画質化が終了しました。{n} 件が失敗しました",
+      "clearTitle": "高画質版を解除しますか？",
+      "clearMsg": "書き出しと字幕は元動画に戻ります。高画質版に焼き込んだ字幕は元動画に自動で焼き直されます。",
+      "badge": "高画質 {target}"
     }
   },
   "looks": {

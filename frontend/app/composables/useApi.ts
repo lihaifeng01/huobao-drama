@@ -288,8 +288,21 @@ export const subtitleAPI = {
   }),
   // 手动上传字幕文件（.srt / .vtt），跳过识别直接压制
   upload: (sbId: number, file: File) => uploadReq<{ storyboard_id: number; cues: number }>(`/subtitles/storyboards/${sbId}/upload`, file),
+  // 画质增强做了 / 清除后，用现有字幕重新压制到当前生效视频（通常自动进行）
+  reburn: (sbId: number) => api.post(`/subtitles/storyboards/${sbId}/reburn`),
   clear: (sbId: number) => api.del(`/subtitles/storyboards/${sbId}`),
   episodeSrtUrl: (epId: number) => `/api/v1/subtitles/episodes/${epId}/srt`,
+}
+// 画质增强（超分，第一期 FFmpeg）：结果单独存放，不覆盖原视频；target 为 1080p / 1440p / 2160p
+export type UpscaleTarget = '1080p' | '1440p' | '2160p'
+export const upscaleAPI = {
+  upscale: (sbId: number, target: UpscaleTarget) => api.post(`/upscale/storyboards/${sbId}`, { target }),
+  batch: (epId: number, storyboardIds: number[] | undefined, target: UpscaleTarget) => api.post<{
+    storyboard_ids: number[]
+    skipped: { storyboard_id: number; reason: string; message: string }[]
+    already_done: number
+  }>(`/upscale/episodes/${epId}`, { ...(storyboardIds?.length ? { storyboard_ids: storyboardIds } : {}), target }),
+  clear: (sbId: number) => api.del(`/upscale/storyboards/${sbId}`),
 }
 // 用量统计与积分规则（积分一期：只统计不扣）；普通用户只能看自己的，管理员可按成员筛选
 export type UsageType = 'image' | 'video' | 'subtitle' | 'audio' | 'text'

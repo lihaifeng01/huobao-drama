@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db, schema } from '../db/index.js'
 import { success, badRequest, notFound, now } from '../utils/response.js'
 import { bodyLimit } from 'hono/body-limit'
-import { SUBTITLE_UPLOAD_MAX_BYTES, SubtitleUploadError, buildEpisodeSrt, enqueueSubtitles, enqueueUploadedSubtitle, isSubtitleCurrent, type SubtitleSelection } from '../services/subtitle.js'
+import { SUBTITLE_UPLOAD_MAX_BYTES, SubtitleUploadError, buildEpisodeSrt, enqueueSubtitleReburn, enqueueSubtitles, enqueueUploadedSubtitle, isSubtitleCurrent, type SubtitleSelection } from '../services/subtitle.js'
 import { logTaskError, logTaskStart } from '../utils/task-logger.js'
 
 const app = new Hono()
@@ -59,6 +59,21 @@ app.post('/storyboards/:id/upload', bodyLimit({
   }
 })
 
+// POST /subtitles/storyboards/:id/reburn — 用现有字幕重新压制到当前生效视频（画质增强做了 / 清除后；正常会自动进行）
+app.post('/storyboards/:id/reburn', async (c) => {
+  const id = Number(c.req.param('id'))
+  const [sb] = await db.select().from(schema.storyboards).where(eq(schema.storyboards.id, id))
+  if (!sb || sb.deletedAt) return notFound(c, '镜头不存在')
+  try {
+    const accepted = await enqueueSubtitleReburn([id])
+    if (!accepted.length) return badRequest(c, '该镜头的字幕不需要重新压制（字幕已过期、正在处理中，或已是最新）')
+    return success(c, { storyboard_ids: accepted })
+  } catch (err: any) {
+    logTaskError('SubtitleAPI', 'reburn', { storyboardId: id, error: err.message })
+    return badRequest(c, err.message)
+  }
+})
+
 // POST /subtitles/episodes/:id — 批量生成（body.storyboard_ids 可选；缺省为本集所有有视频的镜头）
 app.post('/episodes/:id', async (c) => {
   const episodeId = Number(c.req.param('id'))
@@ -92,7 +107,7 @@ app.delete('/storyboards/:id', async (c) => {
   const id = Number(c.req.param('id'))
   await db.update(schema.storyboards).set({
     subtitleStatus: null, subtitleError: null, subtitleUrl: null,
-    subtitledVideoUrl: null, subtitleSourceVideo: null, subtitleOrigin: null, updatedAt: now(),
+    subtitledVideoUrl: null, subtitleSourceVideo: null, subtitleOrigin: null, subtitledBaseVideo: null, updatedAt: now(),
   }).where(eq(schema.storyboards.id, id))
   return success(c)
 })

@@ -22,6 +22,7 @@ import storage from './routes/storage.js'
 import serverUpdate from './routes/serverUpdate.js'
 import library from './routes/library.js'
 import subtitles from './routes/subtitles.js'
+import upscale from './routes/upscale.js'
 import tools from './routes/tools.js'
 import auth from './routes/auth.js'
 import users from './routes/users.js'
@@ -57,6 +58,7 @@ api.route('/settings', settings)
 api.route('/server-update', serverUpdate)
 api.route('/library', library)
 api.route('/subtitles', subtitles)
+api.route('/upscale', upscale)
 api.route('/tools', tools)
 
 export default api

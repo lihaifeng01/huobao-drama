@@ -69,6 +69,31 @@
 
 ## 变更条目
 
+### 2026-11-06 · 新增：画质增强（超分，第一期 FFmpeg）
+- **分支**：`feat/video-upscale`（从 `origin/dev` 拉出，未合并）
+- **背景**：高分辨率生视频很贵。思路是低分辨率生成、再放大。第一期只做 FFmpeg 引擎；本地 AI 超分（Real-ESRGAN 等）和云端超分 API 以后再接。
+- **改动**
+  - 剧集工作台「制作」在视频制作和字幕制作之间新增「画质增强」，主流程跑马灯变为六段。放在字幕之前：先放大再压字幕，文字按高分辨率渲染；反过来字幕会被一起放大发糊。
+  - 每个镜头可增强 / 重新增强，支持勾选批量和「全部增强」，目标规格 1080p / 2K（1440p）/ 4K（2160p），按画面短边计算（竖屏同样适用），选择记在 `huobao:upscale:target`。预览可在「增强版 · 尺寸」和「原视频 · 尺寸」之间切换，可下载增强版，可清除增强（有确认框）。
+  - FFmpeg 参数：`scale=W:H:flags=lanczos,unsharp=5:5:0.6:5:5:0.0,setsar=1`，libx264 `crf 18`，音轨原样复制（无音轨 `-an`）。只做插值放大和锐化，不会补出细节，页面说明里写明了。本地处理，不计用量。
+  - 接口：`POST /api/v1/upscale/storyboards/:id`（`{ target }`）、`POST /api/v1/upscale/episodes/:id`（`{ storyboard_ids?, target }`，返回 `skipped`、`already_done`）、`DELETE /api/v1/upscale/storyboards/:id`。已加到项目成员校验（`middleware/auth.ts`）。另新增 `POST /api/v1/subtitles/storyboards/:id/reburn`。
+  - 新列（`storyboards`）：`upscaled_video_url`、`upscale_status`、`upscale_error`、`upscale_source_video`、`upscale_target`、`upscale_size`、`upscale_source_size`、`subtitled_base_video`。
+- **关键文件**：`backend/src/services/shot-video.ts`（**镜头视频版本与有效性规则，唯一来源**）、`backend/src/services/upscale.ts`、`backend/src/routes/upscale.ts`、`backend/src/services/subtitle.ts`、`backend/src/services/ffmpeg-merge.ts`、`frontend/app/views/drama/episode.vue`（`prodTab === 'upscale'`）。
+- **设计取舍（用户明确要求不能用省事做法、不能让用户混淆）**
+  - **增强版单独存放，不覆盖 `video_url`，也不当成一条历史视频设为主视频**。视频制作页始终显示原视频；画质增强页、字幕页、导出页都标明当前用的是哪个版本和尺寸。
+  - 「生效视频」= 有效的增强版，否则原视频。增强版只有 `upscale_source_video === video_url` 才有效，原视频重新生成后自动作废（界面显示「已过期」并说明导出和字幕已改用新原视频）。字幕压制、整集字幕、拼接选片、导出预览都改用生效视频。前端的 `isUpscaleCurrent` / `effectiveVideoUrl` / `subState` 与后端 `shot-video.ts` 保持同一套规则，**以后改规则两边一起改**。
+  - **字幕拆成两件事**：字幕文本（SRT）属于原视频（`subtitle_source_video === video_url`，规则不变，增强不改时间轴所以仍有效）；字幕版视频属于它压在其上的视频（新列 `subtitled_base_video`，老数据为空时视为压在原视频上）。增强完成或清除后，字幕文本有效的镜头**自动用现有 SRT 重新压制**到新的生效视频（队列 `mode = reburn`，不重新识别、不计费，手动上传的字幕来源保持「手动上传」）。字幕任务结束时也会再检查一次，防止处理期间生效视频变了。界面有「待重新压制」状态和「重新压制」按钮（自动重压失败时用）。如果只把字幕过期判断改成对比生效视频，增强一次就会让所有字幕失效、要重新付费识别或重新上传，所以没这么做。
+  - `upscale_status` 只表示最近一次操作。重新增强期间和失败后，之前的增强版仍然生效（界面同时显示失败原因）；增强期间原视频被重新生成时，结果作废、不写回。
+  - 入队前同步检查：没有视频、文件丢失、正在增强、原视频短边已不低于目标（如 1080p 原片选 1080p），这些跳过并说明原因。「全部增强」跳过已有同规格有效结果的镜头；勾选的镜头照常处理。
+  - 进程内队列，同时只处理 1 个镜头（放大和重新编码吃 CPU）。服务重启时 `processing` 标为失败。清除增强只解除关联，文件保留；正在增强时不能清除。
+- **注意事项**
+  - 4K 输出文件很大，CPU 编码也慢；目前没有限制放大倍数（480p 也能直接放到 4K，效果差但不报错）。
+  - 增强不计用量（本地 FFmpeg）。以后接云端引擎时，在 `usage.ts` 加 `upscale` 类型。
+  - 设计讨论里提到的「设置页新增超分服务类型、按引擎选择」还没做：现在只有 FFmpeg，界面上直接显示「FFmpeg」标签。
+- **验证**
+  - `backend/tests/upscale.test.ts`（3 项，真实 ffmpeg）：尺寸计算（横竖屏、偶数）；完整链路——原视频不被覆盖、输出 1920×1080 且保留音轨、字幕自动重压到增强版（SRT 不变、来源仍是手动上传）、无音轨视频增强、拼接带 / 不带字幕都取生效视频、整集字幕时间不变、「全部增强」跳过同规格已完成、清除后字幕自动改回原视频、原视频重新生成后增强与字幕都作废且不会自动重压；校验——非法规格、已达目标分辨率（批量带原因跳过）、没有视频、处理中不能清除或重复入队。后端 TS 测试 86 项全部通过；结构测试失败名单与 `dev` 一致（后端 11、前端 24）。后端类型检查、前端 `npm run generate` 通过。
+  - Playwright（640×360 测试视频）：侧栏和跑马灯出现「画质增强」；单个增强 → 已增强 `640×360 → 1920×1080`，预览两个版本切换；字幕页该镜头自动重压，显示「增强 1080p」标签，预览用压在增强版上的字幕版；导出页显示字幕和增强两个徽标；清除增强走确认框，清除后字幕自动压回原视频；「全部增强」跳过 1920×1080 的镜头并提示原因；改了原视频后显示「已过期」，预览和导出改用新原视频；无页面报错。
+
 ### 2026-11-03 · 新增：字幕制作支持手动上传字幕
 - **分支**：`feat/subtitle-upload`（从 `origin/dev` 拉出，2026-11-03 已合并到 `dev`）
 - **改动**
