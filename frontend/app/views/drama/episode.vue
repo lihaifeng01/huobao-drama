@@ -3623,7 +3623,12 @@ function isUpscaleCurrent(sb) {
   return !!(sb?.upscaled_video_url && sb.video_url && sb.upscale_source_video === sb.video_url)
 }
 function effectiveVideoUrl(sb) { return isUpscaleCurrent(sb) ? sb.upscaled_video_url : getVideoUrl(sb) }
-const UPSCALE_TARGETS = ['1080p', '1440p', '2160p']
+// 暂时只开放 1080p（后端仍支持 1440p / 2160p，i18n 文案也保留）；恢复时取消下面的注释即可
+const UPSCALE_TARGETS = [
+  '1080p',
+  // '1440p',
+  // '2160p',
+]
 const UPSCALE_TARGET_KEY = 'huobao:upscale:target'
 function readUpscaleTarget() {
   try { const v = localStorage.getItem(UPSCALE_TARGET_KEY); return UPSCALE_TARGETS.includes(v) ? v : '1080p' } catch { return '1080p' }
