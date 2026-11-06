@@ -350,6 +350,10 @@ export const storageAPI = {
 export const settingsAPI = {
   contentLanguage: () => api.get<{ language: string }>('/settings/content-language'),
   setContentLanguage: (language: string) => api.put('/settings/content-language', { language }),
+  // 品牌主题：读公开，改 / 恢复默认仅超级管理员
+  branding: () => api.get('/settings/branding'),
+  setBranding: (branding: any) => api.put('/settings/branding', branding),
+  resetBranding: () => api.del('/settings/branding'),
 }
 
 // 服务器/Docker 部署的版本检查与更新（桌面版走 useDesktopBridge，不用此 API）

@@ -5,12 +5,12 @@
       <div class="header-left">
         <button class="brand" @click="navigateTo('/')">
           <div class="brand-mark">
-            <img v-if="showBrandImage" :src="brandLogo" alt="火宝短剧" class="brand-logo" @error="showBrandImage = false" />
-            <span v-else class="brand-fallback">火</span>
+            <img v-if="showBrandImage" :src="logoUrl" :alt="appName" class="brand-logo" @error="showBrandImage = false" />
+            <span v-else class="brand-fallback">{{ appName.slice(0, 1) }}</span>
           </div>
           <div class="brand-text">
-            <span class="brand-name">火宝短剧</span>
-            <span class="brand-sub">Huobao Shorts</span>
+            <span class="brand-name">{{ appName }}</span>
+            <span v-if="appSubtitle" class="brand-sub">{{ appSubtitle }}</span>
           </div>
         </button>
       </div>
@@ -45,6 +45,7 @@
 
       <div class="header-right">
         <a
+          v-if="showGithub"
           class="github-link"
           href="https://github.com/lihaifeng01/huobao-drama"
           target="_blank"
@@ -127,11 +128,14 @@ import { toast } from 'vue-sonner'
 import { aiConfigAPI, authAPI } from '~/composables/useApi'
 import { useAuth } from '~/composables/useAuth'
 import { toastError } from '~/composables/useToast'
-import brandLogo from '~/assets/brand-logo.png'
+import { useBranding } from '~/composables/useBranding'
 
 const { t, locale } = useI18n()
 const route = useRoute()
 const showBrandImage = ref(true)
+const { appName, appSubtitle, logoUrl, showGithub } = useBranding()
+// 换 Logo 后重新尝试显示图片（上一张可能加载失败过）
+watch(logoUrl, () => { showBrandImage.value = true })
 
 const auth = useAuth()
 const { isAdmin, isSuperAdmin, isMultiUser } = auth

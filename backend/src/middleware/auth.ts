@@ -1,11 +1,11 @@
 /**
  * 接口鉴权（挂在 /api/v1/* 上，路径判断均为去掉 /api/v1 前缀后的相对路径）
  * 1. authGuard：除公开接口外都要求登录，当前用户放进 c.get('user')；免登模式下固定为本机超级管理员
- * 2. settingsGuard：设置相关接口仅管理员（super_admin / admin）可用；普通用户只能读工作台需要的配置
+ * 2. settingsGuard：设置相关接口仅管理员（super_admin / admin）可用；普通用户只能读工作台需要的配置；品牌主题仅超级管理员可改
  * 3. projectGuard：项目相关接口按路径参数、请求体、查询参数里引用的实体归到项目，非项目成员 403
  */
 import type { Context, MiddlewareHandler } from 'hono'
-import { authMode, isAdmin, localUser, sessionUser, type UserRow } from '../services/auth.js'
+import { authMode, isAdmin, isSuperAdmin, localUser, sessionUser, type UserRow } from '../services/auth.js'
 import { canAccessDrama, dramaOf, type EntityKind } from '../services/project-access.js'
 import { forbidden, unauthorized } from '../utils/response.js'
 import { runAsActor } from '../services/actor.js'
@@ -24,9 +24,13 @@ function relPath(c: Context) {
 }
 
 const PUBLIC_PATHS = new Set(['/health', '/auth/status', '/auth/login', '/auth/register', '/auth/setup'])
+/** 只公开读的接口：品牌主题在登录页就要用 */
+const PUBLIC_READ_PATHS = new Set(['/settings/branding'])
 
 export const authGuard: MiddlewareHandler = async (c, next) => {
-  if (c.req.method === 'OPTIONS' || PUBLIC_PATHS.has(relPath(c))) return next()
+  const path = relPath(c)
+  if (c.req.method === 'OPTIONS' || PUBLIC_PATHS.has(path)) return next()
+  if (c.req.method === 'GET' && PUBLIC_READ_PATHS.has(path)) return next()
   const user = authMode() === 'none' ? await localUser() : await sessionUser(c)
   if (!user) return unauthorized(c)
   c.set('user', user)
@@ -53,6 +57,10 @@ export const settingsGuard: MiddlewareHandler = async (c, next) => {
   // 成员选择器要列出可选账号，普通用户也能用（只返回最少字段）
   if (path === '/users/options') return next()
   if (needsAdmin(c.req.method, path) && !isAdmin(c.get('user'))) return forbidden(c, '仅管理员可使用设置相关功能')
+  // 品牌主题：读公开，改仅超级管理员
+  if (path === '/settings/branding' && c.req.method !== 'GET' && !isSuperAdmin(c.get('user'))) {
+    return forbidden(c, '仅超级管理员可修改品牌主题')
+  }
   return next()
 }
 

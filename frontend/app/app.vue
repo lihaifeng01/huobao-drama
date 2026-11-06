@@ -14,12 +14,14 @@ import MigrateOverlay from '~/components/MigrateOverlay.vue'
 import { useDesktopBridge } from '~/composables/useDesktopBridge'
 import { useMigrateState } from '~/composables/useMigrateState'
 import { useTheme } from '~/composables/useTheme'
+import { useBranding } from '~/composables/useBranding'
 
 const { t } = useI18n()
 const { resolvedTheme } = useTheme()
+const { appName, hasCustomName } = useBranding()
 
-// 响应式文档标题（nuxt.config.ts 的静态 title 仅作 SSR/兜底）
-useHead(() => ({ title: t('app.title') }))
+// 响应式文档标题（nuxt.config.ts 的静态 title 仅作 SSR/兜底）；自定义了品牌名称时各语言统一用品牌名
+useHead(() => ({ title: hasCustomName.value ? appName.value : t('app.title') }))
 
 const bridge = useDesktopBridge()
 const { state, begin, update, end } = useMigrateState()
