@@ -76,6 +76,23 @@
 - **原因**：那是上游作者的私有阿里云 npm 源，其他人没有账号，`npm install` / `npm ci` 报 `E401 Incorrect or missing password`（用户在 Mac 上打包桌面版时遇到）。云端沙箱以前也要先手动替换再还原。
 - **验证**：在空的 npm 缓存下对三个目录分别执行 `npm ci --ignore-scripts`，全部安装成功（所有包从官方源下载，并通过 lockfile 的哈希校验）。
 
+### 2026-11-06 · 新增：品牌主题（白标）设置，仅超级管理员
+- **分支**：`claude/friendly-knuth-z401ct`（基于 4.1.3，2026-11-07 已合并到 `dev`）
+- **改动**：设置页新增「品牌主题」tab（只对超级管理员显示），可改应用名称、副标题（可隐藏）、Logo、网站图标、浅色/深色主题主色（预设 7 色 + 自定义）、圆角风格（胶囊/柔和/方正）、顶栏 GitHub 链接开关。编辑即预览，保存后对所有用户生效（包括登录页）。
+- **关键文件**：`backend/src/services/branding.ts`、`backend/src/routes/settings.ts`（`GET/PUT/DELETE /settings/branding`）、`backend/src/middleware/auth.ts`、`frontend/app/composables/useBranding.ts`、`frontend/app/utils/brand-color.ts`、`frontend/app/plugins/branding.client.ts`、`frontend/app/pages/settings.vue`
+- **设计取舍**：
+  - 存 `app_settings` 表 key=`branding`（JSON），只存覆盖项，空字符串 = 用内置默认。Logo / 图标以 data URL 内联（上限约 512KB），不落存储目录，桌面版迁移数据目录也不会丢。
+  - 颜色只需选一个主色，`brand-color.ts` 推导出整套 accent token（hover / press / 浅底 / 光晕 / 渐变 / 主色上的文字色），深色主题默认混白 40% 自动提亮（火焰橙推导结果约等于原来的 `#ffb076`）。不设主色时不注入任何覆写，完全走 `studio.css` 原值。
+  - 覆写方式：注入 `<style id="huobao-branding">`，选择器用 `html:root` / `html:root[data-theme="dark"]`，比 `studio.css` 的 `:root` 高一级，跟样式插入顺序无关。
+  - 防闪：和 `useTheme` 一样在模块顶层先用 localStorage 缓存（`huobao:branding`）同步应用一次，plugin 再拉服务端最新值。
+  - 读接口公开（`authGuard` 的 `PUBLIC_READ_PATHS`，只放开 GET），因为登录页也要显示品牌；写 / 恢复默认在 `settingsGuard` 里限超级管理员，普通管理员 403。恢复默认是写回默认值，不删行。
+- **注意事项**：
+  - 新增品牌色相关的样式一律用 `--accent*` / `--action-primary*` / `--button-focus` / `--on-accent` 变量，不要写死橙色，否则换主题色时会漏掉。
+  - 圆角风格是靠覆写 `--radius-pill` 等变量实现的，写死 `border-radius: 980px` 的地方不跟随。
+  - 头像、开关等本该是圆形的元素如果用了 `--radius-pill`，在「方正」风格下会变成圆角方块，属预期。
+  - 自定义了应用名称后，浏览器标题在所有语言下都显示该名称（不再走 `app.title` 翻译）。
+- **验证**：`cd backend && npx tsx --test tests/branding.test.ts`（权限、校验、恢复默认）；Playwright 端到端：超级管理员改名称 / 主色 / 圆角 / Logo / 隐藏 GitHub → 保存 → 新会话登录页（深色）生效 → 恢复默认；普通管理员设置页看不到该 tab。前后端结构测试失败名单与改动前一致。
+
 ### 2026-11-03 · 新增：字幕制作支持手动上传字幕
 - **分支**：`feat/subtitle-upload`（从 `origin/dev` 拉出，2026-11-03 已合并到 `dev`）
 - **改动**

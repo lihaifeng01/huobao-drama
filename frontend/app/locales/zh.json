@@ -367,7 +367,8 @@
       "storage": "存储位置",
       "about": "关于更新",
       "agents": "Agent 配置",
-      "points": "积分规则"
+      "points": "积分规则",
+      "branding": "品牌主题"
     },
     "common": {
       "disabled": "已停用",
@@ -614,6 +615,63 @@
     "skillDelete": {
       "title": "删除 Skill",
       "message": "确定删除 Skill「{id}」？删除后对应 Agent 将回退到内置默认提示词。"
+    },
+    "branding": {
+      "title": "品牌主题",
+      "desc": "自定义应用名称、Logo、主题色与界面风格，保存后对所有用户生效（包括登录页）。仅超级管理员可修改。",
+      "identity": "品牌标识",
+      "identitySub": "显示在顶栏、登录页与浏览器标签页",
+      "appName": "应用名称",
+      "appNameNote": "留空使用默认名称；自定义后浏览器标题在各语言下统一显示该名称",
+      "appSubtitle": "副标题",
+      "appSubtitleNote": "名称下方的小字，留空使用默认",
+      "hideSubtitle": "隐藏",
+      "logo": "Logo",
+      "logoNote": "建议正方形 PNG / SVG，透明背景，不超过 512KB",
+      "favicon": "网站图标",
+      "faviconNote": "浏览器标签页图标，建议 32×32 或 64×64 的 PNG / ICO",
+      "default": "默认",
+      "useDefault": "恢复默认",
+      "upload": "上传",
+      "color": "主题色",
+      "colorSub": "按钮、高亮、选中态等品牌色，悬停 / 按下 / 浅底色自动推导",
+      "primaryColor": "主色",
+      "primaryColorNote": "选择预设色或自定义颜色（浅色主题）",
+      "customColor": "自定义颜色",
+      "darkColor": "深色主题主色",
+      "darkColorNote": "默认由主色自动提亮，保证深色背景下可读",
+      "darkAuto": "自动",
+      "darkCustom": "自定义",
+      "preset": {
+        "orange": "火焰橙",
+        "rose": "玫瑰红",
+        "violet": "紫罗兰",
+        "blue": "科技蓝",
+        "cyan": "青碧",
+        "green": "翠绿",
+        "slate": "石墨灰"
+      },
+      "ui": "界面",
+      "uiSub": "全局界面风格",
+      "corner": "圆角风格",
+      "cornerNote": "按钮、标签、输入框等控件的圆角",
+      "corners": {
+        "round": "胶囊",
+        "soft": "柔和",
+        "sharp": "方正"
+      },
+      "showGithub": "显示 GitHub 链接",
+      "showGithubNote": "顶栏右侧的 GitHub 仓库入口",
+      "previewHint": "修改会即时预览，保存后对所有用户生效",
+      "previewing": "正在预览未保存的修改",
+      "discard": "撤销修改",
+      "resetAll": "恢复全部默认",
+      "resetConfirm": "确定把品牌主题恢复为默认设置吗？所有用户的界面都会改回默认样式。",
+      "resetDone": "已恢复默认品牌主题",
+      "saved": "品牌主题已保存",
+      "invalidColor": "颜色格式应为 #RRGGBB",
+      "imageType": "请选择图片文件（PNG / JPG / WebP / GIF / SVG / ICO）",
+      "imageTooLarge": "图片不能超过 512KB"
     }
   },
   "episode": {

@@ -6,10 +6,10 @@
     </div>
     <div class="auth-card card">
       <div class="auth-brand">
-        <img :src="brandLogo" alt="" class="auth-logo" />
+        <img :src="logoUrl" alt="" class="auth-logo" />
         <div>
-          <div class="auth-brand-name">火宝短剧</div>
-          <div class="auth-brand-sub">Huobao Shorts</div>
+          <div class="auth-brand-name">{{ appName }}</div>
+          <div v-if="appSubtitle" class="auth-brand-sub">{{ appSubtitle }}</div>
         </div>
       </div>
 
@@ -69,7 +69,7 @@
 import { useI18n } from 'vue-i18n'
 import { authAPI } from '~/composables/useApi'
 import { useAuth } from '~/composables/useAuth'
-import brandLogo from '~/assets/brand-logo.png'
+import { useBranding } from '~/composables/useBranding'
 
 const props = defineProps<{ mode: 'login' | 'register' | 'setup' }>()
 const emit = defineEmits<{ switch: [mode: 'login' | 'register'] }>()
@@ -77,6 +77,7 @@ const emit = defineEmits<{ switch: [mode: 'login' | 'register'] }>()
 const { t } = useI18n()
 const route = useRoute()
 const { setUser } = useAuth()
+const { appName, appSubtitle, logoUrl } = useBranding()
 
 const form = reactive({ username: '', display_name: '', password: '', confirm: '' })
 const error = ref('')

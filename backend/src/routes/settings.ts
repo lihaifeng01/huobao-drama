@@ -1,8 +1,9 @@
 /**
- * 应用设置路由 — 全局配置的读写入口（当前：AI 内容语言）
+ * 应用设置路由 — 全局配置的读写入口（AI 内容语言、引导记录、品牌主题）
  */
 import { Hono } from 'hono'
 import { getContentLanguage, setContentLanguage, getToursSeen, setToursSeen, CONTENT_LANGUAGES, type ContentLanguage } from '../services/app-settings.js'
+import { getBranding, setBranding, resetBranding, BrandingError } from '../services/branding.js'
 import { success, badRequest } from '../utils/response.js'
 
 const app = new Hono()
@@ -35,6 +36,27 @@ app.put('/tours-seen', async (c) => {
     return badRequest(c, 'seen 必须是字符串数组')
   }
   return success(c, { seen: await setToursSeen(body.seen) })
+})
+
+// GET /branding — 品牌主题（公开：登录页也要用）
+app.get('/branding', async (c) => {
+  return success(c, getBranding())
+})
+
+// PUT /branding — 保存品牌主题（仅超级管理员，见 middleware/auth.ts）
+app.put('/branding', async (c) => {
+  const body = await c.req.json().catch(() => null)
+  try {
+    return success(c, setBranding(body))
+  } catch (e) {
+    if (e instanceof BrandingError) return badRequest(c, e.message)
+    throw e
+  }
+})
+
+// DELETE /branding — 恢复默认品牌主题（仅超级管理员）
+app.delete('/branding', async (c) => {
+  return success(c, resetBranding())
 })
 
 export default app

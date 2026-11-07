@@ -367,7 +367,8 @@
       "storage": "保存場所",
       "about": "更新について",
       "agents": "Agent 設定",
-      "points": "ポイント"
+      "points": "ポイント",
+      "branding": "ブランド"
     },
     "common": {
       "disabled": "無効",
@@ -614,6 +615,63 @@
     "skillDelete": {
       "title": "Skill を削除",
       "message": "Skill「{id}」を削除しますか？対応する Agent は組み込みのデフォルトプロンプトに戻ります。"
+    },
+    "branding": {
+      "title": "ブランドテーマ",
+      "desc": "アプリ名、ロゴ、テーマカラー、UI スタイルをカスタマイズします。保存するとログイン画面を含む全ユーザーに適用されます。スーパー管理者のみ変更できます。",
+      "identity": "ブランド表示",
+      "identitySub": "ヘッダー、ログイン画面、ブラウザのタブに表示されます",
+      "appName": "アプリ名",
+      "appNameNote": "空欄の場合は既定の名前を使用します。設定するとすべての言語でブラウザのタイトルに使われます",
+      "appSubtitle": "サブタイトル",
+      "appSubtitleNote": "名前の下の小さな文字。空欄の場合は既定値",
+      "hideSubtitle": "非表示",
+      "logo": "ロゴ",
+      "logoNote": "透明背景の正方形 PNG / SVG を推奨、512KB まで",
+      "favicon": "ファビコン",
+      "faviconNote": "ブラウザのタブのアイコン。32×32 または 64×64 の PNG / ICO を推奨",
+      "default": "既定",
+      "useDefault": "既定に戻す",
+      "upload": "アップロード",
+      "color": "テーマカラー",
+      "colorSub": "ボタン、ハイライト、選択状態のブランドカラー。ホバー・押下・淡色は自動で算出されます",
+      "primaryColor": "メインカラー",
+      "primaryColorNote": "プリセットまたはカスタムカラーを選択（ライトテーマ）",
+      "customColor": "カスタムカラー",
+      "darkColor": "ダークテーマのメインカラー",
+      "darkColorNote": "既定ではメインカラーを自動的に明るくして暗い背景でも読みやすくします",
+      "darkAuto": "自動",
+      "darkCustom": "カスタム",
+      "preset": {
+        "orange": "フレイムオレンジ",
+        "rose": "ローズ",
+        "violet": "バイオレット",
+        "blue": "ブルー",
+        "cyan": "シアン",
+        "green": "グリーン",
+        "slate": "スレート"
+      },
+      "ui": "インターフェース",
+      "uiSub": "全体の UI スタイル",
+      "corner": "角の丸み",
+      "cornerNote": "ボタン、タグ、入力欄などの角の丸み",
+      "corners": {
+        "round": "ピル",
+        "soft": "ソフト",
+        "sharp": "シャープ"
+      },
+      "showGithub": "GitHub リンクを表示",
+      "showGithubNote": "ヘッダー右側の GitHub リポジトリへのリンク",
+      "previewHint": "変更はすぐにプレビューされ、保存すると全ユーザーに適用されます",
+      "previewing": "未保存の変更をプレビュー中",
+      "discard": "変更を取り消す",
+      "resetAll": "すべて既定に戻す",
+      "resetConfirm": "ブランドテーマを既定の設定に戻しますか？全ユーザーの画面が既定のスタイルに戻ります。",
+      "resetDone": "ブランドテーマを既定に戻しました",
+      "saved": "ブランドテーマを保存しました",
+      "invalidColor": "色は #RRGGBB 形式で入力してください",
+      "imageType": "画像ファイル（PNG / JPG / WebP / GIF / SVG / ICO）を選択してください",
+      "imageTooLarge": "画像は 512KB 以下にしてください"
     }
   },
   "episode": {
