@@ -31,8 +31,9 @@
 - 后端类型检查：`cd backend && npm run typecheck`。前端没有装 vue-tsc，用 `npm run generate` 能否构建成功作为基本检查。
 - 后端还有一批 TypeScript 测试（`backend/tests/*.ts`，包括视频恢复、交付、中转站等），`node --test tests/*.mjs` 不会跑到它们。要用 `cd backend && npx tsx --test tests/*.ts` 单独跑，这批目前应全部通过。
 
-**依赖安装（云端沙箱）**
-- `package-lock.json` 里部分包的 resolved 地址是 `packages.aliyun.com`，沙箱网络访问不了。临时做法：把 lockfile 里 `https://packages.aliyun.com/69c39010f167bac7fd2502e3/npm/npm-registry/` 替换成 `https://registry.npmjs.org/` 后执行 `npm ci`，装完用 `git checkout` 还原 lockfile，**不要提交改过的 lockfile**。
+**依赖安装**
+- 三个 `package-lock.json` 的 `resolved` 地址都是 `registry.npmjs.org`，直接 `npm ci` 即可（2026-11-07 起）。以前有 417 条指向上游作者的私有阿里云源 `packages.aliyun.com/...`，没有账号会报 E401，需要先手动替换；现在不用了。
+- 以后更新依赖，要确认新写进 lockfile 的地址不是私有源（`grep -c packages.aliyun.com */package-lock.json` 应为 0）。本机 `~/.npmrc` 若配了私有镜像，`npm install` 会把镜像地址写进 lockfile。
 
 **前端（Nuxt）**
 - Nuxt 会自动导入 `ref`、`computed` 等。**不要在 `.vue` 文件里把局部变量命名为 `ref` / `computed` / `watch` / `reactive`**：自动导入一旦检测到同名的本地声明，就会放弃给整个文件注入导入，页面运行时报 `ref is not defined`（2026-10-25 踩过）。
@@ -68,6 +69,12 @@
 ---
 
 ## 变更条目
+
+### 2026-11-07 · lockfile 下载地址统一改为 npm 官方源
+- **分支**：`dev`
+- **改动**：`frontend` / `backend` / `desktop` 三个 `package-lock.json` 里 417 条 `resolved` 地址从 `https://packages.aliyun.com/69c39010f167bac7fd2502e3/npm/npm-registry/` 换成 `https://registry.npmjs.org/`（desktop 382、backend 29、frontend 6）。只改地址，包版本和 `integrity` 哈希不变。
+- **原因**：那是上游作者的私有阿里云 npm 源，其他人没有账号，`npm install` / `npm ci` 报 `E401 Incorrect or missing password`（用户在 Mac 上打包桌面版时遇到）。云端沙箱以前也要先手动替换再还原。
+- **验证**：在空的 npm 缓存下对三个目录分别执行 `npm ci --ignore-scripts`，全部安装成功（所有包从官方源下载，并通过 lockfile 的哈希校验）。
 
 ### 2026-11-03 · 新增：字幕制作支持手动上传字幕
 - **分支**：`feat/subtitle-upload`（从 `origin/dev` 拉出，2026-11-03 已合并到 `dev`）
