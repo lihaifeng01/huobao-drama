@@ -367,7 +367,8 @@
       "storage": "Storage",
       "about": "About & Updates",
       "agents": "Agent Config",
-      "points": "Points"
+      "points": "Points",
+      "branding": "Branding"
     },
     "common": {
       "disabled": "Disabled",
@@ -614,6 +615,63 @@
     "skillDelete": {
       "title": "Delete Skill",
       "message": "Delete skill “{id}”? The corresponding Agent will fall back to its built-in default prompt."
+    },
+    "branding": {
+      "title": "Branding",
+      "desc": "Customize the app name, logo, theme color and UI style. Changes apply to all users, including the sign-in page. Super admins only.",
+      "identity": "Identity",
+      "identitySub": "Shown in the header, sign-in page and browser tab",
+      "appName": "App name",
+      "appNameNote": "Leave empty for the default name. A custom name is used as the browser title in every language",
+      "appSubtitle": "Subtitle",
+      "appSubtitleNote": "Small text under the name; leave empty for the default",
+      "hideSubtitle": "Hide",
+      "logo": "Logo",
+      "logoNote": "Square PNG / SVG with a transparent background recommended, up to 512KB",
+      "favicon": "Favicon",
+      "faviconNote": "Browser tab icon; a 32×32 or 64×64 PNG / ICO is recommended",
+      "default": "Default",
+      "useDefault": "Use default",
+      "upload": "Upload",
+      "color": "Theme color",
+      "colorSub": "Brand color for buttons, highlights and selection; hover, pressed and tint shades are derived automatically",
+      "primaryColor": "Primary color",
+      "primaryColorNote": "Pick a preset or a custom color (light theme)",
+      "customColor": "Custom color",
+      "darkColor": "Dark theme color",
+      "darkColorNote": "By default the primary color is lightened automatically for dark backgrounds",
+      "darkAuto": "Auto",
+      "darkCustom": "Custom",
+      "preset": {
+        "orange": "Flame orange",
+        "rose": "Rose",
+        "violet": "Violet",
+        "blue": "Blue",
+        "cyan": "Cyan",
+        "green": "Green",
+        "slate": "Slate"
+      },
+      "ui": "Interface",
+      "uiSub": "Global UI style",
+      "corner": "Corner style",
+      "cornerNote": "Corner radius of buttons, tags, inputs and other controls",
+      "corners": {
+        "round": "Pill",
+        "soft": "Soft",
+        "sharp": "Sharp"
+      },
+      "showGithub": "Show GitHub link",
+      "showGithubNote": "GitHub repository link on the right of the header",
+      "previewHint": "Changes are previewed instantly and apply to all users once saved",
+      "previewing": "Previewing unsaved changes",
+      "discard": "Discard changes",
+      "resetAll": "Reset to defaults",
+      "resetConfirm": "Reset branding to the default settings? Every user's interface will return to the default style.",
+      "resetDone": "Branding reset to defaults",
+      "saved": "Branding saved",
+      "invalidColor": "Color must be in #RRGGBB format",
+      "imageType": "Please choose an image file (PNG / JPG / WebP / GIF / SVG / ICO)",
+      "imageTooLarge": "Image must be 512KB or smaller"
     }
   },
   "episode": {

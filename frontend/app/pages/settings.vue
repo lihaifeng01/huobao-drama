@@ -72,6 +72,163 @@
           </section>
         </div>
 
+        <!-- ===== 品牌主题（仅超级管理员） ===== -->
+        <div v-if="tab === 'branding' && isSuperAdmin" class="settings-scroll">
+          <div class="settings-head">
+            <h2 class="settings-title">{{ t('settings.branding.title') }}</h2>
+            <p class="settings-desc">{{ t('settings.branding.desc') }}</p>
+          </div>
+
+          <!-- 品牌标识 -->
+          <section class="card svc-group">
+            <div class="svc-group-head">
+              <div class="svc-group-heading">
+                <span class="svc-group-title">{{ t('settings.branding.identity') }}</span>
+                <div class="svc-group-sub">{{ t('settings.branding.identitySub') }}</div>
+              </div>
+            </div>
+            <div class="config-row">
+              <div class="config-main">
+                <div class="config-line"><span class="config-name">{{ t('settings.branding.appName') }}</span></div>
+                <div class="config-sub">{{ t('settings.branding.appNameNote') }}</div>
+              </div>
+              <input v-model="brandForm.app_name" class="input brand-input" maxlength="40" :placeholder="DEFAULT_APP_NAME" />
+            </div>
+            <div class="config-row">
+              <div class="config-main">
+                <div class="config-line"><span class="config-name">{{ t('settings.branding.appSubtitle') }}</span></div>
+                <div class="config-sub">{{ t('settings.branding.appSubtitleNote') }}</div>
+              </div>
+              <label class="brand-check">
+                <input v-model="brandForm.hide_subtitle" type="checkbox" />
+                <span>{{ t('settings.branding.hideSubtitle') }}</span>
+              </label>
+              <input v-model="brandForm.app_subtitle" class="input brand-input" maxlength="60" :placeholder="DEFAULT_APP_SUBTITLE" :disabled="brandForm.hide_subtitle" />
+            </div>
+            <div v-for="img in brandImageFields" :key="img.key" class="config-row">
+              <div class="brand-image-preview" :class="{ favicon: img.key === 'favicon' }">
+                <img :src="brandForm[img.key] || img.fallback" alt="" />
+              </div>
+              <div class="config-main">
+                <div class="config-line">
+                  <span class="config-name">{{ img.label }}</span>
+                  <span v-if="!brandForm[img.key]" class="tag">{{ t('settings.branding.default') }}</span>
+                </div>
+                <div class="config-sub">{{ img.note }}</div>
+              </div>
+              <button v-if="brandForm[img.key]" type="button" class="btn btn-sm" @click="brandForm[img.key] = ''">{{ t('settings.branding.useDefault') }}</button>
+              <label class="btn btn-sm">
+                {{ t('settings.branding.upload') }}
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,image/x-icon,.ico" hidden @change="onBrandImage(img.key, $event)" />
+              </label>
+            </div>
+          </section>
+
+          <!-- 主题色 -->
+          <section class="card svc-group">
+            <div class="svc-group-head">
+              <div class="svc-group-heading">
+                <span class="svc-group-title">{{ t('settings.branding.color') }}</span>
+                <div class="svc-group-sub">{{ t('settings.branding.colorSub') }}</div>
+              </div>
+            </div>
+            <div class="config-row brand-color-row">
+              <div class="config-main">
+                <div class="config-line"><span class="config-name">{{ t('settings.branding.primaryColor') }}</span></div>
+                <div class="config-sub">{{ t('settings.branding.primaryColorNote') }}</div>
+              </div>
+              <div class="brand-swatches">
+                <button
+                  v-for="p in BRAND_COLOR_PRESETS"
+                  :key="p.value"
+                  type="button"
+                  :class="['brand-swatch', { on: brandLightColor === p.value }]"
+                  :style="{ background: p.value }"
+                  :title="t(`settings.branding.preset.${p.id}`)"
+                  :aria-label="t(`settings.branding.preset.${p.id}`)"
+                  @click="brandForm.primary_color = p.value === DEFAULT_PRIMARY_COLOR ? '' : p.value"
+                ><Check v-if="brandLightColor === p.value" :size="13" :stroke-width="2.6" /></button>
+                <label class="brand-color-custom" :title="t('settings.branding.customColor')">
+                  <input type="color" :value="brandLightColor" @input="brandForm.primary_color = $event.target.value" />
+                </label>
+                <input
+                  class="input brand-hex"
+                  :value="brandLightColor"
+                  maxlength="7"
+                  spellcheck="false"
+                  @change="onHexInput('primary_color', $event)"
+                />
+              </div>
+            </div>
+            <div class="config-row">
+              <div class="config-main">
+                <div class="config-line"><span class="config-name">{{ t('settings.branding.darkColor') }}</span></div>
+                <div class="config-sub">{{ t('settings.branding.darkColorNote') }}</div>
+              </div>
+              <div class="lang-picker">
+                <button type="button" :class="['lang-option', { on: !brandForm.primary_color_dark }]" @click="brandForm.primary_color_dark = ''">{{ t('settings.branding.darkAuto') }}</button>
+                <button type="button" :class="['lang-option', { on: !!brandForm.primary_color_dark }]" @click="brandForm.primary_color_dark ||= brandAutoDark">{{ t('settings.branding.darkCustom') }}</button>
+              </div>
+              <template v-if="brandForm.primary_color_dark">
+                <label class="brand-color-custom">
+                  <input type="color" :value="brandForm.primary_color_dark" @input="brandForm.primary_color_dark = $event.target.value" />
+                </label>
+                <input class="input brand-hex" :value="brandForm.primary_color_dark" maxlength="7" spellcheck="false" @change="onHexInput('primary_color_dark', $event)" />
+              </template>
+              <span v-else class="brand-dark-chip" :style="{ background: brandAutoDark }" :title="brandAutoDark" />
+            </div>
+          </section>
+
+          <!-- 界面 -->
+          <section class="card svc-group">
+            <div class="svc-group-head">
+              <div class="svc-group-heading">
+                <span class="svc-group-title">{{ t('settings.branding.ui') }}</span>
+                <div class="svc-group-sub">{{ t('settings.branding.uiSub') }}</div>
+              </div>
+            </div>
+            <div class="config-row">
+              <div class="config-main">
+                <div class="config-line"><span class="config-name">{{ t('settings.branding.corner') }}</span></div>
+                <div class="config-sub">{{ t('settings.branding.cornerNote') }}</div>
+              </div>
+              <div class="lang-picker">
+                <button
+                  v-for="c in ['round', 'soft', 'sharp']"
+                  :key="c"
+                  type="button"
+                  :class="['lang-option', { on: brandForm.corner_style === c }]"
+                  @click="brandForm.corner_style = c"
+                >{{ t(`settings.branding.corners.${c}`) }}</button>
+              </div>
+            </div>
+            <div class="config-row">
+              <div class="config-main">
+                <div class="config-line"><span class="config-name">{{ t('settings.branding.showGithub') }}</span></div>
+                <div class="config-sub">{{ t('settings.branding.showGithubNote') }}</div>
+              </div>
+              <button
+                type="button"
+                :class="['switch', { on: brandForm.show_github }]"
+                role="switch"
+                :aria-checked="brandForm.show_github"
+                :aria-label="t('settings.branding.showGithub')"
+                @click="brandForm.show_github = !brandForm.show_github"
+              />
+            </div>
+          </section>
+
+          <div class="brand-actions">
+            <span class="brand-actions-hint">{{ brandDirty ? t('settings.branding.previewing') : t('settings.branding.previewHint') }}</span>
+            <button type="button" class="btn" :disabled="brandSaving" @click="brandResetOpen = true">{{ t('settings.branding.resetAll') }}</button>
+            <button type="button" class="btn" :disabled="!brandDirty || brandSaving" @click="discardBrandForm">{{ t('settings.branding.discard') }}</button>
+            <button type="button" class="btn btn-primary" :disabled="!brandDirty || brandSaving" @click="submitBranding">
+              <Loader2 v-if="brandSaving" :size="13" class="animate-spin" />
+              {{ t('common.save') }}
+            </button>
+          </div>
+        </div>
+
         <!-- ===== AI 服务配置 ===== -->
         <div v-if="tab === 'ai'" class="settings-scroll">
           <div class="settings-head">
@@ -772,11 +929,21 @@
       @confirm="confirmDelSkill"
       @cancel="skillToDelete = null"
     />
+    <ConfirmDialog
+      :open="brandResetOpen"
+      :title="t('settings.branding.resetAll')"
+      :message="t('settings.branding.resetConfirm')"
+      :confirm-text="t('settings.branding.resetAll')"
+      :loading-text="t('common.loading')"
+      :loading="brandSaving"
+      @confirm="resetBrandingToDefault"
+      @cancel="brandResetOpen = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { Plus, Pencil, Trash2, FileText, ChevronDown, Check, Loader2, Bot, Cpu, Sparkles, Palette, ExternalLink, Star, HardDrive, Database, RefreshCw, Download, Languages, SunMoon, X, Coins, Info } from 'lucide-vue-next'
+import { Plus, Pencil, Trash2, FileText, ChevronDown, Check, Loader2, Bot, Cpu, Sparkles, Palette, ExternalLink, Star, HardDrive, Database, RefreshCw, Download, Languages, SunMoon, X, Coins, Info, Paintbrush } from 'lucide-vue-next'
 import BaseSelect from '~/components/BaseSelect.vue'
 import { toast } from 'vue-sonner'
 import { toastError } from '~/composables/useToast'
@@ -785,6 +952,13 @@ import { aiConfigAPI, promptAPI, skillsAPI, storageAPI, stylePresetAPI, settings
 import { useDesktopBridge } from '~/composables/useDesktopBridge'
 import { useMigrateState } from '~/composables/useMigrateState'
 import { useTheme } from '~/composables/useTheme'
+import { useAuth } from '~/composables/useAuth'
+import {
+  useBranding, defaultBranding, previewBranding, revertBrandingPreview, saveBranding, resetBranding,
+  DEFAULT_APP_NAME, DEFAULT_APP_SUBTITLE, DEFAULT_PRIMARY_COLOR, DEFAULT_FAVICON, MAX_BRAND_IMAGE_BYTES,
+} from '~/composables/useBranding'
+import { autoDarkColor, isHexColor } from '~/utils/brand-color'
+import defaultBrandLogo from '~/assets/brand-logo.png'
 import { providerIconUrl } from '~/composables/useProviderIcon'
 import { startTour, autoTour } from '~/composables/useTour'
 import { confirmUnifiedLanguage } from '~/composables/useUnifiedLanguage'
@@ -792,6 +966,7 @@ import { confirmUnifiedLanguage } from '~/composables/useUnifiedLanguage'
 const { t, locale } = useI18n()
 
 const showBrandImage = ref(true)
+const { isSuperAdmin } = useAuth()
 const tab = ref('ai')
 const baseTabs = computed(() => [
   { id: 'ai', label: t('settings.tabs.ai'), icon: Cpu },
@@ -801,6 +976,8 @@ const baseTabs = computed(() => [
   { id: 'points', label: t('settings.tabs.points'), icon: Coins },
   { id: 'storage', label: t('settings.tabs.storage'), icon: HardDrive },
   { id: 'about', label: t('settings.tabs.about'), icon: RefreshCw },
+  // 品牌主题影响所有用户的界面，仅超级管理员可设置
+  ...(isSuperAdmin.value ? [{ id: 'branding', label: t('settings.tabs.branding'), icon: Paintbrush }] : []),
 ])
 
 // ===== AI Service Configs =====
@@ -1207,6 +1384,114 @@ const contentLangLabel = computed(() =>
 
 // 内容语言变化时同步刷新 Agent 面板（提示词、Skill 列表与展开内容）
 // 内容语言切换后整页刷新（setUnifiedLanguage），无需局部 watch 同步
+// ===== 品牌主题（仅超级管理员）：编辑即预览，保存后对所有用户生效 =====
+const BRAND_COLOR_PRESETS = [
+  { id: 'orange', value: DEFAULT_PRIMARY_COLOR },
+  { id: 'rose', value: '#e11d48' },
+  { id: 'violet', value: '#7c3aed' },
+  { id: 'blue', value: '#2563eb' },
+  { id: 'cyan', value: '#0891b2' },
+  { id: 'green', value: '#16a34a' },
+  { id: 'slate', value: '#475569' },
+]
+const { savedBranding } = useBranding()
+const brandForm = reactive(defaultBranding())
+const brandSaving = ref(false)
+const brandResetOpen = ref(false)
+const brandLightColor = computed(() => brandForm.primary_color || DEFAULT_PRIMARY_COLOR)
+const brandAutoDark = computed(() => autoDarkColor(brandLightColor.value))
+const brandDirty = computed(() => JSON.stringify({ ...brandForm }) !== JSON.stringify({ ...savedBranding }))
+const brandImageFields = computed(() => [
+  { key: 'logo', label: t('settings.branding.logo'), note: t('settings.branding.logoNote'), fallback: defaultBrandLogo },
+  { key: 'favicon', label: t('settings.branding.favicon'), note: t('settings.branding.faviconNote'), fallback: DEFAULT_FAVICON },
+])
+
+function syncBrandForm() {
+  Object.assign(brandForm, defaultBranding(), JSON.parse(JSON.stringify(savedBranding)))
+}
+syncBrandForm()
+// 启动时服务端品牌值晚于缓存到达，到达后同步到表单
+watch(() => JSON.stringify(savedBranding), syncBrandForm)
+
+// 表单变化即时预览（只改当前页面，不保存）
+watch(brandForm, () => {
+  if (isSuperAdmin.value) previewBranding({ ...brandForm })
+}, { deep: true })
+// 离开品牌页时丢弃未保存的预览
+watch(tab, (active, prev) => {
+  if (prev === 'branding' && active !== 'branding') {
+    syncBrandForm()
+    revertBrandingPreview()
+  }
+})
+onBeforeUnmount(revertBrandingPreview)
+
+function onHexInput(field, e) {
+  let v = String(e.target.value || '').trim()
+  if (/^[0-9a-fA-F]{6}$/.test(v)) v = '#' + v
+  if (isHexColor(v)) {
+    brandForm[field] = field === 'primary_color' && v.toLowerCase() === DEFAULT_PRIMARY_COLOR ? '' : v.toLowerCase()
+  } else {
+    toast.error(t('settings.branding.invalidColor'))
+    e.target.value = field === 'primary_color' ? brandLightColor.value : brandForm[field]
+  }
+}
+
+function onBrandImage(key, e) {
+  const file = e.target.files?.[0]
+  e.target.value = ''
+  if (!file) return
+  if (!file.type.startsWith('image/') && !file.name.toLowerCase().endsWith('.ico')) {
+    toast.error(t('settings.branding.imageType'))
+    return
+  }
+  if (file.size > MAX_BRAND_IMAGE_BYTES) {
+    toast.error(t('settings.branding.imageTooLarge'))
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = () => {
+    let url = String(reader.result || '')
+    // 部分系统给 .ico 的 MIME 为空，补成 image/x-icon
+    if (url.startsWith('data:application/octet-stream;')) url = url.replace('data:application/octet-stream;', 'data:image/x-icon;')
+    brandForm[key] = url
+  }
+  reader.onerror = () => toast.error(t('settings.branding.imageType'))
+  reader.readAsDataURL(file)
+}
+
+async function submitBranding() {
+  brandSaving.value = true
+  try {
+    await saveBranding({ ...brandForm })
+    syncBrandForm()
+    toast.success(t('settings.branding.saved'))
+  } catch (e) {
+    toastError(e)
+  } finally {
+    brandSaving.value = false
+  }
+}
+
+function discardBrandForm() {
+  syncBrandForm()
+  revertBrandingPreview()
+}
+
+async function resetBrandingToDefault() {
+  brandSaving.value = true
+  try {
+    await resetBranding()
+    syncBrandForm()
+    brandResetOpen.value = false
+    toast.success(t('settings.branding.resetDone'))
+  } catch (e) {
+    toastError(e)
+  } finally {
+    brandSaving.value = false
+  }
+}
+
 // ===== 通用：外观主题（localStorage 持久化，即时生效） =====
 const { themeMode, setThemeMode } = useTheme()
 const themeOptions = computed(() => [
@@ -1756,6 +2041,43 @@ onBeforeUnmount(stopUsagePoll)
 }
 .template-type-chip:hover { background: var(--button-bg-hover); color: var(--text-0); }
 .template-type-chip:focus-visible { outline: none; box-shadow: 0 0 0 3.5px var(--button-focus); }
+
+/* ===== 品牌主题 ===== */
+.brand-input { width: 260px; flex-shrink: 0; }
+.brand-check { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-2); white-space: nowrap; cursor: pointer; }
+.brand-image-preview {
+  width: 44px; height: 44px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-2);
+  overflow: hidden;
+}
+.brand-image-preview img { width: 34px; height: 34px; object-fit: contain; }
+.brand-image-preview.favicon img { width: 20px; height: 20px; }
+.brand-color-row { flex-wrap: wrap; }
+.brand-swatches { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.brand-swatch {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid transparent; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+  transition: transform 0.15s var(--ease-out);
+}
+.brand-swatch:hover { transform: scale(1.1); }
+.brand-swatch.on { box-shadow: 0 0 0 2px var(--surface-raised), 0 0 0 4px var(--text-3); }
+.brand-swatch:focus-visible { outline: none; box-shadow: 0 0 0 3.5px var(--button-focus); }
+.brand-color-custom {
+  position: relative; width: 26px; height: 26px; border-radius: 50%; overflow: hidden; cursor: pointer;
+  background: conic-gradient(#f43f5e, #f59e0b, #22c55e, #06b6d4, #6366f1, #d946ef, #f43f5e);
+  flex-shrink: 0;
+}
+.brand-color-custom input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: none; padding: 0; }
+.brand-hex { width: 96px; font-family: var(--font-mono); font-size: 12.5px; padding: 6px 10px; }
+.brand-dark-chip { width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12); }
+.brand-actions {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  margin-top: 16px;
+}
+.brand-actions-hint { margin-right: auto; font-size: 12px; color: var(--text-3); }
 
 /* ===== 内容语言选择器（通用 tab） ===== */
 .lang-picker { display: flex; gap: 2px; padding: 3px; border-radius: var(--radius-pill); background: var(--overlay-track); }

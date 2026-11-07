@@ -367,7 +367,8 @@
       "storage": "저장 위치",
       "about": "업데이트 정보",
       "agents": "Agent 설정",
-      "points": "포인트"
+      "points": "포인트",
+      "branding": "브랜딩"
     },
     "common": {
       "disabled": "비활성화됨",
@@ -614,6 +615,63 @@
     "skillDelete": {
       "title": "Skill 삭제",
       "message": "Skill 「{id}」을(를) 삭제하시겠습니까? 해당 Agent는 기본 제공 프롬프트로 돌아갑니다."
+    },
+    "branding": {
+      "title": "브랜드 테마",
+      "desc": "앱 이름, 로고, 테마 색상, UI 스타일을 사용자 지정합니다. 저장하면 로그인 페이지를 포함한 모든 사용자에게 적용됩니다. 최고 관리자만 변경할 수 있습니다.",
+      "identity": "브랜드 표시",
+      "identitySub": "헤더, 로그인 페이지, 브라우저 탭에 표시됩니다",
+      "appName": "앱 이름",
+      "appNameNote": "비워 두면 기본 이름을 사용합니다. 지정하면 모든 언어에서 브라우저 제목으로 사용됩니다",
+      "appSubtitle": "부제목",
+      "appSubtitleNote": "이름 아래의 작은 글자, 비워 두면 기본값 사용",
+      "hideSubtitle": "숨기기",
+      "logo": "로고",
+      "logoNote": "투명 배경의 정사각형 PNG / SVG 권장, 최대 512KB",
+      "favicon": "파비콘",
+      "faviconNote": "브라우저 탭 아이콘, 32×32 또는 64×64 PNG / ICO 권장",
+      "default": "기본값",
+      "useDefault": "기본값으로",
+      "upload": "업로드",
+      "color": "테마 색상",
+      "colorSub": "버튼, 강조, 선택 상태의 브랜드 색상. 호버·누름·연한 색은 자동으로 계산됩니다",
+      "primaryColor": "기본 색상",
+      "primaryColorNote": "프리셋 또는 사용자 지정 색상 선택(라이트 테마)",
+      "customColor": "사용자 지정 색상",
+      "darkColor": "다크 테마 색상",
+      "darkColorNote": "기본적으로 기본 색상을 자동으로 밝게 하여 어두운 배경에서도 잘 보이게 합니다",
+      "darkAuto": "자동",
+      "darkCustom": "사용자 지정",
+      "preset": {
+        "orange": "플레임 오렌지",
+        "rose": "로즈",
+        "violet": "바이올렛",
+        "blue": "블루",
+        "cyan": "시안",
+        "green": "그린",
+        "slate": "슬레이트"
+      },
+      "ui": "인터페이스",
+      "uiSub": "전역 UI 스타일",
+      "corner": "모서리 스타일",
+      "cornerNote": "버튼, 태그, 입력창 등 컨트롤의 모서리 둥글기",
+      "corners": {
+        "round": "알약형",
+        "soft": "부드럽게",
+        "sharp": "각지게"
+      },
+      "showGithub": "GitHub 링크 표시",
+      "showGithubNote": "헤더 오른쪽의 GitHub 저장소 링크",
+      "previewHint": "변경 사항은 즉시 미리 보기되며 저장하면 모든 사용자에게 적용됩니다",
+      "previewing": "저장하지 않은 변경 사항 미리 보기 중",
+      "discard": "변경 취소",
+      "resetAll": "모두 기본값으로",
+      "resetConfirm": "브랜드 테마를 기본 설정으로 되돌릴까요? 모든 사용자의 화면이 기본 스타일로 돌아갑니다.",
+      "resetDone": "브랜드 테마를 기본값으로 되돌렸습니다",
+      "saved": "브랜드 테마를 저장했습니다",
+      "invalidColor": "색상은 #RRGGBB 형식이어야 합니다",
+      "imageType": "이미지 파일(PNG / JPG / WebP / GIF / SVG / ICO)을 선택하세요",
+      "imageTooLarge": "이미지는 512KB 이하여야 합니다"
     }
   },
   "episode": {
