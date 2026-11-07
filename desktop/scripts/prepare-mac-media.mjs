@@ -11,7 +11,9 @@ const require = createRequire(import.meta.url)
 const release = require('ffmpeg-static/package.json')['ffmpeg-static']['binary-release-tag']
 
 export function assertMacArchitecture(file, arch) {
-  execFileSync('lipo', ['-verify_arch', arch === 'x64' ? 'x86_64' : arch, file], { stdio: 'pipe' })
+  // lipo 的输入文件必须写在 -verify_arch 前面：-verify_arch 会把后面的参数都当成架构名，
+  // 文件放在最后会报 "unknown architecture specification flag: <文件路径>"
+  execFileSync('lipo', [file, '-verify_arch', arch === 'x64' ? 'x86_64' : arch], { stdio: 'pipe' })
 }
 
 export async function prepareMacMedia(desktop, resources) {

@@ -70,6 +70,13 @@
 
 ## 变更条目
 
+### 2026-11-07 · 修复 macOS 打包时 lipo 架构校验参数顺序错误
+- **分支**：`dev`（未合并到 master；`v4.1.4` 标签里仍是旧代码）
+- **现象**：`npm run dist` 下载完 ffmpeg / ffprobe 后报 `lipo: unknown architecture specification flag: <文件路径> in specifying -verify_arch operation`，打包中断。
+- **原因**：`desktop/scripts/prepare-mac-media.mjs` 的 `assertMacArchitecture` 把文件路径放在 `-verify_arch <arch>` 后面。`-verify_arch` 接受多个架构名，会把文件路径也当成架构名。正确写法是 `lipo <文件> -verify_arch <arch>`。这段代码是 2026-10-25 随上游 4.0.9 带入的；`after-pack.mjs` 打包后也调用它，所以两处都会失败。
+- **改动**：调换参数顺序，只改这一行。
+- **验证**：云端是 Linux，没有 `lipo`，只做了语法检查；用户在 Mac 上实际打包验证。
+
 ### 2026-11-07 · lockfile 下载地址统一改为 npm 官方源
 - **分支**：`dev`
 - **改动**：`frontend` / `backend` / `desktop` 三个 `package-lock.json` 里 417 条 `resolved` 地址从 `https://packages.aliyun.com/69c39010f167bac7fd2502e3/npm/npm-registry/` 换成 `https://registry.npmjs.org/`（desktop 382、backend 29、frontend 6）。只改地址，包版本和 `integrity` 哈希不变。
