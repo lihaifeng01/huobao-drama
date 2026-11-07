@@ -70,6 +70,20 @@
 
 ## 变更条目
 
+### 2026-11-07 · Windows 包的原生依赖改为打包时自动准备
+- **分支**：`dev`（未合并到 master）
+- **起因**：在 Mac 上 `npm run dist:win` 报「缺少 win32 better-sqlite3 预编译」，要手动下载 tar.gz 解压。补上后还会接着卡在 `@img/sharp-win32-x64`：它是限定 `os: win32` 的可选依赖，npm 在 Mac 上会跳过，之前没有任何脚本补装。`ffmpeg.exe` 也一直要手动放。
+- **改动**
+  - 新增 `desktop/scripts/prepare-win-native.mjs`，`dist:win` 改为 `prepare-resources.mjs --win` 时调用。缺什么下载什么，结果缓存在 `desktop/build/`（已在 .gitignore）：
+    - `ffmpeg.exe`：已有就复用（兼容以前手动放的 b6.0），否则按 `ffmpeg-static` 的 `binary-release-tag`（现为 b6.1.1，和 mac 一致）下载 `ffmpeg-win32-x64.gz`。`ffprobe.exe` 仍取 `ffprobe-static` 包自带的。
+    - `better_sqlite3.node`：按已装的 better-sqlite3 版本和 `node-abi` 算出的 Electron ABI 拼下载地址，缓存为 `build/win-bin/better-sqlite3-v<版本>-electron-v<ABI>-win32-x64.node`，再复制到 after-pack 读取的固定路径 `build/win-bin/better_sqlite3.node`。升级 better-sqlite3 或 Electron 后会自动下载对应版本，不再用 after-pack 里写死的 v12.11.1 / v136。
+    - `@img/sharp-win32-x64`：版本取 sharp 的 `optionalDependencies`，`npm pack` 后解压进 `node_modules`，做法和 mac 交叉打包补 `sharp-darwin-*` 相同。版本不一致时会重装。
+  - 每个文件都校验是 Windows x64 PE；SQLite 模块还校验 `node_register_module_v<ABI>` 符号，和 `validate-windows-package.mjs` 的检查一致。
+  - 只打 mac 包（不带 `--win`）时行为不变：有 `ffmpeg.exe` 缓存就复制，没有也不去连 GitHub。
+  - `after-pack.mjs` 的报错提示改为让用 `npm run dist:win`，去掉写死的下载地址。
+- **注意事项**：下载用 curl，会读取 `https_proxy`；连不上时报错里有地址和手动放置的路径。在 `desktop/` 重新 `npm install` 后 `node_modules/@img/sharp-win32-x64` 可能被删，下次 `dist:win` 会自动补回。
+- **验证**：在云端（Linux）从空缓存跑 `node scripts/prepare-resources.mjs --win`：三样都下载成功，`file` 显示都是 PE32+ x86-64，sharp 的 `libvips-42.dll` / `libvips-cpp-8.17.3.dll` 齐全。第二次运行全部走缓存；用不可用的代理模拟下载失败，报错信息正确且不留半成品文件；不带 `--win` 不触发下载。最后的 `electron-builder --win` 需要在 Mac 上验证。
+
 ### 2026-11-07 · 修复 macOS 打包时 lipo 架构校验参数顺序错误
 - **分支**：`dev`（未合并到 master；`v4.1.4` 标签里仍是旧代码）
 - **现象**：`npm run dist` 下载完 ffmpeg / ffprobe 后报 `lipo: unknown architecture specification flag: <文件路径> in specifying -verify_arch operation`，打包中断。

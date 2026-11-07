@@ -13,7 +13,7 @@
     "postinstall": "electron-builder install-app-deps",
     "dev": "npm run build:backend && npm run build:main && electron .",
     "dist": "npm run build:backend && npm run build:main && node scripts/prepare-resources.mjs && electron-builder --mac",
-    "dist:win": "npm run build:backend && npm run build:main && node scripts/prepare-resources.mjs && electron-builder --win",
+    "dist:win": "npm run build:backend && npm run build:main && node scripts/prepare-resources.mjs --win && electron-builder --win",
     "feed": "node scripts/make-update-feed.mjs",
     "publish": "node scripts/publish-release.mjs"
   },
