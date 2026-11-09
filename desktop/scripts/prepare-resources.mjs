@@ -11,6 +11,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { createRequire } from 'module'
 import { prepareMacMedia } from './prepare-mac-media.mjs'
+import { prepareWinNative } from './prepare-win-native.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DESKTOP = path.resolve(__dirname, '..')
@@ -38,19 +39,19 @@ console.log('resources/workspace-template ✓')
 //    因此两种媒体工具统一使用 ffmpeg-static 对应版本的官方发布产物。
 const req = createRequire(import.meta.url)
 if (process.platform === 'darwin') await prepareMacMedia(DESKTOP, RES)
-const binWin = path.join(RES, 'bin-win-x64')
-fs.mkdirSync(binWin, { recursive: true })
 
-// 3b. Windows 二进制（打 win 包用；不打 win 包时缺失不报错，仅提示）
-const winBinDir = path.join(DESKTOP, 'build', 'win-bin')
-const ffmpegWin = path.join(winBinDir, 'ffmpeg.exe')
-const ffprobeWinSrc = path.join(path.dirname(req.resolve('ffprobe-static/package.json')), 'bin', 'win32', 'x64', 'ffprobe.exe')
-if (!fs.existsSync(ffmpegWin)) {
-  console.warn('提示: 缺少 build/win-bin/ffmpeg.exe，Windows 包将无法内置 ffmpeg。' +
-    '获取: https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-win32-x64')
-}
-if (fs.existsSync(ffmpegWin) && fs.existsSync(ffprobeWinSrc)) {
-  fs.copyFileSync(ffmpegWin, path.join(binWin, 'ffmpeg.exe'))
-  fs.copyFileSync(ffprobeWinSrc, path.join(binWin, 'ffprobe.exe'))
-  console.log('resources/bin-win-x64 ✓')
+// 3b. Windows 二进制：dist:win 传 --win，缺什么自动下载（见 prepare-win-native.mjs）；
+//     只打 mac 包时沿用已有缓存，缺失只提示，不去连 GitHub
+if (process.argv.includes('--win')) {
+  await prepareWinNative(DESKTOP, RES)
+} else {
+  const binWin = path.join(RES, 'bin-win-x64')
+  fs.mkdirSync(binWin, { recursive: true })
+  const ffmpegWin = path.join(DESKTOP, 'build', 'win-bin', 'ffmpeg.exe')
+  const ffprobeWinSrc = path.join(path.dirname(req.resolve('ffprobe-static/package.json')), 'bin', 'win32', 'x64', 'ffprobe.exe')
+  if (fs.existsSync(ffmpegWin) && fs.existsSync(ffprobeWinSrc)) {
+    fs.copyFileSync(ffmpegWin, path.join(binWin, 'ffmpeg.exe'))
+    fs.copyFileSync(ffprobeWinSrc, path.join(binWin, 'ffprobe.exe'))
+    console.log('resources/bin-win-x64 ✓')
+  }
 }

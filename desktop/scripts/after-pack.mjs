@@ -6,9 +6,8 @@
  * Mach-O（mac 二进制），Windows 上 dlopen 失败 → 后端 exit code 1。
  *
  * 修复：打包后（win-unpacked 生成、NSIS 封装前）用官方 win32-x64 预编译 .node
- * 覆盖。预编译文件缓存于 build/win-bin/better_sqlite3.node（同 ffmpeg.exe 的
- * 缓存方式；better-sqlite3 或 Electron 主版本升级时需重新下载对应 ABI：
- * https://github.com/WiseLibs/better-sqlite3/releases）
+ * 覆盖。预编译文件由 prepare-win-native.mjs 按已安装的 better-sqlite3 版本与
+ * Electron ABI 自动下载，缓存于 build/win-bin/（升级依赖后会自动换成对应版本）
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -50,8 +49,7 @@ export default async function afterPack(context) {
   if (!fs.existsSync(WIN_BIN)) {
     throw new Error(
       `缺少 win32 better-sqlite3 预编译: ${WIN_BIN}\n` +
-      '下载 https://github.com/WiseLibs/better-sqlite3/releases/download/v12.11.1/' +
-      'better-sqlite3-v12.11.1-electron-v136-win32-x64.tar.gz 解出 build/Release/better_sqlite3.node 放入该路径',
+      '请用 npm run dist:win 打包（会经 prepare-resources.mjs --win 自动下载），不要直接运行 electron-builder --win',
     )
   }
   const target = path.join(
