@@ -30,35 +30,31 @@ This repository is independently maintained, based on [chatfire-AI/huobao-drama]
 
 ### ✨ Features Added in This Repository
 
-**Script**
-- **Editable AI-rewritten scripts with auto-save**: tweak the rewrite by hand; it saves automatically once you stop typing
-- **Confirm before "Skip rewrite" / "Rewrite again"**: prevents overwriting a hand-edited script
-- **Previously-on summaries**: each episode gets a plot summary that is injected into later episodes' agents for cross-episode continuity
+**v4.1.4** (2026-11-08)
+- **Branding (white-label)**: super admins can customize the app name, logo, favicon, theme colors and corner style for all users
 
-**Characters & Assets**
-- **Global asset library**: a new "Assets" tab aggregates character/scene assets across projects, with nested folders; pick images from it inside any project
-- **Character aliases & merging duplicates**: alternate names map to one character, and duplicated characters can be merged
-- **Character looks**: multiple outfits/hairstyles per character, selectable per episode or per shot
-- **Locked visuals for finalized assets**: finalized character/scene looks are not overwritten by later extraction; storyboard reference images prioritize characters and warn when over the model's limit
+**v4.1.3** (2026-11-03)
+- **Reference images for asset generation**: upload reference images when generating characters, scenes and props
+- **Manual subtitle upload**: import an existing subtitle file and burn it in
 
-**Subtitles**
-- **Subtitle production**: Alibaba Cloud Bailian speech recognition → SRT → burned-in subtitled video; the export page can switch to the subtitled version
-- **Subtitle model picker in the episode workspace**; video prompts now start with a "no built-in subtitles" constraint so model-drawn captions don't clash with burned-in ones
-- Chinese fonts bundled in the Docker image; long subtitle lines are split evenly to avoid a tiny last line
+**v4.1.2** (2026-11-02)
+- **Voice cloning**: a new voice-cloning tool, plus an "Audio" service type in Settings
+- **Character voices & #voice references** (synced from upstream v4.0.10): upload a voice per character and reference it inline in video prompts
 
-**Tools**
-- **Generate subtitles (standalone)**: upload any video to transcribe it (or import SRT/VTT), adjust font size and position, then burn in — no project needed
-- **Video merge**: reorder clips by drag and merge them; differing sizes, frame rates and audio tracks are normalized automatically
+**v4.1.1** (2026-11-02)
+- **Accounts & team collaboration**: login or no-login mode, super admin / admin / user roles, project members and ownership transfer, per-user data isolation
+- **Usage tracking & point rules**: every paid call is recorded and converted to points by configurable rules (tracked only, not deducted yet)
 
-**AI Providers**
-- **Relay/proxy support (custom config)**: custom submit/poll URLs, auth style, extra headers/body fields, video body templates and response paths for text/image/video services (see [CHANGELOG.md](CHANGELOG.md))
-- **URL mode**: optionally use the Base URL verbatim, for relays with a fixed URL and official request formats
-- **SiliconFlow image compatibility**: request body aligned with the official docs; falls back to text-only generation (with a notice) when reference images aren't supported
-
-**Misc**
-- Settings dialogs close via ×; confirm dialogs and pickers opened inside another dialog are no longer hidden behind it
-- Docker build script `scripts/docker-build.sh` (China mirrors, automatic fallback across registry mirrors, tar.gz export); GitHub Actions publishes multi-arch images on tag push
-
+**v4.1.0** (2026-10-30)
+- **Editable AI-rewritten scripts with auto-save**
+- **Previously-on summaries**: per-episode plot summaries are injected into later episodes' agents for cross-episode continuity
+- **Global asset library**: a new "Assets" tab aggregates character/scene assets across projects, with nested folders and in-project picking
+- **Character aliases, duplicate merging and looks**: multiple outfits/hairstyles per character, selectable per episode or per shot
+- **Locked visuals for finalized assets**: finalized character/scene looks are not overwritten by later extraction
+- **Subtitle production**: speech recognition → SRT → burned-in subtitled video, selectable at export
+- **Tools page**: standalone "Generate subtitles" and "Video merge", no project needed
+- **Relay/proxy support**: custom request URLs, auth, body templates and response parsing for text/image/video services (see [CHANGELOG.md](CHANGELOG.md))
+- **Docker releases**: build script `scripts/docker-build.sh`; multi-arch images are published automatically on tag push
 
 ---
 

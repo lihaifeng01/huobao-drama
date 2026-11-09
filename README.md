@@ -38,51 +38,47 @@ This repository is independently maintained, based on [chatfire-AI/huobao-drama]
 
 ### ✨ 本仓库新增功能 / Features Added in This Repository
 
-**剧本 / Script**
-- **AI 改写后的剧本可编辑并自动保存**：改写结果不满意可直接手改，停止输入后自动保存<br>
-  **Editable AI-rewritten scripts with auto-save**: tweak the rewrite by hand; it saves automatically once you stop typing
-- **「跳过改写」「重新改写」前弹窗确认**：避免覆盖已手动修改的剧本<br>
-  **Confirm before "Skip rewrite" / "Rewrite again"**: prevents overwriting a hand-edited script
-- **前情摘要**：为每集生成剧情摘要，作为前情提要注入后续集的 Agent，保证跨集剧情连续<br>
-  **Previously-on summaries**: each episode gets a plot summary that is injected into later episodes' agents for cross-episode continuity
+**v4.1.4** (2026-11-08)
+- **品牌主题（白标）**：超级管理员可自定义应用名称、Logo、网站图标、主题色与圆角风格，对所有用户生效<br>
+  **Branding (white-label)**: super admins can customize the app name, logo, favicon, theme colors and corner style for all users
 
-**角色与素材 / Characters & Assets**
-- **全局素材库**：新增「素材」页，跨项目聚合角色/场景素材，支持多级文件夹；项目内可直接从素材库选图<br>
-  **Global asset library**: a new "Assets" tab aggregates character/scene assets across projects, with nested folders; pick images from it inside any project
-- **角色别名与合并重复角色**：同一角色的不同称呼可归并，重复提取的角色可一键合并<br>
-  **Character aliases & merging duplicates**: alternate names map to one character, and duplicated characters can be merged
-- **角色造型**：一个角色可有多套服装/妆发，按集或按镜头选择<br>
-  **Character looks**: multiple outfits/hairstyles per character, selectable per episode or per shot
-- **已定妆资产锁定视觉设定**：定妆后角色/场景外观不再被后续提取覆盖；分镜参考图角色优先，超出模型参考图上限时提示<br>
-  **Locked visuals for finalized assets**: finalized character/scene looks are not overwritten by later extraction; storyboard reference images prioritize characters and warn when over the model's limit
+**v4.1.3** (2026-11-03)
+- **素材生成支持参考图**：生成角色 / 场景 / 道具时可上传参考图<br>
+  **Reference images for asset generation**: upload reference images when generating characters, scenes and props
+- **字幕制作支持手动上传字幕**：可直接导入已有字幕文件压制<br>
+  **Manual subtitle upload**: import an existing subtitle file and burn it in
 
-**字幕 / Subtitles**
-- **字幕制作**：调用阿里云百炼录音文件识别生成 SRT，并压制出字幕版视频；导出页可切换「使用字幕版」<br>
-  **Subtitle production**: Alibaba Cloud Bailian speech recognition → SRT → burned-in subtitled video; the export page can switch to the subtitled version
-- **剧集工作台可选字幕模型**；生成视频时在提示词最前面约束模型「不要自带字幕」，避免与压制字幕重叠<br>
-  **Subtitle model picker in the episode workspace**; video prompts now start with a "no built-in subtitles" constraint so model-drawn captions don't clash with burned-in ones
-- Docker 镜像内置中文字体；字幕长句均分换行，避免末行过短<br>
-  Chinese fonts bundled in the Docker image; long subtitle lines are split evenly to avoid a tiny last line
+**v4.1.2** (2026-11-02)
+- **音色复刻**：工具页新增音色复刻，设置页新增「音频」服务类型<br>
+  **Voice cloning**: a new voice-cloning tool, plus an "Audio" service type in Settings
+- **角色音色与 #音色引用**（同步上游 v4.0.10）：角色可上传音色，视频提示词内可直接引用<br>
+  **Character voices & #voice references** (synced from upstream v4.0.10): upload a voice per character and reference it inline in video prompts
 
-**工具页 / Tools**
-- **生成字幕（独立工具）**：上传任意视频自动识别字幕（也可导入 SRT/VTT），可调字号与位置后合成，不依赖项目<br>
-  **Generate subtitles (standalone)**: upload any video to transcribe it (or import SRT/VTT), adjust font size and position, then burn in — no project needed
-- **视频合成**：多个视频片段拖动排序后合成，尺寸/帧率/音轨不一致自动统一<br>
-  **Video merge**: reorder clips by drag and merge them; differing sizes, frame rates and audio tracks are normalized automatically
+**v4.1.1** (2026-11-02)
+- **账号体系与团队协作**：登录 / 免登两种模式，超级管理员 / 管理员 / 普通用户三种角色，项目成员与项目转让，个人数据按用户隔离<br>
+  **Accounts & team collaboration**: login or no-login mode, super admin / admin / user roles, project members and ownership transfer, per-user data isolation
+- **用量统计与积分规则**：记录每次付费调用并按规则折算积分（目前只统计、不扣减）<br>
+  **Usage tracking & point rules**: every paid call is recorded and converted to points by configurable rules (tracked only, not deducted yet)
 
-**AI 服务接入 / AI Providers**
-- **中转站适配（自定义配置）**：文本/图片/视频服务可自定义提交 URL、轮询 URL、鉴权方式、额外请求头/请求体、视频请求体模板与响应解析路径（详见 [CHANGELOG.md](CHANGELOG.md)）<br>
-  **Relay/proxy support (custom config)**: custom submit/poll URLs, auth style, extra headers/body fields, video body templates and response paths for text/image/video services (see [CHANGELOG.md](CHANGELOG.md))
-- **URL 模式**：可选「原样使用 Base URL」，适配固定 URL + 官方请求参数的中转站<br>
-  **URL mode**: optionally use the Base URL verbatim, for relays with a fixed URL and official request formats
-- **硅基流动图片兼容**：请求体对照官方文档校正；模型不支持参考图时自动降级为纯文字生成并提示<br>
-  **SiliconFlow image compatibility**: request body aligned with the official docs; falls back to text-only generation (with a notice) when reference images aren't supported
-
-**其他 / Misc**
-- 设置页弹窗支持点击 × 关闭；弹窗内再打开的确认框/素材选择器不再被遮挡<br>
-  Settings dialogs close via ×; confirm dialogs and pickers opened inside another dialog are no longer hidden behind it
-- Docker 打包脚本 `scripts/docker-build.sh`（国内镜像源、多加速站自动切换、导出 tar.gz）；GitHub Actions 推送标签自动发布多架构镜像<br>
-  Docker build script `scripts/docker-build.sh` (China mirrors, automatic fallback across registry mirrors, tar.gz export); GitHub Actions publishes multi-arch images on tag push
+**v4.1.0** (2026-10-30)
+- **AI 改写后的剧本可编辑并自动保存**<br>
+  **Editable AI-rewritten scripts with auto-save**
+- **前情摘要**：为每集生成剧情摘要，注入后续集的 Agent，保证跨集剧情连续<br>
+  **Previously-on summaries**: per-episode plot summaries are injected into later episodes' agents for cross-episode continuity
+- **全局素材库**：新增「素材」页，跨项目聚合角色 / 场景素材，支持多级文件夹，项目内可直接选图<br>
+  **Global asset library**: a new "Assets" tab aggregates character/scene assets across projects, with nested folders and in-project picking
+- **角色别名、合并重复角色与角色造型**：一个角色可有多套服装 / 妆发，按集或按镜头选择<br>
+  **Character aliases, duplicate merging and looks**: multiple outfits/hairstyles per character, selectable per episode or per shot
+- **已定妆资产锁定视觉设定**：定妆后的角色 / 场景外观不再被后续提取覆盖<br>
+  **Locked visuals for finalized assets**: finalized character/scene looks are not overwritten by later extraction
+- **字幕制作**：语音识别生成 SRT 并压制字幕版视频，导出时可选用字幕版<br>
+  **Subtitle production**: speech recognition → SRT → burned-in subtitled video, selectable at export
+- **工具页**：独立的「生成字幕」与「视频合成」，不依赖项目<br>
+  **Tools page**: standalone "Generate subtitles" and "Video merge", no project needed
+- **中转站适配**：文本 / 图片 / 视频服务可自定义请求地址、鉴权、请求体模板与响应解析（详见 [CHANGELOG.md](CHANGELOG.md)）<br>
+  **Relay/proxy support**: custom request URLs, auth, body templates and response parsing for text/image/video services (see [CHANGELOG.md](CHANGELOG.md))
+- **Docker 发布**：打包脚本 `scripts/docker-build.sh`，推送标签自动发布多架构镜像<br>
+  **Docker releases**: build script `scripts/docker-build.sh`; multi-arch images are published automatically on tag push
 
 ---
 
