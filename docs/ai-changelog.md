@@ -70,6 +70,14 @@
 
 ## 变更条目
 
+### 2026-11-09 · 新增 GitHub Issue 模板
+- **分支**：`claude/admiring-einstein-c4cuh7`（未合并）
+- **改动**：新增 `.github/ISSUE_TEMPLATE/`，包含「Bug 反馈」与「功能建议」两个表单模板，以及 `config.yml`（保留空白 issue 入口）。
+- **关键文件**：`.github/ISSUE_TEMPLATE/bug_report.yml`、`feature_request.yml`、`config.yml`
+- **设计取舍**：Bug 模板必填版本号、运行方式（桌面 mac/win、Docker、源码）、复现步骤；可选填出问题环节（按流水线分类）、AI 服务/模型、日志。提示用户不要贴 API Key。
+- **注意事项**：仓库的 Issues 功能默认是关的（API 返回 `has_issues: false`），需要管理员在 Settings → General → Features 里勾选 Issues，模板才会生效。模板中的 `bug` / `enhancement` 标签若仓库里不存在，GitHub 会忽略，不影响提交。
+- **验证**：YAML 用 `yaml.safe_load` 解析通过；开启 Issues 后在 New issue 页面确认出现两个模板。
+
 ### 2026-11-07 · Windows 包的原生依赖改为打包时自动准备
 - **分支**：`dev`（未合并到 master）
 - **起因**：在 Mac 上 `npm run dist:win` 报「缺少 win32 better-sqlite3 预编译」，要手动下载 tar.gz 解压。补上后还会接着卡在 `@img/sharp-win32-x64`：它是限定 `os: win32` 的可选依赖，npm 在 Mac 上会跳过，之前没有任何脚本补装。`ffmpeg.exe` 也一直要手动放。

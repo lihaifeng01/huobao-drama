@@ -1,0 +1,29 @@
+name: 功能建议
+description: 提出新功能或改进建议
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 遇到的问题 / 使用场景
+      description: 现在哪里不好用？在什么场景下需要这个功能？
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: 期望的方案
+      description: 希望它怎么工作？
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 其他可选方案
+      description: 有没有考虑过别的做法或变通办法？
+  - type: textarea
+    id: extra
+    attributes:
+      label: 补充信息
+      description: 参考截图、竞品链接等。
