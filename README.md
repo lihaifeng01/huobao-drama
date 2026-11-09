@@ -13,25 +13,8 @@
 **中英双语 / Bilingual** | [简体中文](README.zh-CN.md) | [English](README.en.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
 <p>
-  <a href="https://api.firemux.cn">
-    <img src="docs/images/api-key-cta.svg" width="380" alt="立即获取 FireMux API Key / Get your API key" />
-  </a>
-</p>
-
-**文本 · 图片 · 视频全部 AI 能力，一个 Key 即可开通**<br>
-**Text, image, and video AI capabilities — one key unlocks everything**
-
-部署完成后，在「设置 → 火宝快捷配置」粘贴 Key，一键写入三条推荐配置。<br>
-After deploying, paste the key in "Settings → Huobao Quick Setup" to write three recommended configs in one click.
-
-<p>
   <a href="https://github.com/lihaifeng01/huobao-drama/releases/latest">
     <img src="docs/images/desktop-download-cta.svg" width="380" alt="立即下载桌面版 / Download Desktop App (macOS / Windows)" />
-  </a>
-</p>
-<p>
-  <a href="https://www.firemux.cn">
-    <img src="docs/images/website-cta.svg" width="320" alt="访问 FireMux 官网 / Visit the official website" />
   </a>
 </p>
 
@@ -331,8 +314,8 @@ All AI features (text/image/video) require model services to be configured first
 1. 打开「设置」页<br>
    Open the "Settings" page
 
-2. 在「火宝快捷配置」中粘贴 Huobao API Key（[前往 api.firemux.cn 获取](https://api.firemux.cn)），一键写入文本、图片、视频三条推荐配置<br>
-   Paste your Huobao API key in "Huobao Quick Setup" ([get one at api.firemux.com](https://api.firemux.com)) to write three recommended configs (text, image, video) in one click
+2. 在「火宝快捷配置」中粘贴 Huobao API Key，一键写入文本、图片、视频三条推荐配置<br>
+   Paste your Huobao API key in "Huobao Quick Setup" to write three recommended configs (text, image, video) in one click
 
 3. 或使用「手动模板」按厂商逐个添加，支持连通性测试<br>
    Or add providers one by one via "Manual Templates", with connectivity testing
@@ -499,8 +482,8 @@ Installation notes:
 - Electron 锁定 37.x：better-sqlite3 的 win32 预编译最高覆盖到该版本的 ABI（交叉打包免编译的关键）<br>
   Electron is pinned to 37.x: better-sqlite3's win32 prebuilds max out at that ABI (the key to compilation-free cross-packaging)
 
-- 应用内点击外部链接（如「前往 api.firemux.cn 获取 Key」）直接用系统浏览器打开<br>
-  External links open in the system browser (e.g. "Get a key at api.firemux.com")
+- 应用内点击外部链接直接用系统浏览器打开<br>
+  External links open in the system browser
 
 #### 🔄 应用内更新（无需 Apple 签名） / In-App Updates (no Apple signing required)
 

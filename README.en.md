@@ -13,14 +13,7 @@
 
 [Features](#-features) • [Quick Start](#-quick-start) • [Walkthrough](#-visual-walkthrough) • [Desktop App](#-desktop-app-recommended) • [Deployment](#-deployment)
 
-<h2>🔑 <a href="https://api.firemux.com">Get a Huobao API Key 👉 Get started</a></h2>
-
-**Text, image, and video AI capabilities — one key unlocks everything**
-
-After deploying, paste the key in "Settings → Huobao Quick Setup" to write three recommended configs in one click
-
 <h3>📥 <a href="https://github.com/lihaifeng01/huobao-drama/releases/latest">Download Desktop App (macOS / Windows)</a></h3>
-<h3>🌐 <a href="https://www.firemux.cn">Official Website</a></h3>
 
 </div>
 
@@ -246,7 +239,7 @@ cd backend && npx tsx scripts/import-mysql-to-sqlite.ts
 All AI features (text/image/video) require model services to be configured first — a banner at the top of the page guides you until then:
 
 1. Open the "Settings" page
-2. Paste your Huobao API key in "Huobao Quick Setup" ([get one at api.firemux.com](https://api.firemux.com)) to write three recommended configs (text, image, video) in one click
+2. Paste your Huobao API key in "Huobao Quick Setup" to write three recommended configs (text, image, video) in one click
 3. Or add providers one by one via "Manual Templates", with connectivity testing
 
 Once configured, the banner disappears and you can start producing episodes.
@@ -374,7 +367,7 @@ Installation notes:
 - User-data directory: `~/Library/Application Support/HuobaoDrama/` (database, generated media, writable copies of online-edited skills)
 - FFmpeg/FFprobe binaries are bundled — no system install needed
 - Electron is pinned to 37.x: better-sqlite3's win32 prebuilds max out at that ABI (the key to compilation-free cross-packaging)
-- External links open in the system browser (e.g. "Get a key at api.firemux.com")
+- External links open in the system browser
 
 #### 🔄 In-App Updates (no Apple signing required)
 

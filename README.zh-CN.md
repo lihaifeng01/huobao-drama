@@ -13,14 +13,7 @@
 
 [功能特性](#-功能特性) • [快速开始](#-快速开始) • [图文教程](#-图文教程) • [桌面版](#-桌面应用推荐) • [部署指南](#-部署指南)
 
-<h2>🔑 <a href="https://api.firemux.cn">获取 Huobao API Key 👉 立即查看</a></h2>
-
-**文本 · 图片 · 视频全部 AI 能力，一个 Key 即可开通**
-
-部署完成后在「设置 → 火宝快捷配置」粘贴 Key，一键写入三条推荐配置，开箱即用
-
 <h3>📥 <a href="https://github.com/lihaifeng01/huobao-drama/releases/latest">下载桌面版（macOS / Windows）</a></h3>
-<h3>🌐 <a href="https://www.firemux.cn">官方网站</a></h3>
 
 </div>
 
@@ -245,7 +238,7 @@ cd backend && npx tsx scripts/import-mysql-to-sqlite.ts
 启动后所有 AI 功能（文本/生图/视频）都需要先配置模型服务，未配置时页面顶部会有横幅引导：
 
 1. 打开「设置」页
-2. 在「火宝快捷配置」中粘贴 Huobao API Key（[前往 api.firemux.cn 获取](https://api.firemux.cn)），一键写入文本、图片、视频三条推荐配置
+2. 在「火宝快捷配置」中粘贴 Huobao API Key，一键写入文本、图片、视频三条推荐配置
 3. 或使用「手动模板」按厂商逐个添加，支持连通性测试
 
 配置完成横幅自动消失，即可开始创建剧集生产。
@@ -375,7 +368,7 @@ npm run dist:win    # Windows NSIS 安装器（win-x64，可在 macOS 上交叉�
 - 用户数据目录：`~/Library/Application Support/HuobaoDrama/`（数据库、生成的媒体、技能在线编辑的副本）
 - 内置 FFmpeg/FFprobe 二进制，无需系统安装
 - Electron 锁定 37.x：better-sqlite3 的 win32 预编译最高覆盖到该版本的 ABI（交叉打包免编译的关键）
-- 应用内点击外部链接（如「前往 api.firemux.cn 获取 Key」）直接用系统浏览器打开
+- 应用内点击外部链接直接用系统浏览器打开
 
 #### 🔄 应用内更新（无需 Apple 签名）
 

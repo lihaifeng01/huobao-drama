@@ -70,6 +70,13 @@
 
 ## 变更条目
 
+### 2026-11-09 · README 去掉 FireMux 相关内容
+- **分支**：`dev`（直接提交）
+- **改动**：五份 README（`README.md` / `.zh-CN` / `.en` / `.ja` / `.ko`）删掉顶部「获取 API Key」与「官方网站」两个 FireMux 入口及其宣传文案，删掉「首次使用」里 api.firemux 的获取链接和桌面版说明里的 api.firemux 举例；删除不再被引用的 `docs/images/api-key-cta.svg`、`docs/images/website-cta.svg`。
+- **设计取舍**：「火宝快捷配置」是应用内真实功能，相关步骤说明保留，只去掉外部链接。`docs/video-delivery-implementation.md` 是技术设计文档，不属于 README，未动。
+- **注意事项**：应用代码里如有 FireMux 地址（如设置页的获取 Key 链接）不在本次范围。
+- **验证**：`grep -i firemux README*.md` 无结果。
+
 ### 2026-11-09 · 新增 GitHub Issue 模板
 - **分支**：`claude/admiring-einstein-c4cuh7`（未合并）
 - **改动**：新增 `.github/ISSUE_TEMPLATE/`，包含「Bug 反馈」与「功能建议」两个表单模板，以及 `config.yml`（保留空白 issue 入口）。
