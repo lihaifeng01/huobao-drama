@@ -76,6 +76,7 @@
 - **关键文件**：`backend/src/utils/video-tail-frame.ts`、`backend/src/routes/tasks.ts`、`frontend/app/views/drama/episode.vue`
 - **设计取舍**：首帧仅 minimax / aliyun 适配器支持，Seedance（volcengine）忽略首帧故自动退回参考图；Wan 3.0 首帧与参考素材互斥，有参考素材时跳过；无上一镜视频、已显式传首尾帧、参考图满 9 张时静默跳过；不改表结构。
 - **注意事项**：需上一镜视频先生成完；上一镜换主视频后，下一镜需重新生成才会用新尾帧。
+- **用户提示**：降级/跳过时 `POST /tasks` 响应附带 `tail_notice`（first_frame_unsupported / wan_conflict / reference_full），前端 `genVid` 弹 warning toast（`episode.topbar.prevTailNotice.*`）。
 - **验证**：未实跑（本地 typecheck 缺 @types/node）。
 
 ### 2026-11-09 · README「本仓库新增功能」改为按版本号展示

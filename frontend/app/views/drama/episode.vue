@@ -4080,6 +4080,7 @@ async function genVid(sb, opts = {}) {
     delete failedVideoMessages.value[sb.id]
     if (!isPendingVideo(sb.id)) pendingVideoIds.value.push(sb.id)
     const generation = await taskAPI.generate({ type: 'video', ...params, force_new: !!forceNew })
+    if (generation?.tail_notice) toast.warning(t('episode.topbar.prevTailNotice.' + generation.tail_notice), { duration: 8000 })
     if (!opts.silent) toast.success(t('episode.vid.generating'))
     await refresh()
     pollVideoGeneration(generation?.id, sb.id)

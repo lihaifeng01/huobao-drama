@@ -179,6 +179,7 @@ app.post('/', async (c) => {
     // 请求显式指定 config_id（工作台模型下拉跨厂商切换）时优先；
     // 未指定才回退到集锁定配置，避免锁定配置与所选模型错配（如锁定 Seedance 却传 MiniMax 模型名）
     let configId: number | undefined = body.config_id
+    let tailNotice: string | null = null
     let episodeResolution: string | undefined
     let storyboardDramaId: number | undefined
     if (body.storyboard_id) {
@@ -197,40 +198,30 @@ app.post('/', async (c) => {
         ? (await getConfigById(configId)) ?? await getActiveConfig('video')
         : await getActiveConfig('video')
       // 上一分镜视频尾帧：reference=作为参考图；first_frame=作为首帧（严格衔接）。
-      // 首帧仅 minimax / aliyun 适配器支持（Seedance 参考模式忽略首帧，自动退回参考图）；
-      // Wan 3.0 首帧与参考素材互斥，此时直接跳过。无上一镜视频、已显式传首尾帧、参考图已满也静默跳过
+      // 首帧仅 minimax / aliyun 适配器支持（Seedance 参考模式忽略首帧，退回参考图）；
+      // Wan 3.0 首帧与参考素材互斥，此时跳过。降级/跳过原因写入 tailNotice 返回前端提示用户
       const tailMode = body.prev_tail_frame_mode
       if ((tailMode === 'reference' || tailMode === 'first_frame') && body.storyboard_id
         && !videoBody.first_frame_url && !videoBody.last_frame_url) {
         const tail = await resolvePrevTailFrame(Number(body.storyboard_id))
         if (tail) {
           const provider = (effectiveConfig?.provider || '').toLowerCase()
-          const asFirstFrame = tailMode === 'first_frame' && (provider === 'minimax' || provider === 'aliyun')
+          const firstFrameSupported = provider === 'minimax' || provider === 'aliyun'
           const hasRefs = videoBody.reference_image_urls.length + videoBody.reference_video_urls.length
             + videoBody.reference_audio_urls.length > 0
-          if (asFirstFrame) {
-            if (!(provider === 'aliyun' && hasRefs)) videoBody.first_frame_url = tail
-          } else if (!videoBody.reference_image_urls.includes(tail) && videoBody.reference_image_urls.length < 9) {
-            videoBody.reference_image_urls = [tail, ...videoBody.reference_image_urls]
-          }
-        }
-      }
-      // 上一分镜视频尾帧：reference=作为参考图；first_frame=作为首帧（严格衔接）。
-      // 无上一镜视频、已显式传首尾帧、参考图已满、或 Wan 3.0 首帧与参考素材互斥时静默跳过
-      const tailMode = body.prev_tail_frame_mode
-      if ((tailMode === 'reference' || tailMode === 'first_frame') && body.storyboard_id
-        && !videoBody.first_frame_url && !videoBody.last_frame_url) {
-        const tail = await resolvePrevTailFrame(Number(body.storyboard_id))
-        if (tail) {
-          if (tailMode === 'reference') {
+          const addAsReference = () => {
             if (!videoBody.reference_image_urls.includes(tail) && videoBody.reference_image_urls.length < 9) {
               videoBody.reference_image_urls = [tail, ...videoBody.reference_image_urls]
+            } else if (!videoBody.reference_image_urls.includes(tail)) {
+              tailNotice = 'reference_full'
             }
+          }
+          if (tailMode === 'first_frame' && firstFrameSupported) {
+            if (provider === 'aliyun' && hasRefs) tailNotice = 'wan_conflict'
+            else videoBody.first_frame_url = tail
           } else {
-            const isWan = (effectiveConfig?.provider || '').toLowerCase() === 'aliyun'
-            const hasRefs = videoBody.reference_image_urls.length + videoBody.reference_video_urls.length
-              + videoBody.reference_audio_urls.length > 0
-            if (!(isWan && hasRefs)) videoBody.first_frame_url = tail
+            if (tailMode === 'first_frame') tailNotice = 'first_frame_unsupported'
+            addAsReference()
           }
         }
       }
@@ -302,7 +293,7 @@ app.post('/', async (c) => {
     const [record] = await db.select().from(schema.sysTask)
       .where(eq(schema.sysTask.id, id))
     logTaskSuccess('TaskAPI', 'generate', { taskId: id, type, provider: record?.provider })
-    return created(c, record)
+    return created(c, tailNotice ? { ...record, tail_notice: tailNotice } : record)
   } catch (err: any) {
     logTaskError('TaskAPI', 'generate', { type, error: err.message })
     return badRequest(c, err.message)

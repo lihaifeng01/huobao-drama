@@ -681,6 +681,11 @@
       "prevTailOff": "关闭",
       "prevTailReference": "作为参考图",
       "prevTailFirstFrame": "作为首帧",
+      "prevTailNotice": {
+        "first_frame_unsupported": "当前视频模型（如 Seedance）不支持首帧，上一镜尾帧已改为参考图传入。",
+        "wan_conflict": "Wan 3.0 的首帧与参考素材不能同时使用，本分镜有参考素材，已跳过上一镜尾帧。",
+        "reference_full": "参考图已达上限，上一镜尾帧未传入。"
+      },
       "back": "返回项目",
       "episodeN": "第 {n} 集",
       "meta": "{roles} 角色 · {shots} 段落",
