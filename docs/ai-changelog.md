@@ -70,6 +70,14 @@
 
 ## 变更条目
 
+### 2026-11-15 · 上一分镜视频尾帧作为参考图 / 首帧（可选模式）
+- **分支**：`feature/prev-tail-frame-reference`（从 dev 拉出，未合并）
+- **改动**：工作台顶栏「上一镜尾帧」下拉：关闭（默认）/ 作为参考图 / 作为首帧（localStorage 记忆）。`POST /tasks` 带 `prev_tail_frame_mode`，后端找同集序号紧邻在前且已有视频的分镜（取其当前 `video_url`，故「设为主视频」切换后尾帧随之变化），ffmpeg 抽尾帧（`xxx_tail.jpg`，已存在复用）。
+- **关键文件**：`backend/src/utils/video-tail-frame.ts`、`backend/src/routes/tasks.ts`、`frontend/app/views/drama/episode.vue`
+- **设计取舍**：首帧仅 minimax / aliyun 适配器支持，Seedance（volcengine）忽略首帧故自动退回参考图；Wan 3.0 首帧与参考素材互斥，有参考素材时跳过；无上一镜视频、已显式传首尾帧、参考图满 9 张时静默跳过；不改表结构。
+- **注意事项**：需上一镜视频先生成完；上一镜换主视频后，下一镜需重新生成才会用新尾帧。
+- **验证**：未实跑（本地 typecheck 缺 @types/node）。
+
 ### 2026-11-09 · README「本仓库新增功能」改为按版本号展示
 - **分支**：`dev`（直接提交）
 - **改动**：`README.md` / `README.zh-CN.md` / `README.en.md` 的「本仓库新增功能」从按模块分组改为按版本（v4.1.0–v4.1.4）倒序列出，只保留新功能，去掉弹窗 × 关闭、Docker 字体、硅基流动兼容这类小修复；补上了之前漏写的账号体系、用量积分、音色复刻、素材参考图、品牌主题。日、韩 README 没有这一节，没动。删除仓库根目录未被引用的 `donate.png`。

@@ -676,6 +676,11 @@
   },
   "episode": {
     "topbar": {
+      "prevTailFrame": "이전 컷 마지막 프레임",
+      "prevTailFrameHint": "이전 컷 영상의 마지막 프레임 사용. 첫 프레임 모드는 MiniMax/Wan만 지원, 그 외 모델은 참조 이미지로 대체",
+      "prevTailOff": "끄기",
+      "prevTailReference": "참조 이미지로",
+      "prevTailFirstFrame": "첫 프레임으로",
       "back": "프로젝트로 돌아가기",
       "episodeN": "제 {n}화",
       "meta": "캐릭터 {roles} · 세그먼트 {shots}",

@@ -45,6 +45,14 @@
             :default-label="t('episode.model.defaultWith', { model: videoModelOptions[0].model })"
             :show-config="videoModelMultiCfg"
           />
+          <label class="prev-tail-toggle" :title="t('episode.topbar.prevTailFrameHint')">
+            {{ t('episode.topbar.prevTailFrame') }}
+            <select v-model="prevTailFrameMode">
+              <option value="off">{{ t('episode.topbar.prevTailOff') }}</option>
+              <option value="reference">{{ t('episode.topbar.prevTailReference') }}</option>
+              <option value="first_frame">{{ t('episode.topbar.prevTailFirstFrame') }}</option>
+            </select>
+          </label>
           <ModelSelect
             v-if="subtitleModelOptions.length"
             v-model="subtitleModel"
@@ -1892,6 +1900,8 @@ function persistModel(modelRef, key) {
 persistModel(chatModel, MODEL_STORE_KEYS.chat)
 persistModel(imageModel, MODEL_STORE_KEYS.image)
 persistModel(videoModel, MODEL_STORE_KEYS.video)
+const prevTailFrameMode = ref(typeof localStorage !== 'undefined' ? (localStorage.getItem('huobao.prevTailFrameMode') || 'off') : 'off')
+watch(prevTailFrameMode, v => localStorage.setItem('huobao.prevTailFrameMode', v))
 persistModel(subtitleModel, MODEL_STORE_KEYS.subtitle)
 // 左侧菜单栏收起/展开：收起为窄图标栏给内容区让位，持久化到 localStorage
 const SIDEBAR_COLLAPSED_KEY = 'huobao:sidebar-collapsed'
@@ -4060,6 +4070,7 @@ async function genVid(sb, opts = {}) {
     model: bareModelName(videoModel.value) || undefined,
     config_id: ownerConfigId(videoModelOptions.value, videoModel.value),
     reference_image_urls: referenceImages,
+    prev_tail_frame_mode: prevTailFrameMode.value,
   }
   if (!params.prompt && !referenceImages.length) {
     toast.error(t('episode.vid.needRefOrPrompt'))

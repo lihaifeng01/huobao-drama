@@ -676,6 +676,11 @@
   },
   "episode": {
     "topbar": {
+      "prevTailFrame": "前カット最終フレーム",
+      "prevTailFrameHint": "前のカットの動画の最終フレームを使用。先頭フレームはMiniMax/Wanのみ対応、その他は参照画像に自動切替",
+      "prevTailOff": "オフ",
+      "prevTailReference": "参照画像として",
+      "prevTailFirstFrame": "先頭フレームとして",
       "back": "プロジェクトに戻る",
       "episodeN": "第 {n} 話",
       "meta": "{roles} キャラクター · {shots} セグメント",
