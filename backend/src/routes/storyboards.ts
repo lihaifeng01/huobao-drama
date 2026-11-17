@@ -147,6 +147,11 @@ app.put('/:id', async (c) => {
   for (const [snakeKey, camelKey] of Object.entries(fieldMap)) {
     if (snakeKey in body) updates[camelKey] = typeof body[snakeKey] === 'string' ? fixLiteralNewlines(body[snakeKey]) : body[snakeKey]
   }
+  if ('prev_tail_frame_mode' in body) {
+    const mode = body.prev_tail_frame_mode || null
+    if (mode !== null && !['off', 'reference', 'first_frame'].includes(mode)) return badRequest(c, 'prev_tail_frame_mode 不合法')
+    updates.prevTailFrameMode = mode
+  }
 
   await validateStoryboardBindings(
     storyboard.episodeId,

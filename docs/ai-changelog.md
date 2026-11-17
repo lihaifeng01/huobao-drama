@@ -70,6 +70,37 @@
 
 ## 变更条目
 
+### 2026-11-16 · 修复 tasks.ts 重复声明导致后端无法启动
+- **分支**：`copilot/feature-reference-frame-transfer`
+- **改动**：`backend/src/routes/tasks.ts` 中 `resolvePrevTailFrame` 函数与 `extractVideoTailFrame` import 各重复了一份（疑似合并残留），删除重复项。
+- **注意事项**：合并分支后用 `npm run typecheck` 先查重复声明。
+- **验证**：`cd backend && npx tsc --noEmit` 通过。
+- **追加**：「上一镜尾帧」下拉从工作台顶部栏移到视频制作页操作栏（批量生成视频按钮左侧），仅视频生成相关；状态变量、localStorage 键、i18n 键（`episode.topbar.prevTail*`）不变。
+- **追加（镜头级覆盖）**：`storyboards` 新增列 `prev_tail_frame_mode`（空 = 跟随全局；`off` / `reference` / `first_frame` = 该镜头单独指定），迁移走 `sqlite-schema.ts` 的 ALTER 列表；`PUT /storyboards/:id` 校验取值。视频制作页右侧检查器「视频提示词」上方有每镜下拉；`genVid` 里优先取镜头设置，否则用顶部全局默认，所以批量生成时每个镜头各用各的。后端 `tasks.ts` 仍只认请求里的 `prev_tail_frame_mode`，覆盖逻辑在前端合并。
+
+### 2026-11-15 · 上一分镜视频尾帧作为参考图 / 首帧（可选模式）
+- **分支**：`feature/prev-tail-frame-reference`（从 dev 拉出，未合并）
+- **改动**：工作台顶栏「上一镜尾帧」下拉：关闭（默认）/ 作为参考图 / 作为首帧（localStorage 记忆）。`POST /tasks` 带 `prev_tail_frame_mode`，后端找同集序号紧邻在前且已有视频的分镜（取其当前 `video_url`，故「设为主视频」切换后尾帧随之变化），ffmpeg 抽尾帧（`xxx_tail.jpg`，已存在复用）。
+- **关键文件**：`backend/src/utils/video-tail-frame.ts`、`backend/src/routes/tasks.ts`、`frontend/app/views/drama/episode.vue`
+- **设计取舍**：首帧仅 minimax / aliyun 适配器支持，Seedance（volcengine）忽略首帧故自动退回参考图；Wan 3.0 首帧与参考素材互斥，有参考素材时跳过；无上一镜视频、已显式传首尾帧、参考图满 9 张时静默跳过；不改表结构。
+- **注意事项**：需上一镜视频先生成完；上一镜换主视频后，下一镜需重新生成才会用新尾帧。
+- **用户提示**：降级/跳过时 `POST /tasks` 响应附带 `tail_notice`（first_frame_unsupported / wan_conflict / reference_full），前端 `genVid` 弹 warning toast（`episode.topbar.prevTailNotice.*`）。
+- **验证**：未实跑（本地 typecheck 缺 @types/node）。
+
+### 2026-11-09 · README「本仓库新增功能」改为按版本号展示
+- **分支**：`dev`（直接提交）
+- **改动**：`README.md` / `README.zh-CN.md` / `README.en.md` 的「本仓库新增功能」从按模块分组改为按版本（v4.1.0–v4.1.4）倒序列出，只保留新功能，去掉弹窗 × 关闭、Docker 字体、硅基流动兼容这类小修复；补上了之前漏写的账号体系、用量积分、音色复刻、素材参考图、品牌主题。日、韩 README 没有这一节，没动。删除仓库根目录未被引用的 `donate.png`。
+- **设计取舍**：版本归属按 git tag 区间确定（`git log vA..vB`）；v4.0.10 / v4.0.11 是上游 tag，上游 4.0.10 的功能在本仓库 v4.1.2 同步进来，所以记在 v4.1.2 下。
+- **注意事项**：以后每次发版，要在这一节最上方加一个版本块，只写新增功能。
+- **验证**：在 GitHub 上看 README 渲染效果。
+
+### 2026-11-09 · README 去掉 FireMux 相关内容
+- **分支**：`dev`（直接提交）
+- **改动**：五份 README（`README.md` / `.zh-CN` / `.en` / `.ja` / `.ko`）删掉顶部「获取 API Key」与「官方网站」两个 FireMux 入口及其宣传文案，删掉「首次使用」里 api.firemux 的获取链接和桌面版说明里的 api.firemux 举例；删除不再被引用的 `docs/images/api-key-cta.svg`、`docs/images/website-cta.svg`。
+- **设计取舍**：「火宝快捷配置」是应用内真实功能，相关步骤说明保留，只去掉外部链接。`docs/video-delivery-implementation.md` 是技术设计文档，不属于 README，未动。
+- **注意事项**：应用代码里如有 FireMux 地址（如设置页的获取 Key 链接）不在本次范围。
+- **验证**：`grep -i firemux README*.md` 无结果。
+
 ### 2026-11-09 · 新增 GitHub Issue 模板
 - **分支**：`claude/admiring-einstein-c4cuh7`（未合并）
 - **改动**：新增 `.github/ISSUE_TEMPLATE/`，包含「Bug 反馈」与「功能建议」两个表单模板，以及 `config.yml`（保留空白 issue 入口）。

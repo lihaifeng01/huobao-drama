@@ -676,6 +676,17 @@
   },
   "episode": {
     "topbar": {
+      "prevTailFrame": "이전 컷 마지막 프레임",
+      "prevTailFrameHint": "이전 컷 영상의 마지막 프레임 사용. 첫 프레임 모드는 MiniMax/Wan만 지원, 그 외 모델은 참조 이미지로 대체",
+      "prevTailOff": "끄기",
+      "prevTailInherit": "기본값 따르기",
+      "prevTailReference": "참조 이미지로",
+      "prevTailFirstFrame": "첫 프레임으로",
+      "prevTailNotice": {
+        "first_frame_unsupported": "현재 영상 모델(Seedance 등)은 첫 프레임을 지원하지 않아 이전 컷 마지막 프레임을 참조 이미지로 전달했습니다.",
+        "wan_conflict": "Wan 3.0은 첫 프레임과 참조 소재를 함께 쓸 수 없어 이전 컷 마지막 프레임을 건너뛰었습니다.",
+        "reference_full": "참조 이미지 한도에 도달하여 이전 컷 마지막 프레임을 포함하지 않았습니다."
+      },
       "back": "프로젝트로 돌아가기",
       "episodeN": "제 {n}화",
       "meta": "캐릭터 {roles} · 세그먼트 {shots}",

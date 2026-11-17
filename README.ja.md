@@ -13,14 +13,7 @@
 
 [機能](#-機能) • [クイックスタート](#-クイックスタート) • [チュートリアル](#-チュートリアル画像付き) • [デスクトップ版](#-デスクトップアプリ推奨) • [デプロイ](#-デプロイ)
 
-<h2>🔑 <a href="https://api.firemux.com">Huobao API Key を取得 👉 今すぐ見る</a></h2>
-
-**テキスト・画像・動画のすべての AI 機能を、1 つの Key で有効化**
-
-デプロイ後、「設定 → 火宝クイック設定」に Key を貼るだけで、3 つの推奨設定をワンクリックで書き込み
-
 <h3>📥 <a href="https://github.com/lihaifeng01/huobao-drama/releases/latest">デスクトップ版をダウンロード（macOS / Windows）</a></h3>
-<h3>🌐 <a href="https://www.firemux.cn">公式サイト</a></h3>
 
 </div>
 
@@ -211,7 +204,7 @@ cd backend && npx tsx scripts/import-mysql-to-sqlite.ts
 起動後、すべての AI 機能（テキスト/画像/動画）を使うには、先にモデルサービスの設定が必要です。未設定の場合、ページ上部にバナーで案内されます：
 
 1. 「設定」ページを開く
-2. 「火宝クイック設定」に Huobao API Key を貼る（[api.firemux.com で取得](https://api.firemux.com)）。テキスト・画像・動画の 3 つの推奨設定をワンクリックで書き込み
+2. 「火宝クイック設定」に Huobao API Key を貼る。テキスト・画像・動画の 3 つの推奨設定をワンクリックで書き込み
 3. または「手動テンプレート」でプロバイダーごとに追加。接続テストに対応
 
 設定が完了するとバナーは自動で消え、エピソード制作を開始できます。
@@ -339,7 +332,7 @@ npm run dist:win    # Windows NSIS インストーラー（win-x64、macOS 上�
 - ユーザーデータディレクトリ：`~/Library/Application Support/HuobaoDrama/`（データベース、生成メディア、オンライン編集したスキルのコピー）
 - FFmpeg/FFprobe バイナリ内蔵。システムへのインストール不要
 - Electron は 37.x に固定：better-sqlite3 の win32 プリビルドがこの ABI までしか対応していないため（クロスパッケージでコンパイル不要にする鍵）
-- アプリ内の外部リンク（「api.firemux.com で Key を取得」など）はシステムブラウザで直接開きます
+- アプリ内の外部リンクはシステムブラウザで直接開きます
 
 #### 🔄 アプリ内更新（Apple 署名不要）
 

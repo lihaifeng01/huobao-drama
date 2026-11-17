@@ -676,6 +676,17 @@
   },
   "episode": {
     "topbar": {
+      "prevTailFrame": "Prev shot last frame",
+      "prevTailFrameHint": "Use the last frame of the previous shot's video. First-frame mode only works with MiniMax / Wan; other models fall back to reference image",
+      "prevTailOff": "Off",
+      "prevTailInherit": "Use default",
+      "prevTailReference": "As reference image",
+      "prevTailFirstFrame": "As first frame",
+      "prevTailNotice": {
+        "first_frame_unsupported": "The current video model (e.g. Seedance) does not support first frames; the previous shot's last frame was sent as a reference image instead.",
+        "wan_conflict": "Wan 3.0 cannot combine a first frame with reference media; this shot has references, so the previous last frame was skipped.",
+        "reference_full": "Reference image limit reached; the previous shot's last frame was not included."
+      },
       "back": "Back to Project",
       "episodeN": "Episode {n}",
       "meta": "{roles} characters · {shots} segments",

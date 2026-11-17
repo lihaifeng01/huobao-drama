@@ -676,6 +676,17 @@
   },
   "episode": {
     "topbar": {
+      "prevTailFrame": "前カット最終フレーム",
+      "prevTailFrameHint": "前のカットの動画の最終フレームを使用。先頭フレームはMiniMax/Wanのみ対応、その他は参照画像に自動切替",
+      "prevTailOff": "オフ",
+      "prevTailInherit": "デフォルトに従う",
+      "prevTailReference": "参照画像として",
+      "prevTailFirstFrame": "先頭フレームとして",
+      "prevTailNotice": {
+        "first_frame_unsupported": "現在の動画モデル（Seedance等）は先頭フレーム非対応のため、前カットの最終フレームを参照画像として渡しました。",
+        "wan_conflict": "Wan 3.0 は先頭フレームと参照素材を併用できないため、前カットの最終フレームをスキップしました。",
+        "reference_full": "参照画像の上限に達したため、前カットの最終フレームは渡されませんでした。"
+      },
       "back": "プロジェクトに戻る",
       "episodeN": "第 {n} 話",
       "meta": "{roles} キャラクター · {shots} セグメント",
