@@ -30,6 +30,9 @@ This repository is independently maintained, based on [chatfire-AI/huobao-drama]
 
 ### ✨ Features Added in This Repository
 
+**v4.1.5** (unreleased)
+- **Previous-shot last frame**: use the last frame of the previous shot's video as a reference image or first frame when generating video (first-frame mode only on MiniMax / Wan; other models fall back to a reference image), with a global default and per-shot override
+
 **v4.1.4** (2026-11-08)
 - **Branding (white-label)**: super admins can customize the app name, logo, favicon, theme colors and corner style for all users
 
