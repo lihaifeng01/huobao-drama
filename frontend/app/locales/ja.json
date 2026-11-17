@@ -679,6 +679,7 @@
       "prevTailFrame": "前カット最終フレーム",
       "prevTailFrameHint": "前のカットの動画の最終フレームを使用。先頭フレームはMiniMax/Wanのみ対応、その他は参照画像に自動切替",
       "prevTailOff": "オフ",
+      "prevTailInherit": "デフォルトに従う",
       "prevTailReference": "参照画像として",
       "prevTailFirstFrame": "先頭フレームとして",
       "prevTailNotice": {

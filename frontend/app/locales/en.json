@@ -679,6 +679,7 @@
       "prevTailFrame": "Prev shot last frame",
       "prevTailFrameHint": "Use the last frame of the previous shot's video. First-frame mode only works with MiniMax / Wan; other models fall back to reference image",
       "prevTailOff": "Off",
+      "prevTailInherit": "Use default",
       "prevTailReference": "As reference image",
       "prevTailFirstFrame": "As first frame",
       "prevTailNotice": {

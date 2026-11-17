@@ -45,14 +45,6 @@
             :default-label="t('episode.model.defaultWith', { model: videoModelOptions[0].model })"
             :show-config="videoModelMultiCfg"
           />
-          <label class="prev-tail-toggle" :title="t('episode.topbar.prevTailFrameHint')">
-            {{ t('episode.topbar.prevTailFrame') }}
-            <select v-model="prevTailFrameMode">
-              <option value="off">{{ t('episode.topbar.prevTailOff') }}</option>
-              <option value="reference">{{ t('episode.topbar.prevTailReference') }}</option>
-              <option value="first_frame">{{ t('episode.topbar.prevTailFirstFrame') }}</option>
-            </select>
-          </label>
           <ModelSelect
             v-if="subtitleModelOptions.length"
             v-model="subtitleModel"
@@ -544,6 +536,14 @@
               <span class="tag mono">{{ t('episode.sb.segmentStat', { n: sbs.length, dur: totalDuration }) }}</span>
               <span class="tag mono" :title="t('episode.vid.aspectRatio')">{{ dramaAspectRatio }}</span>
               <div class="ml-auto flex gap-1">
+                <label class="prev-tail-toggle" :title="t('episode.topbar.prevTailFrameHint')">
+                  {{ t('episode.topbar.prevTailFrame') }}
+                  <select v-model="prevTailFrameMode">
+                    <option value="off">{{ t('episode.topbar.prevTailOff') }}</option>
+                    <option value="reference">{{ t('episode.topbar.prevTailReference') }}</option>
+                    <option value="first_frame">{{ t('episode.topbar.prevTailFirstFrame') }}</option>
+                  </select>
+                </label>
                 <button class="btn btn-sm" :disabled="rn" @click="doBreakdown">
                   <Loader2 v-if="rt === 'storyboard_breaker'" :size="11" class="animate-spin" />
                   <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -723,6 +723,23 @@
                     </div>
                   </section>
                 </div>
+
+                  <section class="video-inspector-section">
+                    <div class="video-inspector-prompt-head">
+                      <span class="video-inspector-label">{{ t('episode.topbar.prevTailFrame') }}</span>
+                      <label class="prev-tail-toggle" :title="t('episode.topbar.prevTailFrameHint')">
+                        <select
+                          :value="selectedSb.prev_tail_frame_mode || selectedSb.prevTailFrameMode || ''"
+                          @change="updateField(selectedSb, 'prev_tail_frame_mode', $event.target.value || null)"
+                        >
+                          <option value="">{{ t('episode.topbar.prevTailInherit') }}</option>
+                          <option value="off">{{ t('episode.topbar.prevTailOff') }}</option>
+                          <option value="reference">{{ t('episode.topbar.prevTailReference') }}</option>
+                          <option value="first_frame">{{ t('episode.topbar.prevTailFirstFrame') }}</option>
+                        </select>
+                      </label>
+                    </div>
+                  </section>
 
                   <section class="video-inspector-section">
                     <div class="video-inspector-prompt-head">
@@ -4070,7 +4087,7 @@ async function genVid(sb, opts = {}) {
     model: bareModelName(videoModel.value) || undefined,
     config_id: ownerConfigId(videoModelOptions.value, videoModel.value),
     reference_image_urls: referenceImages,
-    prev_tail_frame_mode: prevTailFrameMode.value,
+    prev_tail_frame_mode: sb.prev_tail_frame_mode || sb.prevTailFrameMode || prevTailFrameMode.value,
   }
   if (!params.prompt && !referenceImages.length) {
     toast.error(t('episode.vid.needRefOrPrompt'))
@@ -5749,6 +5766,8 @@ button.video-task-metric.on { box-shadow: 0 0 0 2px var(--accent); }
 /* 批量视频：选择模式 */
 .btn.is-on { border-color: var(--accent); color: var(--accent-text); background: var(--accent-bg); }
 .video-retry-failed { color: var(--warning); border-color: var(--warning-bg); }
+.prev-tail-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); }
+.prev-tail-toggle select { font-size: 12px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--text-2, inherit); }
 .video-task-row.is-selected { background: var(--sel-bg); box-shadow: inset 0 0 0 1.5px var(--sel); }
 .video-task-check {
   position: absolute;

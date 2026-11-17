@@ -679,6 +679,7 @@
       "prevTailFrame": "上一镜尾帧",
       "prevTailFrameHint": "生成视频时使用上一分镜视频的尾帧；首帧模式仅 MiniMax / Wan 支持，其余模型自动退回参考图",
       "prevTailOff": "关闭",
+      "prevTailInherit": "跟随顶部默认",
       "prevTailReference": "作为参考图",
       "prevTailFirstFrame": "作为首帧",
       "prevTailNotice": {

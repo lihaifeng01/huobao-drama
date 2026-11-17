@@ -9,7 +9,6 @@ import { getDramaStylePrompt } from '../services/style-preset.js'
 import { accessibleDramaIds, taskDramaId } from '../services/project-access.js'
 import { resolveStoryboardVoiceReferences } from '../services/character-voice-references.js'
 import { extractVideoTailFrame } from '../utils/video-tail-frame.js'
-import { extractVideoTailFrame } from '../utils/video-tail-frame.js'
 import { logTaskError, logTaskPayload, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
 
 const app = new Hono()
@@ -124,20 +123,6 @@ function validateVideoRequest(body: any, provider?: string): string | null {
     return '视频生成需要至少一个参考素材或 prompt'
   }
   return null
-}
-
-// 上一分镜（同集、序号紧邻在前且已有视频）的尾帧相对路径
-async function resolvePrevTailFrame(storyboardId: number): Promise<string | null> {
-  const [cur] = await db.select().from(schema.storyboards).where(eq(schema.storyboards.id, storyboardId))
-  if (!cur) return null
-  const rows = await db.select().from(schema.storyboards).where(eq(schema.storyboards.episodeId, cur.episodeId))
-  const prev = rows
-    .filter(r => r.storyboardNumber < cur.storyboardNumber && r.videoUrl)
-    .sort((a, b) => b.storyboardNumber - a.storyboardNumber)[0]
-  if (!prev?.videoUrl) return null
-  const local = prev.videoUrl.replace(/^\//, '')
-  if (!local.startsWith('static/')) return null
-  return extractVideoTailFrame(local)
 }
 
 // 上一分镜（同集、序号紧邻在前且已有视频）的尾帧相对路径

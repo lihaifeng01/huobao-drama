@@ -70,6 +70,14 @@
 
 ## 变更条目
 
+### 2026-11-16 · 修复 tasks.ts 重复声明导致后端无法启动
+- **分支**：`copilot/feature-reference-frame-transfer`
+- **改动**：`backend/src/routes/tasks.ts` 中 `resolvePrevTailFrame` 函数与 `extractVideoTailFrame` import 各重复了一份（疑似合并残留），删除重复项。
+- **注意事项**：合并分支后用 `npm run typecheck` 先查重复声明。
+- **验证**：`cd backend && npx tsc --noEmit` 通过。
+- **追加**：「上一镜尾帧」下拉从工作台顶部栏移到视频制作页操作栏（批量生成视频按钮左侧），仅视频生成相关；状态变量、localStorage 键、i18n 键（`episode.topbar.prevTail*`）不变。
+- **追加（镜头级覆盖）**：`storyboards` 新增列 `prev_tail_frame_mode`（空 = 跟随全局；`off` / `reference` / `first_frame` = 该镜头单独指定），迁移走 `sqlite-schema.ts` 的 ALTER 列表；`PUT /storyboards/:id` 校验取值。视频制作页右侧检查器「视频提示词」上方有每镜下拉；`genVid` 里优先取镜头设置，否则用顶部全局默认，所以批量生成时每个镜头各用各的。后端 `tasks.ts` 仍只认请求里的 `prev_tail_frame_mode`，覆盖逻辑在前端合并。
+
 ### 2026-11-15 · 上一分镜视频尾帧作为参考图 / 首帧（可选模式）
 - **分支**：`feature/prev-tail-frame-reference`（从 dev 拉出，未合并）
 - **改动**：工作台顶栏「上一镜尾帧」下拉：关闭（默认）/ 作为参考图 / 作为首帧（localStorage 记忆）。`POST /tasks` 带 `prev_tail_frame_mode`，后端找同集序号紧邻在前且已有视频的分镜（取其当前 `video_url`，故「设为主视频」切换后尾帧随之变化），ffmpeg 抽尾帧（`xxx_tail.jpg`，已存在复用）。
