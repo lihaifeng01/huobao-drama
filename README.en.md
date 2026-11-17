@@ -30,7 +30,7 @@ This repository is independently maintained, based on [chatfire-AI/huobao-drama]
 
 ### ✨ Features Added in This Repository
 
-**v4.1.5** (unreleased)
+**v4.1.5** (2026-11-17)
 - **Previous-shot last frame**: use the last frame of the previous shot's video as a reference image or first frame when generating video (first-frame mode only on MiniMax / Wan; other models fall back to a reference image), with a global default and per-shot override
 
 **v4.1.4** (2026-11-08)

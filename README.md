@@ -38,7 +38,7 @@ This repository is independently maintained, based on [chatfire-AI/huobao-drama]
 
 ### ✨ 本仓库新增功能 / Features Added in This Repository
 
-**v4.1.5**（未发布 / unreleased）
+**v4.1.5** (2026-11-17)
 - **上一镜尾帧衔接**：生成视频时可把上一分镜视频的尾帧作为参考图或首帧（首帧仅 MiniMax / Wan 支持，其余模型自动退回参考图），支持全局默认与每个分镜单独设置<br>
   **Previous-shot last frame**: use the last frame of the previous shot's video as a reference image or first frame when generating video (first-frame mode only on MiniMax / Wan; other models fall back to a reference image), with a global default and per-shot override
 

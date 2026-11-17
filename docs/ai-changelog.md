@@ -70,6 +70,13 @@
 
 ## 变更条目
 
+### 2026-11-17 · 发布 v4.1.5
+- **分支**：`master`（版本号提交直接推到 master，之后把 `dev` 快进同步）
+- **改动**：`desktop/package.json` / `package-lock.json` 升到 4.1.5；README 三份中英文的 v4.1.5 条目补上发布日期；打 `v4.1.5` 标签（触发 Docker 镜像 workflow），桌面版 mac arm64/x64 + win-x64 安装包发到 GitHub Release。
+- **设计取舍**：只发 GitHub Release，**没有走 COS 通道**——`desktop/.env.local` 里没有腾讯 COS 凭据，且 `publish-release.mjs` 的 `COS_BASE_URL` 默认仍是上游域名。`publish-release.mjs` 没有「跳过 COS」开关（只有 `--skip-gh`），所以手工用 `gh release create` + `make-update-feed.mjs` 生成的 `latest.json` 发布。
+- **注意事项**：打包顺序是 `frontend: npm run generate` → `desktop: npm run dist`（mac）→ `npm run dist:win`；`prepare-resources` 会清空 `desktop/resources/`，两个平台必须串行。`desktop/release/` 里的产物不入库。
+- **验证**：见发布结果（Release 资产、`latest.json` 的版本号与 sha256）。
+
 ### 2026-11-16 · 修复 tasks.ts 重复声明导致后端无法启动
 - **分支**：`copilot/feature-reference-frame-transfer`
 - **改动**：`backend/src/routes/tasks.ts` 中 `resolvePrevTailFrame` 函数与 `extractVideoTailFrame` import 各重复了一份（疑似合并残留），删除重复项。
