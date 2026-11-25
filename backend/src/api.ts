@@ -26,6 +26,7 @@ import tools from './routes/tools.js'
 import auth from './routes/auth.js'
 import users from './routes/users.js'
 import usage from './routes/usage.js'
+import points from './routes/points.js'
 import { authGuard, settingsGuard, projectGuard } from './middleware/auth.js'
 
 const api = new Hono()
@@ -36,6 +37,7 @@ api.use('*', projectGuard)
 api.route('/auth', auth)
 api.route('/users', users)
 api.route('/usage', usage)
+api.route('/points', points)
 api.route('/dramas', dramas)
 api.route('/episodes', episodes)
 api.route('/storyboards', storyboards)

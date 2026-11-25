@@ -1,10 +1,12 @@
 /**
  * 文本模型用量：getModel 解析出实际模型后记在请求上下文里，generateWithUsage 在 agent.generate 结束后
- * 按 result.totalUsage（工具循环多步合计）写一条用量记录。文本只统计 token，不计积分。
+ * 按 result.totalUsage（工具循环多步合计）写一条用量记录。文本只统计 token，不计积分；
+ * 但普通用户积分为 0 时不能调用（assertPointsAvailable）。
  */
 import type { RequestContext } from '@mastra/core/request-context'
 import { getDramaId } from './context.js'
 import { recordTextUsage } from '../services/usage.js'
+import { assertPointsAvailable } from '../services/points.js'
 import { logTaskWarn } from '../utils/task-logger.js'
 
 const USAGE_MODEL_KEY = 'usageModel'
@@ -41,6 +43,8 @@ export async function generateWithUsage<T>(source: string, requestContext: Reque
       errorCode,
     }).catch((err: Error) => logTaskWarn('Usage', 'record-text', { source, error: err.message }))
   }
+  // 积分用完的普通用户不能再调用文本模型（不记失败记录，也不调用上游）
+  await assertPointsAvailable({ serviceType: 'text' })
   let result: T
   try {
     result = await run()

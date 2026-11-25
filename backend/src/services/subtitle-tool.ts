@@ -20,6 +20,7 @@ import {
   ensureFfmpeg, getSubtitleConfig, runFfmpeg, subtitleFont, transcribeVideoCues, type SubtitleSelection,
 } from './subtitle.js'
 import { ToolError, extOf, saveToolVideo, toolDir } from './tool-media.js'
+import { assertPointsAvailable } from './points.js'
 
 export { ToolError }
 
@@ -107,6 +108,9 @@ export async function startTranscribe(id: number, sel: SubtitleSelection = {}) {
   if (!job.hasAudio) throw new ToolError('视频没有音轨，无法识别字幕，可以手动上传字幕文件')
   await ensureFfmpeg()
   const config = await getSubtitleConfig(sel)
+  await assertPointsAvailable({
+    serviceType: 'subtitle', provider: config.provider, model: config.model, quantity: job.duration || 0, userId: job.userId ?? null,
+  })
   await update(id, { status: 'transcribing', errorMsg: null })
   logTaskStart(LABEL, 'transcribe', { jobId: id, configId: config.id, model: config.model })
 

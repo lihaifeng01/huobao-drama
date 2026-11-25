@@ -38,6 +38,10 @@ This repository is independently maintained, based on [chatfire-AI/huobao-drama]
 
 ### ✨ 本仓库新增功能 / Features Added in This Repository
 
+**v4.1.6** (2026-11-25)
+- **积分分配与余额限制**：管理员可在「使用记录」页给普通用户分配或扣减积分并查看流水；普通用户积分为 0 或不足本次预估消耗时不能调用相关 AI 功能，管理员不设上限。新用户初始积分为 0，已有普通用户升级后也需要管理员先分配积分<br>
+  **Point grants and balance limits**: admins can grant or deduct points and view grant history on the Usage page. Regular users cannot call AI features with zero points or insufficient estimated balance; admins are unlimited. New users start at zero, and existing regular users need an admin grant after upgrading
+
 **v4.1.5** (2026-11-17)
 - **上一镜尾帧衔接**：生成视频时可把上一分镜视频的尾帧作为参考图或首帧（首帧仅 MiniMax / Wan 支持，其余模型自动退回参考图），支持全局默认与每个分镜单独设置<br>
   **Previous-shot last frame**: use the last frame of the previous shot's video as a reference image or first frame when generating video (first-frame mode only on MiniMax / Wan; other models fall back to a reference image), with a global default and per-shot override
@@ -599,14 +603,17 @@ docker run -d \
 # 1. 配置环境（Watchtower 令牌，app 与 watchtower 两侧必须一致） / 1. Configure the environment (Watchtower token — must match on the app and watchtower sides)
 cp .env.example .env   # 修改 WATCHTOWER_TOKEN / edit WATCHTOWER_TOKEN
 
-# 2. 构建并启动（发布时注入版本号，供「关于更新」比对） / 2. Build and start (inject a version at publish time for "About & Updates" comparison)
-HUOBAO_VERSION=4.0.9 docker compose up -d --build
+# 2. 构建并启动（默认使用 desktop/package.json 的版本） / 2. Build and start (defaults to the version in desktop/package.json)
+docker compose up -d --build
 
 # 3. 访问 http://localhost:5679 / 3. Visit http://localhost:5679
 ```
 
 - **数据持久化**：命名卷 `huobao-data` 挂载 `/app/data`（SQLite + 生成的图片/视频 + workspace/skills，更新镜像不丢数据）<br>
   **Data persistence**: the named volume `huobao-data` mounts `/app/data` (SQLite + generated images/videos + workspace/skills) — image updates don't lose data
+
+- **版本排查**：当前版本来自镜像构建时的 `HUOBAO_VERSION`，或未指定时的源码发布版本（不代表源码没有未发布的修改）；旧 `.env` 中的 `HUOBAO_VERSION` 会覆盖默认值。删除过期值后重新构建并重建容器；使用预构建镜像则需先拉取新镜像并重建容器。可用 `docker compose exec app printenv HUOBAO_VERSION` 检查运行中的值。<br>
+  **Version troubleshooting**: the current version comes from the image's `HUOBAO_VERSION` build argument, or the source release version when omitted (which does not imply the source has no unreleased changes). An old `HUOBAO_VERSION` in `.env` overrides the default; remove it and rebuild/recreate the container. For prebuilt images, pull the new image and recreate the container. Check the running value with `docker compose exec app printenv HUOBAO_VERSION`.
 
 - **应用内更新**：compose 自带 [Watchtower](https://containrrr.dev/watchtower/) sidecar（`--label-enable` 只更新标记容器，`--cleanup` 清旧镜像，每天自检一次）。设置页「关于更新」可检查新版本并「立即更新」——后端经 Watchtower HTTP API 触发，拉新镜像重建容器，几分钟后刷新页面即可<br>
   **In-app updates**: the compose file ships a [Watchtower](https://containrrr.dev/watchtower/) sidecar (`--label-enable` only updates labeled containers, `--cleanup` removes old images, daily self-check). "Settings → About & Updates" can check for new versions and "Update Now" — the backend triggers it via the Watchtower HTTP API, which pulls the new image and rebuilds the container; refresh the page after a few minutes

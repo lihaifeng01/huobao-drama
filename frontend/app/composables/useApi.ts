@@ -310,6 +310,16 @@ export const usageAPI = {
   saveRules: (d: { defaults?: Record<string, number>; models?: { service_type: string; provider: string; model: string; points: number | null }[] }) => api.put('/usage/rules', d),
 }
 
+// 积分账户：个人余额所有人可读；账户列表与分配仅管理员
+export interface PointBalance { granted: number; used: number; balance: number }
+export interface PointAccount extends PointBalance { user_id: number; username: string; display_name: string; status: string }
+export const pointsAPI = {
+  me: () => api.get<({ unlimited: true } | ({ unlimited: false } & PointBalance))>('/points/me'),
+  accounts: () => api.get<PointAccount[]>('/points/accounts'),
+  grant: (d: { user_id: number; amount: number; note?: string }) => api.post<PointBalance>('/points/grant', d),
+  ledger: (f: { user_id?: number; page?: number; page_size?: number } = {}) => api.get<{ total: number; items: any[] }>(`/points/ledger${usageQ({ ...f })}`),
+}
+
 export const aiConfigAPI = {
   list: (t?: string) => api.get(`/ai-configs${t ? `?service_type=${t}` : ''}`),
   create: (d: any) => api.post('/ai-configs', d),

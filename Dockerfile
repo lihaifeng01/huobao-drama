@@ -41,7 +41,7 @@ RUN npm prune --omit=dev --ignore-scripts && npm i tsx@^4.21.0 --no-save --ignor
 
 # ===== 运行时 =====
 FROM ${BASE_REGISTRY}node:22-bookworm-slim
-ARG HUOBAO_VERSION=dev
+ARG HUOBAO_VERSION=""
 ARG APT_MIRROR
 ENV NODE_ENV=production \
     HUOBAO_VERSION=${HUOBAO_VERSION} \
@@ -67,6 +67,8 @@ COPY --from=backend-build /build/backend/src ./backend/src
 COPY --from=backend-build /build/backend/node_modules ./backend/node_modules
 COPY --from=backend-build /build/backend/package.json ./backend/package.json
 COPY --from=backend-build /build/backend/tsconfig.json ./backend/tsconfig.json
+# 未显式指定构建版本时，入口脚本读取源码对应的发布版本
+COPY desktop/package.json ./version.json
 # workspace 模板（skills/prompts），entrypoint copy-once 到数据卷后可在线编辑
 COPY backend/workspace ./workspace-template
 COPY --from=frontend-build /build/frontend/.output/public ./frontend-dist

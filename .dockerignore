@@ -18,8 +18,9 @@ data
 *.log
 .DS_Store
 
-# 桌面发布与密钥配置不参与服务端镜像构建
-desktop
+# 桌面发布产物不参与构建；保留发布版本的唯一来源
+desktop/*
+!desktop/package.json
 **/.env*
 
 # 镜像导出产物

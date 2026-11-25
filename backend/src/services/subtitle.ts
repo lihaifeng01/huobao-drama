@@ -23,6 +23,7 @@ import { getActiveConfig, getConfigById, type AIConfig } from './ai.js'
 import { transcribeAudioFile } from './adapters/aliyun-asr.js'
 import { currentActorId } from './actor.js'
 import { completeUsage, failUsage, startUsage } from './usage.js'
+import { assertPointsAvailable } from './points.js'
 import { dramaOf } from './project-access.js'
 
 type Storyboard = typeof schema.storyboards.$inferSelect
@@ -83,7 +84,8 @@ let running = 0
 /** 把镜头加入字幕队列；返回实际入队的 id（没有视频或已在队列中的跳过） */
 export async function enqueueSubtitles(storyboardIds: number[], sel: SubtitleSelection = {}): Promise<number[]> {
   await ensureFfmpeg()
-  await getSubtitleConfig(sel)
+  const config = await getSubtitleConfig(sel)
+  await assertPointsAvailable({ serviceType: 'subtitle', provider: config.provider, model: config.model })
   const accepted: number[] = []
   for (const id of storyboardIds) {
     if (queued.has(id)) continue
@@ -259,6 +261,9 @@ export async function transcribeVideoCues(videoAbs: string, config: AIConfig, po
     await runFfmpeg(['-y', '-i', videoAbs, '-vn', '-ac', '1', '-ar', '16000', '-c:a', 'libmp3lame', '-b:a', '64k', audioPath])
     // 抽音频之后、调用识别之前记用量：本地 ffmpeg 失败不算付费调用
     if (usage) {
+      await assertPointsAvailable({
+        serviceType: 'subtitle', provider: config.provider, model: config.model, quantity: usage.duration, userId: usage.userId,
+      })
       await startUsage({
         serviceType: 'subtitle', provider: config.provider, model: config.model, configId: config.id,
         source: usage.source, refType: usage.refType, refId: usage.refId, quantity: usage.duration,

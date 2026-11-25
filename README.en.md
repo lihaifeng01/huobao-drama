@@ -30,6 +30,9 @@ This repository is independently maintained, based on [chatfire-AI/huobao-drama]
 
 ### ✨ Features Added in This Repository
 
+**v4.1.6** (2026-11-25)
+- **Point grants and balance limits**: admins can grant or deduct points and view grant history on the Usage page. Regular users cannot call AI features with zero points or insufficient estimated balance; admins are unlimited. New users start at zero, and existing regular users need an admin grant after upgrading
+
 **v4.1.5** (2026-11-17)
 - **Previous-shot last frame**: use the last frame of the previous shot's video as a reference image or first frame when generating video (first-frame mode only on MiniMax / Wan; other models fall back to a reference image), with a global default and per-shot override
 
@@ -472,13 +475,14 @@ docker run -d \
 # 1. Configure the environment (Watchtower token — must match on the app and watchtower sides)
 cp .env.example .env   # edit WATCHTOWER_TOKEN
 
-# 2. Build and start (inject a version at publish time for "About & Updates" comparison)
-HUOBAO_VERSION=4.0.9 docker compose up -d --build
+# 2. Build and start (defaults to the version in desktop/package.json)
+docker compose up -d --build
 
 # 3. Visit http://localhost:5679
 ```
 
 - **Data persistence**: the named volume `huobao-data` mounts `/app/data` (SQLite + generated images/videos + workspace/skills) — image updates don't lose data
+- **Version troubleshooting**: the current version comes from the image's `HUOBAO_VERSION` build argument, or the source release version when omitted (which does not imply the source has no unreleased changes). An old `HUOBAO_VERSION` in `.env` overrides the default; remove it and rebuild/recreate the container. For prebuilt images, pull the new image and recreate the container. Check the running value with `docker compose exec app printenv HUOBAO_VERSION`.
 - **In-app updates**: the compose file ships a [Watchtower](https://containrrr.dev/watchtower/) sidecar (`--label-enable` only updates labeled containers, `--cleanup` removes old images, daily self-check). "Settings → About & Updates" can check for new versions and "Update Now" — the backend triggers it via the Watchtower HTTP API, which pulls the new image and rebuilds the container; refresh the page after a few minutes
 - **Manual mode**: remove the app's two `HUOBAO_WATCHTOWER_*` env vars (or the whole watchtower service) from `docker-compose.yml` — "About & Updates" then degrades to a new-version notice + manual `docker compose pull && docker compose up -d`
 - **Publishing images (GitHub Actions)**: pushing a `v*` tag (e.g. `git tag v4.1.0 && git push origin v4.1.0`) runs [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml), which builds multi-arch images and pushes them to `ghcr.io/lihaifeng01/huobao-drama`; set the `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` repo secrets to also push `lihaifeng1995/huobao-drama`. It also makes sure the release contains a `latest.json`

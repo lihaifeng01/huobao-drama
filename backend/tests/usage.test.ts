@@ -109,6 +109,8 @@ test('records image / video / text usage per user, with model breakdown and visi
   const alice = client()
   await alice('POST', '/auth/register', { username: 'alice', password: 'secret1' })
   const aliceId = (await alice('GET', '/auth/me')).json.data.id
+  // 新用户积分为 0，需要管理员分配后才能调用付费功能
+  await root('POST', '/points/grant', { user_id: aliceId, amount: 100000 })
 
   // 规则：普通用户可读不可改；管理员改类型默认值 + 单个模型覆盖
   assert.equal((await alice('PUT', '/usage/rules', { defaults: { image: 1 } })).status, 403)

@@ -47,6 +47,8 @@ function needsAdmin(method: string, path: string) {
   if (/^\/(ai-configs|style-presets)(\/|$)/.test(path)) return !read
   // 积分规则：读放开（用量页展示单价），改仅管理员
   if (/^\/usage\/rules(\/|$)/.test(path)) return !read
+  // 积分分配：账户列表与分配仅管理员；个人余额、流水所有人可读（流水按身份过滤）
+  if (/^\/points\/(accounts|grant)(\/|$)/.test(path)) return true
   // 全局内容语言：读放开，改仅管理员；新手引导记录任何人可写
   if (path === '/settings/content-language') return !read
   return false

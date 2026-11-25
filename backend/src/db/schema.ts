@@ -478,3 +478,13 @@ export const pointRules = sqliteTable('point_rules', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
+
+// 积分账户流水：管理员给普通用户分配（正数）/ 扣减（负数）。余额 = 流水合计 − 已计入的用量积分
+export const pointLedger = sqliteTable('point_ledger', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull(),
+  delta: integer('delta').notNull(),
+  operatorId: integer('operator_id'),
+  note: text('note'),
+  createdAt: text('created_at').notNull(),
+})

@@ -467,6 +467,16 @@ export const sqliteSchemaStatements = [
     updated_at TEXT NOT NULL
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_point_rules_key ON point_rules (service_type, provider, model)`,
+  // 积分账户流水：管理员给普通用户分配（正数）/ 扣减（负数）。余额 = 流水合计 − 已计入的用量积分
+  `CREATE TABLE IF NOT EXISTS point_ledger (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    delta INTEGER NOT NULL,
+    operator_id INTEGER,
+    note TEXT,
+    created_at TEXT NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_point_ledger_user ON point_ledger (user_id, id)`,
   // 各类型默认积分（缺失才插入，不覆盖管理员修改）：图片每张 10、视频每秒 20、字幕每分钟 2；文本只统计不扣（0）
   `INSERT OR IGNORE INTO point_rules (service_type, provider, model, points, created_at, updated_at) VALUES
     ('image', '', '', 10, strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now')),
