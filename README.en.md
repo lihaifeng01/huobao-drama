@@ -30,6 +30,9 @@ This repository is independently maintained, based on [chatfire-AI/huobao-drama]
 
 ### ✨ Features Added in This Repository
 
+**v4.1.6** (2026-11-25)
+- **Point grants and balance limits**: admins can grant or deduct points and view grant history on the Usage page. Regular users cannot call AI features with zero points or insufficient estimated balance; admins are unlimited. New users start at zero, and existing regular users need an admin grant after upgrading
+
 **v4.1.5** (2026-11-17)
 - **Previous-shot last frame**: use the last frame of the previous shot's video as a reference image or first frame when generating video (first-frame mode only on MiniMax / Wan; other models fall back to a reference image), with a global default and per-shot override
 
