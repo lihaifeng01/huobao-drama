@@ -78,6 +78,14 @@
 - **注意事项**：**升级后所有已有普通用户余额为 0，会立刻被拦，需要管理员先分配**。被拦时后端返回 400 + 中文提示（多数路由 catch 后统一 `badRequest`），未被 catch 的路径由 `InsufficientPointsError.status = 402` 兜底。检查与写用量记录之间不是原子的（并发批量发起时极端情况下可能略微透支一次），一期不处理。管理员、免登模式不记余额。
 - **验证**：`cd backend && npx tsx --test tests/points.test.ts tests/usage.test.ts`（注意需用与 better-sqlite3 编译版本一致的 Node，本机为 22）；`npm run typecheck`；前端 `npm run generate` 通过，浏览器里验证了管理员分配 / 扣减与流水显示。
 
+### 2026-11-19 · 修复 Docker 默认构建版本显示
+- **分支**：`dev`（已提交）
+- **改动**：Docker 未显式指定版本时，入口脚本读取镜像中随源码打包的 `desktop/package.json` 版本，并导出到后端；Compose 和 `.env.example` 不再默认注入 `dev`，README 补充排查说明。
+- **关键文件**：`Dockerfile`、`.dockerignore`、`docker/entrypoint.sh`、`docker-compose.yml`、`backend/tests/docker-version.test.mjs`、`backend/tests/server-update.test.ts`
+- **设计取舍**：保留构建参数和运行时环境变量显式覆盖能力，兼容发布工作流；源码有未发布修改时，默认版本仍是发布版本号，不代表具体提交。
+- **注意事项**：已有镜像和容器不会自行修复；旧 `.env` 的 `HUOBAO_VERSION` 也仍会覆盖默认版本，需移除后重新构建并重建。预构建镜像需拉取并重建。
+- **验证**：Docker 入口脚本版本回退、覆盖和无效元数据测试；后端更新比较测试、类型检查和 Compose 配置检查。
+
 ### 2026-11-17 · 发布 v4.1.5
 - **分支**：`master`（版本号提交直接推到 master，之后把 `dev` 快进同步）
 - **改动**：`desktop/package.json` / `package-lock.json` 升到 4.1.5；README 三份中英文的 v4.1.5 条目补上发布日期；打 `v4.1.5` 标签（触发 Docker 镜像 workflow），桌面版 mac arm64/x64 + win-x64 安装包发到 GitHub Release。

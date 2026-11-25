@@ -471,13 +471,14 @@ docker run -d \
 # 1. 配置环境（Watchtower 令牌，app 与 watchtower 两侧必须一致）
 cp .env.example .env   # 修改 WATCHTOWER_TOKEN
 
-# 2. 构建并启动（发布时注入版本号，供「关于更新」比对）
-HUOBAO_VERSION=4.0.9 docker compose up -d --build
+# 2. 构建并启动（默认使用 desktop/package.json 的版本）
+docker compose up -d --build
 
 # 3. 访问 http://localhost:5679
 ```
 
 - **数据持久化**：命名卷 `huobao-data` 挂载 `/app/data`（SQLite + 生成的图片/视频 + workspace/skills，更新镜像不丢数据）
+- **版本排查**：当前版本来自镜像构建时的 `HUOBAO_VERSION`，或未指定时的源码发布版本（不代表源码没有未发布的修改）；旧 `.env` 中的 `HUOBAO_VERSION` 会覆盖默认值。删除过期值后重新构建并重建容器；使用预构建镜像则需先拉取新镜像并重建容器。可用 `docker compose exec app printenv HUOBAO_VERSION` 检查运行中的值。
 - **应用内更新**：compose 自带 [Watchtower](https://containrrr.dev/watchtower/) sidecar（`--label-enable` 只更新标记容器，`--cleanup` 清旧镜像，每天自检一次）。设置页「关于更新」可检查新版本并「立即更新」——后端经 Watchtower HTTP API 触发，拉新镜像重建容器，几分钟后刷新页面即可
 - **手动模式**：`docker-compose.yml` 中删除 app 的 `HUOBAO_WATCHTOWER_*` 两个环境变量（或整个 watchtower 服务）后，「关于更新」退化为新版本提示 + 手动命令 `docker compose pull && docker compose up -d`
 - **发布镜像（GitHub Actions）**：推送 `v*` 标签（如 `git tag v4.1.0 && git push origin v4.1.0`）即由 [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml) 构建多架构镜像并推送到 `ghcr.io/lihaifeng01/huobao-drama`；配置仓库 Secrets `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` 后同时推送 `lihaifeng1995/huobao-drama`，并确保该版本 Release 含 `latest.json`
