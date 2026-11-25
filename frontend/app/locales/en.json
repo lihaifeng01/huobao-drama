@@ -1576,6 +1576,36 @@
     "saved": "Point rules saved",
     "invalid": "Points for \"{name}\" must be a whole number of 0 or more"
   },
+  "quota": {
+    "mine": "My points",
+    "unlimited": "Unlimited",
+    "remaining": "Remaining",
+    "granted": "Total granted",
+    "used": "Used",
+    "exhausted": "Used up",
+    "emptyHint": "Your points are used up, so image, video, subtitle and text AI features are unavailable. Ask an admin to grant you more points.",
+    "accounts": {
+      "title": "Point accounts",
+      "sub": "Grant points to regular users. A user with 0 points cannot use AI features. New accounts start at 0; admins have no limit.",
+      "col": {
+        "user": "Account"
+      },
+      "empty": "No regular users yet",
+      "grant": "Grant points",
+      "grantTitle": "Grant points to {name}",
+      "current": "{n} points remaining",
+      "amount": "Points",
+      "amountHint": "Positive adds, negative deducts (the balance can't go below 0)",
+      "invalid": "Enter a non-zero integer",
+      "granted": "Points updated"
+    },
+    "ledger": {
+      "title": "Grant history",
+      "delta": "Change",
+      "operator": "By",
+      "note": "Note"
+    }
+  },
   "usage": {
     "title": "Usage",
     "subAdmin": "AI service usage and points for your team. Click a category to see usage per model.",

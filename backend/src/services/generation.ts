@@ -18,6 +18,7 @@ import type { AIConfig, ProviderRequest } from './adapters/types'
 import { logTaskError, logTaskPayload, logTaskProgress, logTaskStart, logTaskSuccess, logTaskWarn, redactUrl } from '../utils/task-logger.js'
 import { currentActorId } from './actor.js'
 import { completeUsage, failUsage, isRefundableTaskFailure, startUsage } from './usage.js'
+import { assertPointsAvailable } from './points.js'
 import { taskDramaId } from './project-access.js'
 
 type TaskType = 'image' | 'video'
@@ -196,6 +197,11 @@ async function createTask(
   },
   params: Record<string, unknown>,
 ): Promise<number> {
+  // 积分不足时不建任务（普通用户；管理员不受限）
+  await assertPointsAvailable({
+    serviceType: type, provider: config.provider, model: fields.model || config.model,
+    quantity: type === 'video' ? Number(params.duration) || 5 : 1,
+  })
   const ts = now()
   const res = await db.insert(schema.sysTask).values({
     type,

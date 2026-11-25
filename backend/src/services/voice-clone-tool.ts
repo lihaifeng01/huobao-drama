@@ -23,6 +23,7 @@ import {
 import { ensureFfmpeg, probeVideo } from './subtitle.js'
 import { ToolError, extOf, toolDir } from './tool-media.js'
 import { completeUsage, failUsage, startUsage } from './usage.js'
+import { assertPointsAvailable } from './points.js'
 
 export { ToolError }
 
@@ -178,6 +179,7 @@ export async function startClone(id: number, opts: CloneOptions = {}) {
     throw new ToolError('音色 ID 需为 8–256 位，以英文字母开头，只能包含字母、数字、- 和 _，且不能以 - 或 _ 结尾')
   }
   const previewText = String(opts.previewText || '').trim().slice(0, 300)
+  await assertPointsAvailable({ serviceType: 'audio', provider: config.provider, model: config.model, userId: job.userId ?? null })
   await update(id, { status: 'cloning', errorMsg: null })
   logTaskStart(LABEL, 'clone', { jobId: id, configId: config.id, model: config.model, voiceId })
 
@@ -238,6 +240,7 @@ export async function startSynthesize(id: number, opts: SynthOptions = {}) {
   } catch (err: any) {
     throw new ToolError(`${err.message}（音色只能用复刻时的配置合成）`)
   }
+  await assertPointsAvailable({ serviceType: 'audio', provider: config.provider, model: config.model, userId: job.userId ?? null })
   await update(id, { status: 'synthesizing', errorMsg: null })
   logTaskStart(LABEL, 'synthesize', { jobId: id, configId: config.id, model: config.model, chars: text.length })
 

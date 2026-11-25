@@ -23,7 +23,7 @@ export const USAGE_SERVICE_TYPES: UsageServiceType[] = ['image', 'video', 'subti
 /** 可设置积分的类型（文本只统计 token，不计积分） */
 export const POINT_SERVICE_TYPES: UsageServiceType[] = ['image', 'video', 'subtitle']
 /** 计入积分的状态：成功、进行中（预估）、待恢复 */
-const COUNTED_STATUSES: UsageStatus[] = ['succeeded', 'pending', 'held']
+export const COUNTED_STATUSES: UsageStatus[] = ['succeeded', 'pending', 'held']
 
 type UsageRow = typeof schema.usageRecords.$inferSelect
 

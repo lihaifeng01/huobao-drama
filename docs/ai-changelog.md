@@ -70,6 +70,14 @@
 
 ## 变更条目
 
+### 2026-11-25 · 管理员分配积分，积分为 0 拦截付费功能
+- **分支**：`feat/user-points-quota`（从 `dev` 拉出，已合并到 `dev`）
+- **改动**：积分二期的「余额 + 拦截」最小实现。管理员（`super_admin` / `admin`）给普通用户（`user`）分配 / 扣减积分；普通用户余额为 0（或小于本次预估积分）时，图片、视频、字幕、音频（音色复刻 / 合成）、文本模型调用都会被拒绝；新用户 0 积分；管理员不设上限、不检查（桌面免登版的本机超级管理员同理）。
+- **关键文件**：`backend/src/services/points.ts`（余额、`assertPointsAvailable`、分配、流水）、`routes/points.ts`、`db/sqlite-schema.ts` 的 `point_ledger`、`generation.ts` `createTask` / `subtitle.ts` / `subtitle-tool.ts` / `voice-clone-tool.ts` / `agents/usage.ts` 的检查点、前端 `components/PointAccountsPanel.vue` + `pages/usage.vue`（余额卡片 + 管理员账户面板）、`locales/*.json` 的 `quota`。测试 `backend/tests/points.test.ts`。
+- **设计取舍**：没有建 `point_accounts` 余额缓存表，余额 = `point_ledger` 流水合计 − `usage_records` 里已计入（成功 / 进行中 / 待恢复）的积分，失败退还的记录不计入，所以退还自动生效、不会出现余额与用量对不上。分配入口放在「使用记录」页（管理员可见），因为账号管理页仅超级管理员可进，而需求是「管理员」都能分配。扣减后余额不能为负。检查在**发起时**做：图片 / 视频在 `createTask` 建任务之前（拒绝时不留 `sys_task` / 用量记录），字幕在入队和识别前（用真实音频时长估算）。文本和音频单价为 0，只要求余额大于 0。
+- **注意事项**：**升级后所有已有普通用户余额为 0，会立刻被拦，需要管理员先分配**。被拦时后端返回 400 + 中文提示（多数路由 catch 后统一 `badRequest`），未被 catch 的路径由 `InsufficientPointsError.status = 402` 兜底。检查与写用量记录之间不是原子的（并发批量发起时极端情况下可能略微透支一次），一期不处理。管理员、免登模式不记余额。
+- **验证**：`cd backend && npx tsx --test tests/points.test.ts tests/usage.test.ts`（注意需用与 better-sqlite3 编译版本一致的 Node，本机为 22）；`npm run typecheck`；前端 `npm run generate` 通过，浏览器里验证了管理员分配 / 扣减与流水显示。
+
 ### 2026-11-17 · 发布 v4.1.5
 - **分支**：`master`（版本号提交直接推到 master，之后把 `dev` 快进同步）
 - **改动**：`desktop/package.json` / `package-lock.json` 升到 4.1.5；README 三份中英文的 v4.1.5 条目补上发布日期；打 `v4.1.5` 标签（触发 Docker 镜像 workflow），桌面版 mac arm64/x64 + win-x64 安装包发到 GitHub Release。

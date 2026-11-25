@@ -22,6 +22,31 @@
       </div>
     </div>
 
+    <!-- 我的积分：管理员不设上限；普通用户积分为 0 时不能使用付费功能 -->
+    <section v-if="myPoints" class="card balance-card" :class="{ empty: !myPoints.unlimited && myPoints.balance <= 0 }">
+      <template v-if="myPoints.unlimited">
+        <div class="balance-main">
+          <span class="balance-label">{{ t('quota.mine') }}</span>
+          <span class="balance-value">{{ t('quota.unlimited') }}</span>
+        </div>
+      </template>
+      <template v-else>
+        <div class="balance-main">
+          <span class="balance-label">{{ t('quota.remaining') }}</span>
+          <span class="balance-value">{{ fmtInt(myPoints.balance) }}</span>
+          <span class="type-points-unit">{{ t('usage.pointsUnit') }}</span>
+        </div>
+        <div class="balance-side">
+          <span>{{ t('quota.granted') }} {{ fmtInt(myPoints.granted) }}</span>
+          <span>{{ t('quota.used') }} {{ fmtInt(myPoints.used) }}</span>
+        </div>
+        <p v-if="myPoints.balance <= 0" class="balance-warn">{{ t('quota.emptyHint') }}</p>
+      </template>
+    </section>
+
+    <!-- 管理员：给普通用户分配积分（桌面免登版单人使用，不显示） -->
+    <PointAccountsPanel v-if="isAdmin && isMultiUser" @changed="loadMyPoints" />
+
     <!-- 四个分类 -->
     <div class="type-grid">
       <button
@@ -161,10 +186,11 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { Image as ImageIcon, Video, Captions, AudioLines, MessageSquareText, ChevronLeft, ChevronRight } from 'lucide-vue-next'
-import { usageAPI, userAPI, type UsageType, type UsageFilter } from '~/composables/useApi'
+import { pointsAPI, usageAPI, userAPI, type UsageType, type UsageFilter } from '~/composables/useApi'
 import { useAuth } from '~/composables/useAuth'
 import { toastError } from '~/composables/useToast'
 import BaseSelect from '~/components/BaseSelect.vue'
+import PointAccountsPanel from '~/components/PointAccountsPanel.vue'
 
 const TYPE_ICONS: Record<UsageType, any> = { image: ImageIcon, video: Video, subtitle: Captions, audio: AudioLines, text: MessageSquareText }
 const RANGES = ['month', 'week', 'days30', 'all'] as const
@@ -181,6 +207,11 @@ const memberOptions = computed(() => [
   { label: t('usage.allMembers'), value: '' },
   ...members.value.map(u => ({ label: `${u.display_name}（${u.username}）`, value: u.id })),
 ])
+
+const myPoints = ref<Awaited<ReturnType<typeof pointsAPI.me>> | null>(null)
+async function loadMyPoints() {
+  try { myPoints.value = await pointsAPI.me() } catch { myPoints.value = null }
+}
 
 const summary = ref<any[]>([])
 const activeType = ref<UsageType | null>(null)
@@ -301,6 +332,7 @@ function statusLabel(r: any) {
 
 onMounted(async () => {
   if (isAdmin.value && isMultiUser.value) userAPI.options().then(list => { members.value = list }).catch(() => {})
+  loadMyPoints()
   await loadSummary()
   loadRecords()
 })
@@ -325,6 +357,13 @@ onMounted(async () => {
 .filter-chip.on { background: var(--inverse-surface); color: var(--on-inverse); border-color: transparent; }
 .member-select { width: 200px; }
 
+.balance-card { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; padding: 14px 18px; margin-bottom: 14px; }
+.balance-card.empty { border-color: var(--error); }
+.balance-main { display: flex; align-items: baseline; gap: 8px; }
+.balance-label { font-size: 13px; font-weight: 700; color: var(--text-1); }
+.balance-value { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: var(--text-0); font-variant-numeric: tabular-nums; }
+.balance-side { display: flex; gap: 16px; font-size: 12px; color: var(--text-3); }
+.balance-warn { flex-basis: 100%; margin: 0; font-size: 12.5px; color: var(--error); }
 .type-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
 .type-card {
   display: flex; flex-direction: column; gap: 10px;

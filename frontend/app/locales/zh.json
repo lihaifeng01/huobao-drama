@@ -1576,6 +1576,36 @@
     "saved": "积分规则已保存",
     "invalid": "「{name}」的积分必须是不小于 0 的整数"
   },
+  "quota": {
+    "mine": "我的积分",
+    "unlimited": "不设上限",
+    "remaining": "剩余",
+    "granted": "累计获得",
+    "used": "已使用",
+    "exhausted": "已用完",
+    "emptyHint": "积分已用完，暂时不能使用图片、视频、字幕、文本等 AI 功能，请联系管理员分配积分。",
+    "accounts": {
+      "title": "积分账户",
+      "sub": "给普通用户分配积分。积分为 0 时该用户不能使用 AI 功能；新账号默认 0 积分，管理员积分不设上限。",
+      "col": {
+        "user": "账号"
+      },
+      "empty": "还没有普通用户",
+      "grant": "分配积分",
+      "grantTitle": "给 {name} 分配积分",
+      "current": "当前剩余 {n} 积分",
+      "amount": "积分数量",
+      "amountHint": "正数为增加，负数为扣减（扣减后余额不能为负）",
+      "invalid": "请输入非零整数",
+      "granted": "已更新积分"
+    },
+    "ledger": {
+      "title": "分配记录",
+      "delta": "变动",
+      "operator": "操作人",
+      "note": "备注"
+    }
+  },
   "usage": {
     "title": "使用记录",
     "subAdmin": "团队成员调用 AI 服务的用量和折合积分。点击分类查看每个模型的用量。",
