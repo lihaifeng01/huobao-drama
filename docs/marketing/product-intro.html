@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>火宝短剧 · AI 短剧一站式生产平台</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --accent: #f97316; --accent-dark: #c2410c; --ink: #1f2937; --muted: #6b7280; --bg: #fff7ed; --dark: #0f172a; }
+  body { font-family: "WenQuanYi Zen Hei", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif; color: var(--ink); font-size: 13px; line-height: 1.7; }
+  .page { width: 210mm; height: 297mm; padding: 18mm 16mm 16mm; page-break-after: always; position: relative; overflow: hidden; }
+  .page:last-child { page-break-after: auto; }
+  .foot { position: absolute; left: 16mm; right: 16mm; bottom: 8mm; font-size: 10px; color: var(--muted); display: flex; justify-content: space-between; border-top: 1px solid #e5e7eb; padding-top: 6px; }
+  h2 { font-size: 24px; margin-bottom: 4px; }
+  h2 span { color: var(--accent); }
+  .sub { color: var(--muted); margin-bottom: 14px; font-size: 13px; }
+  .tag { display: inline-block; font-size: 11px; letter-spacing: 2px; color: var(--accent); font-weight: bold; margin-bottom: 6px; }
+
+  /* 封面 */
+  .cover { background: linear-gradient(160deg, #0f172a 0%, #1e293b 55%, #7c2d12 130%); color: #fff; padding: 0; }
+  .cover .inner { padding: 30mm 20mm 0; }
+  .cover .brand { font-size: 14px; letter-spacing: 6px; color: #fdba74; }
+  .cover h1 { font-size: 46px; line-height: 1.25; margin: 14mm 0 6mm; }
+  .cover h1 em { font-style: normal; color: #fb923c; }
+  .cover .lead { font-size: 17px; color: #e2e8f0; max-width: 150mm; }
+  .cover .pills { margin-top: 12mm; }
+  .pill { display: inline-block; border: 1px solid rgba(251,146,60,.6); color: #fed7aa; border-radius: 20px; padding: 3px 14px; margin: 0 8px 8px 0; font-size: 13px; }
+  .cover img { position: absolute; left: 20mm; right: 20mm; bottom: -6mm; width: 170mm; border-radius: 10px 10px 0 0; border: 1px solid rgba(255,255,255,.15); }
+
+  /* 通用组件 */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .card { border: 1px solid #fed7aa; background: var(--bg); border-radius: 8px; padding: 10px 12px; }
+  .card.plain { background: #fff; border-color: #e5e7eb; }
+  .card h4 { font-size: 14px; margin-bottom: 3px; color: var(--accent-dark); }
+  .card p { font-size: 12px; color: #374151; line-height: 1.6; }
+  .big { font-size: 26px; font-weight: bold; color: var(--accent); line-height: 1.2; }
+  .shot { width: 100%; border-radius: 6px; border: 1px solid #e5e7eb; display: block; }
+  .step { display: grid; grid-template-columns: 92mm 1fr; gap: 14px; align-items: center; margin-bottom: 12px; }
+  .step .no { display: inline-block; background: var(--accent); color: #fff; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; text-align: center; font-weight: bold; margin-right: 6px; }
+  .step h4 { font-size: 16px; margin-bottom: 4px; }
+  .step ul { padding-left: 16px; font-size: 12.5px; color: #374151; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+  th, td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #fff7ed; color: var(--accent-dark); }
+  td.bad { color: #6b7280; }
+  td.good { color: #166534; font-weight: bold; }
+  .flow { display: flex; align-items: center; gap: 4px; margin: 6px 0 14px; }
+  .flow div { flex: 1; text-align: center; background: var(--dark); color: #fff; border-radius: 6px; padding: 8px 2px; font-size: 12px; }
+  .flow b { color: var(--accent); }
+  .note { font-size: 11px; color: var(--muted); margin-top: 8px; }
+  .cta { background: var(--dark); color: #fff; border-radius: 10px; padding: 14px 18px; margin-top: 12px; }
+  .cta h4 { color: #fdba74; font-size: 15px; margin-bottom: 4px; }
+  ul.tick { list-style: none; }
+  ul.tick li::before { content: "✔ "; color: var(--accent); font-weight: bold; }
+  ul.tick li { margin-bottom: 3px; font-size: 12.5px; }
+</style>
+</head>
+<body>
+
+<!-- 1 封面 -->
+<section class="page cover">
+  <div class="inner">
+    <div class="brand">HUOBAO DRAMA</div>
+    <h1>一个人，一台电脑<br>就是一条<em>短剧生产线</em></h1>
+    <p class="lead">火宝短剧 —— 从小说到成片的 AI 短剧 / 漫剧一站式制作平台。剧本改写、角色与场景设计、分镜拆解、视频生成、拼接导出，全流程在一个工作台完成。</p>
+    <div class="pills">
+      <span class="pill">全流程自动化</span><span class="pill">多模型自由切换</span><span class="pill">团队协作与积分管理</span><span class="pill">私有化部署 · 数据自管</span>
+    </div>
+  </div>
+  <img src="../screenshots/08-videos.png" alt="">
+</section>
+
+<!-- 2 痛点与价值 -->
+<section class="page">
+  <div class="tag">WHY</div>
+  <h2>短剧公司的三个老问题，<span>一个平台解决</span></h2>
+  <p class="sub">短剧拼的是「出片速度 × 单集成本 × 质量稳定」。传统与零散的 AI 工具方案，都卡在这三点上。</p>
+
+  <div class="grid3" style="margin-bottom:14px">
+    <div class="card"><h4>① 流程割裂、人工搬运</h4><p>写剧本用一个工具、生图用一个、生视频用一个、剪辑再用一个，素材来回导出导入，人为出错多、交接成本高。</p></div>
+    <div class="card"><h4>② 角色 / 场景不一致</h4><p>AI 出片最大的痛点：同一个角色每个镜头长得不一样，成片无法使用，只能反复重抽，烧钱烧时间。</p></div>
+    <div class="card"><h4>③ 成本与团队不可控</h4><p>多人共用 API Key，谁用了多少、哪个项目花了多少说不清；员工离职、项目交接数据难以管理。</p></div>
+  </div>
+
+  <h2 style="font-size:19px;margin:6px 0 8px">火宝短剧的解法</h2>
+  <div class="flow">
+    <div><b>小说</b><br>原文导入</div><span>›</span>
+    <div><b>剧本</b><br>AI 改写</div><span>›</span>
+    <div><b>资产</b><br>角色/场景/道具</div><span>›</span>
+    <div><b>分镜</b><br>镜头拆解</div><span>›</span>
+    <div><b>视频</b><br>批量生成</div><span>›</span>
+    <div><b>成片</b><br>拼接导出</div>
+  </div>
+
+  <div class="grid2">
+    <div class="card plain"><h4>一站式</h4><p>6 个环节在同一个界面串成流水线，左侧进度栏实时标示当前阶段，新人上手即用。</p></div>
+    <div class="card plain"><h4>一致性优先</h4><p>先定妆角色 / 场景 / 道具，再用这些资产作为参考图注入每个分镜的视频生成，保证人物与场景前后统一。</p></div>
+    <div class="card plain"><h4>模型自由、不被绑定</h4><p>文本、图片、视频模型均可在界面一键切换，也可接入各类中转站，哪家便宜、哪家效果好就用哪家。</p></div>
+    <div class="card plain"><h4>团队级管理</h4><p>多账号、角色权限、项目成员、用量统计与积分分配，让老板看得清每一分钱花在哪里。</p></div>
+  </div>
+
+  <div class="cta" style="margin-top:16px">
+    <h4>适合谁</h4>
+    <p style="font-size:12.5px;color:#e2e8f0">短剧 / 漫剧制作公司、MCN 与内容工作室、小说 IP 方的视频化团队、需要批量产出竖屏剧情内容的电商与品牌方。</p>
+  </div>
+  <div class="foot"><span>火宝短剧 · Huobao Drama</span><span>02</span></div>
+</section>
+
+<!-- 3 流程 1 -->
+<section class="page">
+  <div class="tag">WORKFLOW</div>
+  <h2>从小说到成片，<span>六步走完</span></h2>
+  <p class="sub">下面是真实的产品界面截图。</p>
+
+  <div class="step">
+    <img class="shot" src="../screenshots/02-create-drama.png" alt="">
+    <div><h4><span class="no">1</span>创建项目</h4>
+      <ul><li>选择画面比例：横屏 16:9 / 竖屏 9:16</li><li>选择画面风格（3D / 真实感等），统一全片美术基调</li></ul></div>
+  </div>
+  <div class="step">
+    <img class="shot" src="../screenshots/05-script.png" alt="">
+    <div><h4><span class="no">2</span>AI 剧本改写</h4>
+      <ul><li>粘贴小说原文，AI 自动改写为拍摄剧本</li><li>按集拆分，标注场景与角色</li><li>改写结果可编辑并自动保存</li><li>自动生成「前情摘要」，保证跨集剧情连贯</li></ul></div>
+  </div>
+  <div class="step">
+    <img class="shot" src="../screenshots/06-assets.png" alt="">
+    <div><h4><span class="no">3</span>资产提取与定妆</h4>
+      <ul><li>一键提取角色 / 场景 / 道具，自动去重</li><li>AI 生成三视图形象，也可上传自有图片或参考图</li><li>角色支持别名、合并重复、多套造型（服装 / 妆发）</li><li>定妆后的设定被锁定，后续不会被覆盖</li></ul></div>
+  </div>
+  <div class="foot"><span>火宝短剧 · Huobao Drama</span><span>03</span></div>
+</section>
+
+<!-- 4 流程 2 -->
+<section class="page">
+  <div class="tag">WORKFLOW</div>
+  <h2>分镜、视频、<span>拼接导出</span></h2>
+  <p class="sub">把“镜头”变成“成片”的核心三步。</p>
+
+  <div class="step">
+    <img class="shot" src="../screenshots/07-storyboard.png" alt="">
+    <div><h4><span class="no">4</span>分镜拆解</h4>
+      <ul><li>AI 按镜头节奏把剧本切成分镜序列</li><li>自动生成每个分镜的视频提示词（含景别、运镜、时间段）</li><li>提示词中 @角色名 自动关联参考图</li></ul></div>
+  </div>
+  <div class="step">
+    <img class="shot" src="../screenshots/08-videos.png" alt="">
+    <div><h4><span class="no">5</span>批量生成视频</h4>
+      <ul><li>顶栏选择视频模型，分辨率与时长联动</li><li>批量生成，失败任务一键重试</li><li>每个分镜保留历史版本，可随时回滚或重绘</li><li>可把上一镜尾帧作为下一镜首帧 / 参考图，镜头衔接更自然</li><li>支持角色音色引用，人物声音前后一致</li></ul></div>
+  </div>
+  <div class="step">
+    <img class="shot" src="../screenshots/09-export.png" alt="">
+    <div><h4><span class="no">6</span>拼接导出</h4>
+      <ul><li>勾选镜头，FFmpeg 自动合成整集成片（已内置，无需另装）</li><li>在线预览与下载</li><li>可选识别语音生成字幕，压制字幕版成片</li></ul></div>
+  </div>
+  <div class="foot"><span>火宝短剧 · Huobao Drama</span><span>04</span></div>
+</section>
+
+<!-- 5 功能全景 -->
+<section class="page">
+  <div class="tag">FEATURES</div>
+  <h2>功能全景</h2>
+  <p class="sub">覆盖短剧生产的各个环节，以及配套的工具与管理能力。</p>
+
+  <div class="grid2">
+    <div class="card"><h4>🤖 4 个内置 AI Agent</h4>
+      <p><b>剧本改写</b>：小说 → 格式化剧本<br><b>资产提取</b>：角色 / 场景 / 道具智能提取与去重<br><b>分镜拆解</b>：剧本 → 分镜序列<br><b>提示词生成</b>：图片与视频提示词自动撰写<br>提示词与技能可在设置页在线编辑，沉淀公司自己的「爆款写法」。</p></div>
+    <div class="card"><h4>🎨 角色 / 场景 / 道具资产</h4>
+      <p>AI 生图或上传，支持参考图；多套造型、别名、合并去重；定妆后锁定；全局素材库跨项目复用，支持多级文件夹。</p></div>
+    <div class="card"><h4>🎬 视频生成与镜头衔接</h4>
+      <p>文生视频 / 图生视频；参考图自动注入；上一镜尾帧衔接；历史版本管理；自动禁止模型自带字幕，保证画面干净。</p></div>
+    <div class="card"><h4>💬 字幕与配音工具</h4>
+      <p>语音识别生成 SRT 并压制字幕；支持导入现有字幕；独立「视频合成」「生成字幕」工具，不依赖项目；「音色复刻」让角色声音可复用。</p></div>
+    <div class="card"><h4>👥 账号与团队协作</h4>
+      <p>超级管理员 / 管理员 / 普通用户三种角色；项目成员、项目转让；个人素材与工具任务按用户隔离。</p></div>
+    <div class="card"><h4>📊 用量统计与积分</h4>
+      <p>每次付费调用（图片 / 视频 / 字幕 / 文本）都有记录；按规则折算积分，可按模型单独定价；管理员给员工分配积分，余额不足自动拦截，成本可控。</p></div>
+    <div class="card"><h4>🏷️ 品牌定制（白标）</h4>
+      <p>超级管理员可自定义应用名称、Logo、网站图标、主题色与圆角风格，对全员生效，可作为公司内部系统或对外交付使用。</p></div>
+    <div class="card"><h4>🌐 多语言界面</h4>
+      <p>中文 / English / 日本語 / 한국어 四种界面语言，AI 生成内容语言可独立设置，便于做出海短剧。</p></div>
+  </div>
+
+  <h2 style="font-size:17px;margin:14px 0 4px">支持的 AI 模型</h2>
+  <table>
+    <tr><th style="width:18%">类型</th><th>已适配</th></tr>
+    <tr><td>文本</td><td>OpenAI 兼容接口（可接入 DeepSeek 等各类模型）、Gemini</td></tr>
+    <tr><td>图片</td><td>OpenAI（如 gpt-image）、Gemini、火山引擎；兼容硅基流动等</td></tr>
+    <tr><td>视频</td><td>火山引擎 Seedance 2.0（标准 / Fast / Mini）、MiniMax、阿里云百炼 Wan 3.0</td></tr>
+    <tr><td>中转站</td><td>文本 / 图片 / 视频均可自定义请求地址、鉴权、请求体模板与响应解析，对接第三方中转服务</td></tr>
+  </table>
+  <div class="foot"><span>火宝短剧 · Huobao Drama</span><span>05</span></div>
+</section>
+
+<!-- 6 优势 -->
+<section class="page">
+  <div class="tag">ADVANTAGES</div>
+  <h2>核心优势，<span>对老板最有价值的 6 点</span></h2>
+  <p class="sub">相比「多个工具拼凑 + 人工搬运」的方式。</p>
+
+  <table>
+    <tr><th style="width:17%">对比维度</th><th style="width:36%">传统 / 零散 AI 工具</th><th>火宝短剧</th></tr>
+    <tr><td><b>制作流程</b></td><td class="bad">多工具切换，文件反复导出导入</td><td class="good">剧本→资产→分镜→视频→成片，一个工作台闭环</td></tr>
+    <tr><td><b>人物一致性</b></td><td class="bad">逐镜头手动传图、反复抽卡</td><td class="good">定妆资产自动作为参考图注入，镜头尾帧可衔接</td></tr>
+    <tr><td><b>模型选择</b></td><td class="bad">被单一平台绑定，涨价只能接受</td><td class="good">多厂商与中转站自由切换，按效果与价格择优</td></tr>
+    <tr><td><b>成本管控</b></td><td class="bad">共用账号，用量无法追溯</td><td class="good">按人 / 项目 / 模型统计，积分分配 + 余额拦截</td></tr>
+    <tr><td><b>团队协作</b></td><td class="bad">依赖网盘与聊天群传文件</td><td class="good">多账号、项目成员、权限分级、项目可转让</td></tr>
+    <tr><td><b>数据安全</b></td><td class="bad">素材与剧本存放在第三方平台</td><td class="good">桌面版与服务器版均可自管，数据存于本地 / 自有服务器</td></tr>
+  </table>
+
+  <div class="grid3" style="margin-top:16px">
+    <div class="card"><div class="big">1 站</div><p>剧本、资产、分镜、视频、字幕、导出全包，零切换</p></div>
+    <div class="card"><div class="big">N 模型</div><p>文本 / 图片 / 视频多家模型与中转站，随时切换</p></div>
+    <div class="card"><div class="big">0 安装</div><p>数据库与 FFmpeg 已内置，无需额外部署数据库或剪辑软件</p></div>
+  </div>
+
+  <h2 style="font-size:17px;margin:16px 0 6px">可复用的“公司资产”</h2>
+  <ul class="tick">
+    <li>全局素材库：角色、场景跨项目沉淀，系列剧 / 续集直接复用</li>
+    <li>可编辑的 Agent 提示词与技能：把团队验证过的剧本风格、分镜节奏固化下来</li>
+    <li>前情摘要：长篇多集剧情自动保持连贯，减少人工对稿</li>
+    <li>品牌白标：可作为公司自有系统品牌对外使用</li>
+  </ul>
+  <div class="foot"><span>火宝短剧 · Huobao Drama</span><span>06</span></div>
+</section>
+
+<!-- 7 部署与上手 -->
+<section class="page">
+  <div class="tag">DEPLOY</div>
+  <h2>上手与部署，<span>灵活又省心</span></h2>
+  <p class="sub">个人试用到公司多人协作，两种形态都有。</p>
+
+  <div class="grid2">
+    <div class="card"><h4>🖥️ 桌面版（macOS / Windows）</h4>
+      <p>双击安装，开箱即用，默认免登录。<br>数据库、素材、视频都存在本机，卸载软件不丢数据。<br>内置自动更新。<br>适合：个人创作者、小工作室快速试用。</p></div>
+    <div class="card"><h4>🏭 服务器版（Docker / 源码）</h4>
+      <p>支持 Docker 镜像（含多架构）一键部署，单服务同时提供 API 与前端页面。<br>开启登录模式后支持多账号、项目成员、积分管理。<br>适合：公司团队协作与统一管理。</p></div>
+  </div>
+
+  <h2 style="font-size:17px;margin:16px 0 6px">三步开始第一部短剧</h2>
+  <div class="grid3">
+    <div class="card"><div class="big">①</div><h4>配置 AI 服务</h4><p>在「设置」页粘贴 API Key，一键写入文本 / 图片 / 视频三类推荐配置，并可测试连通性。</p></div>
+    <div class="card"><div class="big">②</div><h4>创建项目与剧集</h4><p>选择画面比例与风格，粘贴小说原文，AI 自动改写剧本。</p></div>
+    <div class="card"><div class="big">③</div><h4>走完流水线</h4><p>提取资产 → 拆分镜 → 批量生成视频 → 拼接导出成片。</p></div>
+  </div>
+
+  <h2 style="font-size:17px;margin:16px 0 6px">给老板的管理视角</h2>
+  <ul class="tick">
+    <li>项目进度：剧集列表实时展示每一集处在剧本、资产、视频还是导出阶段</li>
+    <li>成本透明：「使用记录」页按月 / 按人 / 按模型查看次数、用量与积分</li>
+    <li>预算控制：为员工分配积分，用完即停，管理员不设上限</li>
+    <li>人员交接：项目可转让，成员权限可调整，离职不丢项目</li>
+  </ul>
+
+  <div class="foot"><span>火宝短剧 · Huobao Drama</span><span>07</span></div>
+</section>
+
+</body>
+</html>
